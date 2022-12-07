@@ -1,5 +1,5 @@
 import logging
-
+from datetime import datetime
 from pyodk.client import Client
 
 log = logging.getLogger("app")
@@ -53,6 +53,78 @@ def get_attachments(project_id, form_data):
             )
             with open(att["name"], "wb") as out_file:
                 out_file.write(img.content)
+
+    assert response.status_code == 200
+
+
+def update_form_attachment(project_id, xml_form_id, files):
+    """Mise à jour du formulaires
+        3 étapes :
+         1 - passer le formulaire en draft
+         2 - mettre à jour les médias
+         3 - publier le formulaires
+    :param project_id: id du projet
+    :type project_id: int
+    :param xml_form_id: nom du formulaire
+    :type xml_form_id: str
+    :param files: dictionnaires des fichiers à poster
+    :type files: dict
+    """
+    form_draft(project_id, xml_form_id)
+    for file_name in files:
+        upload_form_attachment(project_id, xml_form_id, file_name=file_name, data=files[file_name])
+    publish_form(project_id, xml_form_id)
+
+
+def form_draft(project_id, xml_form_id):
+    """Publie une ébauche du formulaire
+
+    TODO : mette à jour la définition du formulaire
+
+    :param project_id: id du projet
+    :type project_id: int
+    :param xml_form_id: nom du formulaire
+    :type xml_form_id: str
+    """
+    with client:
+        request = client.post(f"projects/{project_id}/forms/{xml_form_id}/draft")
+        assert request.status_code == 200
+
+def upload_form_attachment(project_id, xml_form_id, file_name, data):
+    """Upload fichier attaché du formulaire
+
+    :param project_id: id du projet
+    :type project_id: int
+    :param xml_form_id: nom du formulaire
+    :type xml_form_id: str
+    :param file_name: nom du fichier
+    :type file_name: str
+    :param data: csv data converti en chaine de caractères
+    :type data: str
+    """
+    response = client.post(
+        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/draft/attachments/{file_name}",
+        data=data.encode("utf-8", "strict")
+    )
+    if response.status_code == 404:
+        log.warning(f"Le fichier {file_name} n'existe pas dans la définition du formulaire")
+    elif response.status_code == 200:
+        log.info(f"fichier {file_name} téléversé")
+    else:
+        #TODO raise error
+        pass
+
+
+def publish_form(project_id, xml_form_id):
+    """Publication du formulaire avec un nouveau numéro de version
+        :param project_id: id du projet
+    :type project_id: int
+    :param xml_form_id: nom du formulaire
+    :type xml_form_id: str
+    """
+    version_number = datetime.now()
+    response = client.post(f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}")
+    assert response.status_code == 200
 
 
 def get_schema_fields(project_id, xml_form_id):

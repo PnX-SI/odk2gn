@@ -14,9 +14,9 @@ from pypnnomenclature.models import TNomenclatures
 from gn_module_monitoring.monitoring.models import (
     TMonitoringSites,
     TMonitoringVisits,
-    TMonitoringObservations,
+    TMonitoringObservations
 )
-from gn_module_monitoring.config.repositories import get_config
+
 from geonature.utils.utilsmails import send_mail
 from geonature.core.gn_commons.models import TMedias
 from pypnusershub.db.models import User
@@ -26,7 +26,7 @@ from geonature.utils.env import DB
 from gn_monitoring_odk.config import config
 from gn_monitoring_odk.odk_api import (
     get_submissions,
-    # get_schema_fields,
+    update_form_attachment,
     get_attachments,
     get_attachment,
     client,
@@ -34,6 +34,12 @@ from gn_monitoring_odk.odk_api import (
 )
 from gn_monitoring_odk.utils_dict import NestedDictAccessor
 from gn_monitoring_odk.config_schema import ProcoleSchema
+
+from gn_monitoring_odk.gn2_utils import (
+    get_modules_info,
+    get_gn2_attachments_data
+)
+
 
 # TODO : post visite
 
@@ -240,3 +246,30 @@ def synchronize(module_code, project_id, form_id):
             #         msg_html=str(e),
             #     )
             #     DB.session.rollback()
+
+
+
+@click.command()
+@click.argument("module_code")
+@click.option("--project_id", required=True, type=int)
+@click.option("--form_id", required=True, type=str)
+def upgrade_odk_form(module_code, project_id, form_id):
+    log.info(f"--- Start upgrade form for module {module_code} ---")
+
+    app = create_app()
+
+    with app.app_context() as app_ctx:
+        # Get Module
+        module = get_modules_info(module_code=module_code)
+        # Get gn2 attachments data
+        files = get_gn2_attachments_data(
+            module=module,
+            id_nomeclature_type=[]
+        )
+        # Update form
+        update_form_attachment(
+            project_id=project_id,
+            xml_form_id=form_id,
+            files=files
+        )
+    log.info(f"--- Done ---")
