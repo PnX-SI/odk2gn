@@ -1,0 +1,25 @@
+[central]
+base_url = "https://odk-test.cevennes-parcnational.net"
+username = "username"
+password = "password"
+default_project_id = 1
+
+[gn_odk]
+email_for_error = "hot-limit@gmail.com"
+
+
+[STOM]
+    [SITE]
+    [VISIT]
+        id_base_site = "<ecran>/id_base_site"
+        id_dataset = "visite/id_jdd"
+        default_id_dataset = 9742
+        id_module = "test"
+        default_id_module = 1368
+        date_min = "visite/date_time"
+        date_max = "visite/date_time"
+        comments = "visite_2/commentaire_conditions_ecoute"
+        data = []
+    [OBSERVATION]
+        cd_nom = "<ecran>/cd_nom"
+        data = []

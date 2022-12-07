@@ -1,5 +1,6 @@
 config.toml
 
+.vscode/*
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
