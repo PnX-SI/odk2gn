@@ -30,7 +30,7 @@ pip install -e <path_vers_gn_module_monitoring>
 ## Configuration
 
 **ODK central**
-Renseigner les paramètres de connexion au serveur central
+Renseigner les paramètres de connexion au serveur central, pour pyodk (https://github.com/getodk/pyodk)
 
 ```
 [central]
