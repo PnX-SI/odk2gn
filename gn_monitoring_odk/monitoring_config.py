@@ -4,6 +4,11 @@ from gn_module_monitoring.config.repositories import get_config
 
 def get_nomenclatures_fields(module_code: str, niveau: str):
     config = get_config(module_code)
+    if not config:
+        return []
+    if not niveau in config:
+        return []
+
     fields = dict(
         config[niveau].get("specific", []),
         **config[niveau].get("generic", []),

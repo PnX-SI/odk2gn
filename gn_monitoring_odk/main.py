@@ -8,7 +8,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from geonature.app import create_app
 from geonature.utils.env import BACKEND_DIR
-from geonature.core.gn_commons.models import TModules
 from geonature.core.gn_commons.models import BibTablesLocation
 from pypnnomenclature.models import TNomenclatures
 
@@ -114,20 +113,12 @@ def synchronize(module_code, project_id, form_id):
     with app.app_context() as app_ctx:
         log.info(f"--- Start synchro for module {module_code} ---")
         try:
-            module_config = config[module_code]
+            module_config = config[module_code.upper()]
         except KeyError as e:
             log.error(f"No configuration found for module {module_code} ")
             raise
         module_config = ProcoleSchema().load(module_config)
-        try:
-            gn_module = (
-                DB.session.query(TModules)
-                .filter_by(module_code=module_code.lower())
-                .one()
-            )
-        except (exc.NoResultFound) as e:
-            log.error(f"No GeoNature module found for {module_code.lower()}")
-            raise
+        gn_module = get_modules_info(module_code)
         monitoring_config = get_config(module_code.lower())
         visit_generic_column = monitoring_config["visit"]["generic"].keys()
         visit_specific_column = monitoring_config["visit"]["specific"].keys()
@@ -136,9 +127,9 @@ def synchronize(module_code, project_id, form_id):
             "specific"
         ].keys()
         form_data = get_submissions(project_id, form_id)
-        print("NB SUB", len(form_data))
+
         for sub in form_data:
-            pp.pprint(sub)
+            # pp.pprint(sub)
             flatten_data = flatdict.FlatDict(sub, delimiter="/")
             observation_data = []
             try:
@@ -172,7 +163,7 @@ def synchronize(module_code, project_id, form_id):
                 if odk_column_name == module_config["VISIT"].get("observers_repeat"):
                     for role in val:
                         observers_list.append(
-                            int(role[module_config["VISIT"].get("id_observer")])
+                            role[module_config["VISIT"].get("id_observer")]
                         )
                 elif odk_column_name in visit_specific_column:
                     odk_field = odk_form_schema.get_field_info(odk_column_name)
@@ -181,12 +172,15 @@ def synchronize(module_code, project_id, form_id):
                             # HACK -> convert mutliSelect in list and replace _ by espace
                             val = [v.replace("_", " ") for v in val.split(" ")]
                     visit_dict_to_post["data"][odk_column_name] = val
-
+            print("VISIT TO POST")
+            print(visit_dict_to_post)
             #### temp
-            # visit_dict_to_post["id_dataset"] = 9744
+            from datetime import datetime
+
+            visit_dict_to_post["id_dataset"] = 9744
+            visit_dict_to_post["visit_date_min"] = datetime.now()
+            visit_dict_to_post["id_base_site"] = 1
             ### fin temp
-            print("#############", visit_dict_to_post)
-            print("OBSERVERS", observers_list)
             visit = TMonitoringVisits(**visit_dict_to_post)
             visit.observers = (
                 DB.session.query(User)
@@ -205,7 +199,7 @@ def synchronize(module_code, project_id, form_id):
 
             obs_media_name = None
             for obs in observation_data:
-                # print("############ OBS", obs)
+                print("############ OBS")
                 observation_dict_to_post = {
                     "data": {},
                 }
@@ -230,12 +224,10 @@ def synchronize(module_code, project_id, form_id):
                 observation = TMonitoringObservations(**observation_dict_to_post)
                 visit.observations.append(observation)
             DB.session.add(visit)
-            print(visit)
+
             try:
                 DB.session.commit()
             except SQLAlchemyError as e:
-                log.error("Error while posting data")
-                log.error(str(e))
                 send_mail(
                     config["gn_odk"]["email_for_error"],
                     subject="Synchronisation ODK error",
