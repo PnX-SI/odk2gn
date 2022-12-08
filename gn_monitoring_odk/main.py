@@ -129,16 +129,12 @@ def synchronize(module_code, project_id, form_id):
             log.error(f"No GeoNature module found for {module_code.lower()}")
             raise
         monitoring_config = get_config(module_code.lower())
-        visit_generic_column = monitoring_config["visit"]["generic"].keys()
-        visit_specific_column = monitoring_config["visit"]["specific"].keys()
-        observation_generic_column = monitoring_config["observation"]["generic"].keys()
-        observation_specific_column = monitoring_config["observation"][
-            "specific"
-        ].keys()
+        visit_generic_column = monitoring_config["visit"]["generic"]
+        visit_specific_column = monitoring_config["visit"]["specific"]
+        observation_generic_column = monitoring_config["observation"]["generic"]
+        observation_specific_column = monitoring_config["observation"]["specific"]
         form_data = get_submissions(project_id, form_id)
-        print("NB SUB", len(form_data))
         for sub in form_data:
-            # pp.pprint(sub)
             flatten_data = flatdict.FlatDict(sub, delimiter="/")
             observation_data = []
             try:
@@ -160,30 +156,28 @@ def synchronize(module_code, project_id, form_id):
             observers_list = []
             for key, val in flatten_data.items():
                 odk_column_name = key.split("/")[-1]
-                print(odk_column_name)
                 # specifig comment column
                 if odk_column_name == module_config["VISIT"].get("comments"):
                     visit_dict_to_post["comments"] = val
                 # specific media column
                 if odk_column_name == module_config["VISIT"].get("media"):
                     visit_media_name = val
-                if odk_column_name in visit_generic_column:
-                    visit_dict_to_post[odk_column_name] = val
+                if odk_column_name in visit_generic_column.keys():
+                    # get val or the default value define in gn_monitoring json
+                    visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get("value")
                 # specific observers repeat
                 if odk_column_name == module_config["VISIT"].get("observers_repeat"):
                     for role in val:
-                        print(role)
-                        print("LAAAA", role[module_config["VISIT"].get("id_observer")])
                         observers_list.append(
                             int(role[module_config["VISIT"].get("id_observer")])
                         )
-                elif odk_column_name in visit_specific_column:
+                elif odk_column_name in visit_specific_column.keys():
                     odk_field = odk_form_schema.get_field_info(odk_column_name)
                     if odk_field["selectMultiple"]:
                         if val:
                             # HACK -> convert mutliSelect in list and replace _ by espace
                             val = [v.replace("_", " ") for v in val.split(" ")]
-                    visit_dict_to_post["data"][odk_column_name] = val
+                    visit_dict_to_post["data"][odk_column_name] = val or visit_specific_column[odk_column_name].get("value")
 
             visit = TMonitoringVisits(**visit_dict_to_post)
             visit.observers = (
@@ -208,7 +202,6 @@ def synchronize(module_code, project_id, form_id):
 
             obs_media_name = None
             for obs in observation_data:
-                # print("############ OBS", obs)
                 observation_dict_to_post = {
                     "data": {},
                 }
@@ -221,19 +214,18 @@ def synchronize(module_code, project_id, form_id):
                     # specific media column
                     if odk_column_name == module_config["OBSERVATION"].get("media"):
                         obs_media_name = val
-                    if odk_column_name in observation_generic_column:
-                        observation_dict_to_post[odk_column_name] = val
-                    elif odk_column_name in observation_specific_column:
+                    if odk_column_name in observation_generic_column.keys():
+                        observation_dict_to_post[odk_column_name] = val or observation_generic_column[odk_column_name].get("value")
+                    elif odk_column_name in observation_specific_column.keys():
                         odk_field = odk_form_schema.get_field_info(odk_column_name)
                         if odk_field["selectMultiple"]:
                             if val:
                                 # HACK -> convert mutliSelect in list and replace _ by espace
                                 val = [v.replace("_", " ") for v in val.split(" ")]
-                        observation_dict_to_post["data"][odk_column_name] = val
+                        observation_dict_to_post["data"][odk_column_name] = val or observation_specific_column[odk_column_name].get("value")
                 observation = TMonitoringObservations(**observation_dict_to_post)
                 visit.observations.append(observation)
             DB.session.add(visit)
-            print(visit)
             try:
                 DB.session.commit()
             except SQLAlchemyError as e:
