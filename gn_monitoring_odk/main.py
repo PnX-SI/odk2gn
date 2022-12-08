@@ -27,12 +27,17 @@ from geonature.utils.env import DB
 from gn_monitoring_odk.config import config
 from gn_monitoring_odk.odk_api import (
     get_submissions,
-    # get_schema_fields,
+    update_form_attachment,
     get_attachments,
     get_attachment,
     ODKSchema,
 )
 from gn_monitoring_odk.config_schema import ProcoleSchema
+
+from gn_monitoring_odk.gn2_utils import (
+    get_modules_info,
+    get_gn2_attachments_data
+)
 
 # TODO : post visite
 
@@ -238,3 +243,47 @@ def synchronize(module_code, project_id, form_id):
                     msg_html=str(e),
                 )
                 DB.session.rollback()
+
+
+@click.command()
+@click.argument("module_code")
+@click.option("--project_id", required=True, type=int)
+@click.option("--form_id", required=True, type=str)
+@click.option('--skip_taxons', is_flag=True, help="Skip taxon sync.")
+@click.option('--skip_observers', is_flag=True, help="Skip observers sync.")
+@click.option('--skip_jdd', is_flag=True, help="Skip jdd sync.")
+@click.option('--skip_sites', is_flag=True, help="Skip sites sync.")
+@click.option('--skip_nomenclatures', is_flag=True, help="Skip nomenclatures sync.")
+def upgrade_odk_form(
+        module_code,
+        project_id,
+        form_id,
+        skip_taxons,
+        skip_observers,
+        skip_jdd,
+        skip_sites,
+        skip_nomenclatures
+    ):
+    log.info(f"--- Start upgrade form for module {module_code} ---")
+
+    app = create_app()
+
+    with app.app_context() as app_ctx:
+        # Get Module
+        module = get_modules_info(module_code=module_code)
+        # Get gn2 attachments data
+        files = get_gn2_attachments_data(
+            module=module,
+            skip_taxons=skip_taxons,
+            skip_observers=skip_observers,
+            skip_jdd=skip_jdd,
+            skip_sites=skip_sites,
+            skip_nomenclatures=skip_nomenclatures
+        )
+        # Update form
+        update_form_attachment(
+            project_id=project_id,
+            xml_form_id=form_id,
+            files=files
+        )
+    log.info(f"--- Done ---")
