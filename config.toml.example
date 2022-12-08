@@ -19,6 +19,8 @@ email_for_error = "hot-limit@gmail.com"
         observers_repeat = 'observer'
         # nom de la clé contenant l'id_role du noeud "observers" (optionnel, defaut 'id_role')
         id_observer = 'id_role'
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
     [STOM.OBSERVATION]
         # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
         path = "observations"
@@ -26,5 +28,5 @@ email_for_error = "hot-limit@gmail.com"
         comment = "comments_observation"
         # nom du champ média de la visite (optionnel, defaut medias_visit)
         media = "medias_observation"
-        # type du media (optionnel, defaut "Photo")
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
         media_type = "Photo"

@@ -21,12 +21,6 @@ class SiteSchema(Schema):
 
 
 class VisitSchema(Schema):
-    id_base_site = fields.Str()
-    id_dataset = fields.Str()
-    # default_id_dataset = fields.Str()
-    date_min = fields.Str()
-    date_max = fields.Str()
-    data = fields.List(fields.Str())
     observers_repeat = fields.Str(load_default="observer")
     id_observer = fields.Str(load_default="id_role")
     media = fields.Str(load_default="medias_visit")
