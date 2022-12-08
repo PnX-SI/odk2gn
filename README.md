@@ -25,7 +25,7 @@ pip install -e <path_vers_gn_module_monitoring>
 ```
 ## Configuration
 
-** ODK central **
+**ODK central**
 Renseigner les paramètres de connexion au serveur central
 
 ```
@@ -36,7 +36,7 @@ password = "password"
 default_project_id = 1
 ```
 
-** Modules monitoring **
+**Modules monitoring**
 Pour chaque module monitoring il faut définir un mapping qui permet d'établir un lien entre la structure du formulaire ODK et les données de GeoNature.
 
 exemple protocole STOM
@@ -78,7 +78,6 @@ upgrade_odk_form <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PRO
 ```
 
 Des options permettent de ne pas synchroniser un type de données:
- * --skip_taxons : ne pas générer le fichier des taxons
   * `--skip_taxons` : ne pas générer le fichier des taxons
   * `--skip_observers` : ne pas générer le fichier des observateurs
   * `--skip_jdd` : ne pas générer le fichier des jeux de données
