@@ -4,6 +4,10 @@ Module python utilisant les modèles de GeoNature pour intégrer des données de
 
 Il permet actuellement d'importer des données collectées avec ODK vers le module Monitoring de GeoNature et de mettre à jour les listes de valeurs du formulaire ODK en fonction des données de la base GeoNature
 
+## Architecture
+
+![Architecture](docs/img/archi_global.jpeg)
+
 ## Installation
 
 ```sh
