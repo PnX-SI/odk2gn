@@ -38,6 +38,7 @@ class VisitSchema(Schema):
 
 
 class ObservationSchema(Schema):
+    path = fields.Str(load_default="observations/especes")
     cd_nom = fields.Str(required=True)
     comments = fields.Str()
     data = fields.List(fields.Str(), required=True)
