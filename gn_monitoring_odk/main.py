@@ -179,7 +179,21 @@ def synchronize(module_code, project_id, form_id):
 @click.argument("module_code")
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
-def upgrade_odk_form(module_code, project_id, form_id):
+@click.option('--skip_taxons', is_flag=True, help="Skip taxon sync.")
+@click.option('--skip_observers', is_flag=True, help="Skip observers sync.")
+@click.option('--skip_jdd', is_flag=True, help="Skip jdd sync.")
+@click.option('--skip_sites', is_flag=True, help="Skip sites sync.")
+@click.option('--skip_nomenclatures', is_flag=True, help="Skip nomenclatures sync.")
+def upgrade_odk_form(
+        module_code,
+        project_id,
+        form_id,
+        skip_taxons,
+        skip_observers,
+        skip_jdd,
+        skip_sites,
+        skip_nomenclatures
+    ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
 
     app = create_app()
@@ -188,7 +202,18 @@ def upgrade_odk_form(module_code, project_id, form_id):
         # Get Module
         module = get_modules_info(module_code=module_code)
         # Get gn2 attachments data
-        files = get_gn2_attachments_data(module=module, id_nomeclature_type=[])
+        files = get_gn2_attachments_data(
+            module=module,
+            skip_taxons=skip_taxons,
+            skip_observers=skip_observers,
+            skip_jdd=skip_jdd,
+            skip_sites=skip_sites,
+            skip_nomenclatures=skip_nomenclatures
+        )
         # Update form
-        update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
+        update_form_attachment(
+            project_id=project_id,
+            xml_form_id=form_id,
+            files=files
+        )
     log.info(f"--- Done ---")
