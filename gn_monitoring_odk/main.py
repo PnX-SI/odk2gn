@@ -14,9 +14,9 @@ from pypnnomenclature.models import TNomenclatures
 from gn_module_monitoring.monitoring.models import (
     TMonitoringSites,
     TMonitoringVisits,
-    TMonitoringObservations
+    TMonitoringObservations,
 )
-
+from gn_module_monitoring.config.repositories import get_config
 from geonature.utils.utilsmails import send_mail
 from geonature.core.gn_commons.models import TMedias
 from pypnusershub.db.models import User
@@ -39,7 +39,6 @@ from gn_monitoring_odk.gn2_utils import (
     get_modules_info,
     get_gn2_attachments_data
 )
-
 
 # TODO : post visite
 
@@ -133,108 +132,36 @@ def synchronize(module_code, project_id, form_id):
         form_data = get_submissions(project_id, form_id)
         # pp.pprint(form_data)
         for sub in form_data:
-            # flatten_dict = NestedDictAccessor(sub)
-            flatten_data = flatdict.FlatDict(sub, delimiter="/")
-            observation_data = []
+            sites = DB.session.query(TMonitoringSites).all()
+            visite = TMonitoringVisits(
+                id_base_site=1,
+                id_dataset=9742,
+                id_module=1368,
+                visit_date_min=datetime.now(),
+                visit_date_max=datetime.now(),
+                comments="toto",
+                data={"debutant": "Oui", "nuages": "0-33%"},
+                observers=DB.session.query(User).all(),
+            )
+
+            observation = TMonitoringObservations(
+                cd_nom=2975, comments="super obs", data={"nb_0_5": 5, "nb_5_10": 2}
+            )
+
+            visite.observations.append(observation)
+
+            DB.session.add(visite)
+
             try:
-                observation_data = flatten_data.pop(config["OBSERVATION"]["path"])
-                assert type(observation_data) is list
-            except KeyError:
-                log.warning("No observation for this visit")
-            except AssertionError:
-                log.error("Observation node is not a list")
-                raise
-            visit_dict_to_post = {"data": {}}
-            for key, val in flatten_data.items():
-                odk_column_name = key.split("/")[-1]
-                if odk_column_name in visit_default_column:
-                    visit_dict_to_post[odk_column_name] = val
-                elif odk_column_name in visit_json_columns:
-                    odk_field = odk_form_schema.get_field_info(odk_column_name)
-                    if odk_field["selectMultiple"]:
-                        if val:
-                            # HACK -> convert mutliSelect in list and replace _ by espace
-                            val = [v.replace("_", " ") for v in val.split(" ")]
-                    visit_dict_to_post["data"][odk_column_name] = val
-            print("VISIT TO POST")
-            print(visit_dict_to_post)
-
-            observation_dict_to_post = {"data": {}}
-            for obs in observation_data:
-                flatten_obs = flatdict.FlatDict(obs, delimiter="/")
-                for key, val in flatten_obs.items():
-                    odk_column_name = key.split("/")[-1]
-                    if odk_column_name in observation_default_column:
-                        observation_dict_to_post[odk_column_name] = val
-                    elif odk_column_name in observation_json_columns:
-                        odk_field = odk_form_schema.get_field_info(odk_column_name)
-                        if odk_field["selectMultiple"]:
-                            if val:
-                                # HACK -> convert mutliSelect in list and replace _ by espace
-                                val = [v.replace("_", " ") for v in val.split(" ")]
-                        observation_dict_to_post["data"][odk_column_name] = val
-            print("OBS TO POST")
-            print(observation_dict_to_post)
-
-            # # pp.pprint(sub)
-
-            # id_dataset = (
-            #     flatten_data.get_nested(config["VISIT"]["id_dataset"])
-            #     or config["VISIT"]["default_id_dataset"]
-            # )
-            # observers_str = flatten_data.get_nested(config["VISIT"]["observers"])
-            # observers_list = []
-            # observers_list = DB.session.query(User).filter(
-            #     User.id_role.in_(observers_str.split(" "))
-            # )
-
-            # visit_json_dict = {}
-            # for path in config["VISIT"]["data"]:
-            #     visit_json_dict[path.split("/")[-1]] = flatten_data.get_nested(path)
-            # gn_uuid = uuid.uuid4()
-            # visite = TMonitoringVisits(
-            #     uuid_base_visit=gn_uuid,
-            #     id_base_site=1,
-            #     id_dataset=id_dataset,
-            #     id_module=gn_module.id_module,
-            #     visit_date_min=flatten_dict.get_nested(config["VISIT"]["date_min"]),
-            #     visit_date_max=flatten_dict.get_nested(config["VISIT"]["date_min"]),
-            #     comments=flatten_dict.get_nested(config["VISIT"]["comments"]),
-            #     data=visit_json_dict,
-            #     observers=observers_list,
-            # )
-            # get_and_post_medium(
-            #     project_id=project_id,
-            #     form_id=form_id,
-            #     uuid_sub=sub.get_nested("meta.instanceID").split(":")[1],
-            #     filename=sub.get_nested(config["VISIT"]["media_name"]),
-            #     monitoring_table="t_base_visits",
-            #     uuid_gn_object=gn_uuid,
-            # )
-            # observations = flatten_dict.get_nested(config["VISIT"]["observations"])
-            # for obs in observations:
-            #     obs_json_dict = {}
-            #     for path in config["OBSERVATION"]["data"]:
-            #         obs_json_dict[path.split("/")[-1]] = obs.get_nested(path)
-            #     uuid_obs = uuid.uuid4()
-            #     observation = TMonitoringObservations(
-            #         uuid_observation=uuid_obs,
-            #         cd_nom=obs.get_nested(config["OBSERVATION"]["cd_nom"]),
-            #         comments=obs.get_nested(config["OBSERVATION"]["comments"]),
-            #         data=obs_json_dict,
-            #     )
-            #     get_and_post_medium(
-            #         project_id=project_id,
-            #         form_id=form_id,
-            #         uuid_sub=sub.get_nested("meta.instanceID").split(":")[1],
-            #         filename=sub.get_nested(config["OBSERVATION"]["media_name"]),
-            #         monitoring_table="t_observations",
-            #         uuid_gn_object=uuid_obs,
-            #     )
-
-            #     visite.observations.append(observation)
-
-            # DB.session.add(visite)
+                DB.session.commit()
+                pass
+            except exc.SQLAlchemyError as e:
+                send_mail(
+                    config["gn_odk"]["email_for_error"],
+                    subject="Synchronisation ODK error",
+                    msg_html=str(e),
+                )
+                DB.session.rollback()
 
             # try:
             #     DB.session.commit()
@@ -246,7 +173,6 @@ def synchronize(module_code, project_id, form_id):
             #         msg_html=str(e),
             #     )
             #     DB.session.rollback()
-
 
 
 @click.command()
@@ -262,14 +188,7 @@ def upgrade_odk_form(module_code, project_id, form_id):
         # Get Module
         module = get_modules_info(module_code=module_code)
         # Get gn2 attachments data
-        files = get_gn2_attachments_data(
-            module=module,
-            id_nomeclature_type=[]
-        )
+        files = get_gn2_attachments_data(module=module, id_nomeclature_type=[])
         # Update form
-        update_form_attachment(
-            project_id=project_id,
-            xml_form_id=form_id,
-            files=files
-        )
+        update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")
