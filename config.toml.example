@@ -9,17 +9,22 @@ email_for_error = "hot-limit@gmail.com"
 
 
 [STOM]
-    [SITE]
-    [VISIT]
-        id_base_site = "<ecran>/id_base_site"
-        id_dataset = "visite/id_jdd"
-        default_id_dataset = 9742
-        id_module = "test"
-        default_id_module = 1368
-        date_min = "visite/date_time"
-        date_max = "visite/date_time"
-        comments = "visite_2/commentaire_conditions_ecoute"
-        data = []
-    [OBSERVATION]
-        cd_nom = "<ecran>/cd_nom"
-        data = []
+    [STOM.SITE]
+    [STOM.VISIT]
+        # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
+        comment = "comments_visit"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_visit"
+        # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
+        observers_repeat = 'observer'
+        # nom de la clé contenant l'id_role du noeud "observers" (optionnel, defaut 'id_role')
+        id_observer = 'id_role'
+    [STOM.OBSERVATION]
+        # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
+        path = "observations"
+        # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
+        comment = "comments_observation"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_observation"
+        # type du media (optionnel, defaut "Photo")
+        media_type = "Photo"
