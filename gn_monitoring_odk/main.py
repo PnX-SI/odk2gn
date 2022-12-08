@@ -4,6 +4,7 @@ import uuid
 
 import flatdict
 from sqlalchemy.orm import exc
+from sqlalchemy.exc import SQLAlchemyError
 
 from geonature.app import create_app
 from geonature.utils.env import BACKEND_DIR
@@ -29,10 +30,8 @@ from gn_monitoring_odk.odk_api import (
     update_form_attachment,
     get_attachments,
     get_attachment,
-    client,
     ODKSchema,
 )
-from gn_monitoring_odk.utils_dict import NestedDictAccessor
 from gn_monitoring_odk.config_schema import ProcoleSchema
 
 from gn_monitoring_odk.gn2_utils import (
@@ -54,6 +53,14 @@ pp = pprint.PrettyPrinter(width=41, compact=True)
 #     print(field)
 #     # schema = get_schema_fields(4, "form_workshop")
 #     pp.pprint(schema)
+
+
+@click.command()
+@click.option("--project_id", required=True, type=int)
+@click.option("--form_id", required=True, type=str)
+def get_schema(project_id, form_id):
+    odk_schema = ODKSchema(project_id, form_id)
+    pp.pprint(odk_schema.schema)
 
 
 def get_and_post_medium(
@@ -107,11 +114,11 @@ def synchronize(module_code, project_id, form_id):
     with app.app_context() as app_ctx:
         log.info(f"--- Start synchro for module {module_code} ---")
         try:
-            schema = config[module_code]
+            module_config = config[module_code]
         except KeyError as e:
             log.error(f"No configuration found for module {module_code} ")
             raise
-        ProcoleSchema().load(schema)
+        module_config = ProcoleSchema().load(module_config)
         try:
             gn_module = (
                 DB.session.query(TModules)
@@ -122,57 +129,120 @@ def synchronize(module_code, project_id, form_id):
             log.error(f"No GeoNature module found for {module_code.lower()}")
             raise
         monitoring_config = get_config(module_code.lower())
-        # pp.pprint(monitoring_config["visit"]["generic"].keys())
-        # pp.pprint(monitoring_config["visit"]["specific"].keys())
-        visit_default_column = monitoring_config["visit"]["generic"].keys()
-        visit_json_columns = monitoring_config["visit"]["specific"].keys()
-        observation_default_column = monitoring_config["observation"]["generic"].keys()
-        observation_json_columns = monitoring_config["observation"]["specific"].keys()
-        pp.pprint(monitoring_config["observation"]["specific"].keys())
+        visit_generic_column = monitoring_config["visit"]["generic"].keys()
+        visit_specific_column = monitoring_config["visit"]["specific"].keys()
+        observation_generic_column = monitoring_config["observation"]["generic"].keys()
+        observation_specific_column = monitoring_config["observation"][
+            "specific"
+        ].keys()
         form_data = get_submissions(project_id, form_id)
-        # pp.pprint(form_data)
+
         for sub in form_data:
-            sites = DB.session.query(TMonitoringSites).all()
-            visite = TMonitoringVisits(
-                id_base_site=1,
-                id_dataset=9742,
-                id_module=1368,
-                visit_date_min=datetime.now(),
-                visit_date_max=datetime.now(),
-                comments="toto",
-                data={"debutant": "Oui", "nuages": "0-33%"},
-                observers=DB.session.query(User).all(),
+            # pp.pprint(sub)
+            flatten_data = flatdict.FlatDict(sub, delimiter="/")
+            observation_data = []
+            try:
+                observation_data = flatten_data.pop(
+                    module_config["OBSERVATION"]["path"]
+                )
+                assert type(observation_data) is list
+            except KeyError:
+                log.warning("No observation for this visit")
+            except AssertionError:
+                log.error("Observation node is not a list")
+                raise
+            visit_uuid = uuid.uuid4()
+            visit_dict_to_post = {
+                "uuid_base_visit": visit_uuid,
+                "id_module": gn_module.id_module,
+                "data": {},
+            }
+            observers_list = []
+            for key, val in flatten_data.items():
+                odk_column_name = key.split("/")[-1]
+                # specifig comment column
+                if odk_column_name == module_config["VISIT"].get("comments"):
+                    visit_dict_to_post["comments"] = val
+                # specific media column
+                if odk_column_name == module_config["VISIT"].get("media"):
+                    visit_media_name = val
+                if odk_column_name in visit_generic_column:
+                    visit_dict_to_post[odk_column_name] = val
+                # specific observers repeat
+                if odk_column_name == module_config["VISIT"].get("observers_repeat"):
+                    for role in val:
+                        observers_list.append(
+                            role[module_config["VISIT"].get("id_observer")]
+                        )
+                elif odk_column_name in visit_specific_column:
+                    odk_field = odk_form_schema.get_field_info(odk_column_name)
+                    if odk_field["selectMultiple"]:
+                        if val:
+                            # HACK -> convert mutliSelect in list and replace _ by espace
+                            val = [v.replace("_", " ") for v in val.split(" ")]
+                    visit_dict_to_post["data"][odk_column_name] = val
+            print("VISIT TO POST")
+            print(visit_dict_to_post)
+            #### temp
+            from datetime import datetime
+
+            visit_dict_to_post["id_dataset"] = 9744
+            visit_dict_to_post["visit_date_min"] = datetime.now()
+            visit_dict_to_post["id_base_site"] = 1
+            ### fin temp
+            visit = TMonitoringVisits(**visit_dict_to_post)
+            visit.observers = (
+                DB.session.query(User)
+                .filter(User.id_role.in_(tuple(observers_list)))
+                .all()
             )
+            # get_and_post_medium(
+            #     project_id=project_id,
+            #     form_id=form_id,
+            #     uuid_sub=flatten_obs("meta/instanceID").split(":")[1],
+            #     filename=visit_media_name,
+            #     monitoring_table="t_base_visits",
+            #     uuid_gn_object=gn_uuid,
+            # )
+            # # pp.pprint(sub)
 
-            observation = TMonitoringObservations(
-                cd_nom=2975, comments="super obs", data={"nb_0_5": 5, "nb_5_10": 2}
-            )
-
-            visite.observations.append(observation)
-
-            DB.session.add(visite)
+            obs_media_name = None
+            for obs in observation_data:
+                print("############ OBS")
+                observation_dict_to_post = {
+                    "data": {},
+                }
+                flatten_obs = flatdict.FlatDict(obs, delimiter="/")
+                for key, val in flatten_obs.items():
+                    odk_column_name = key.split("/")[-1]
+                    # specifig comment column
+                    if odk_column_name == module_config["OBSERVATION"].get("comments"):
+                        observation_dict_to_post["comments"] = val
+                    # specific media column
+                    if odk_column_name == module_config["OBSERVATION"].get("media"):
+                        obs_media_name = val
+                    if odk_column_name in observation_generic_column:
+                        observation_dict_to_post[odk_column_name] = val
+                    elif odk_column_name in observation_specific_column:
+                        odk_field = odk_form_schema.get_field_info(odk_column_name)
+                        if odk_field["selectMultiple"]:
+                            if val:
+                                # HACK -> convert mutliSelect in list and replace _ by espace
+                                val = [v.replace("_", " ") for v in val.split(" ")]
+                        observation_dict_to_post["data"][odk_column_name] = val
+                observation = TMonitoringObservations(**observation_dict_to_post)
+                visit.observations.append(observation)
+            DB.session.add(visit)
 
             try:
                 DB.session.commit()
-                pass
-            except exc.SQLAlchemyError as e:
+            except SQLAlchemyError as e:
                 send_mail(
                     config["gn_odk"]["email_for_error"],
                     subject="Synchronisation ODK error",
                     msg_html=str(e),
                 )
                 DB.session.rollback()
-
-            # try:
-            #     DB.session.commit()
-            #     pass
-            # except exc.SQLAlchemyError as e:
-            #     send_mail(
-            #         config["gn_odk"]["email_for_error"],
-            #         subject="Synchronisation ODK error",
-            #         msg_html=str(e),
-            #     )
-            #     DB.session.rollback()
 
 
 @click.command()
