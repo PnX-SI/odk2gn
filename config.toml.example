@@ -17,7 +17,7 @@ email_for_error = "hot-limit@gmail.com"
         media = "medias_visit"
         # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
         observers_repeat = 'observer'
-        # nom de la clé contenant l'id_role du noeud "observers" (optionnel, defaut 'id_role')
+        # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
         id_observer = 'id_role'
         # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
         media_type = "Photo"
