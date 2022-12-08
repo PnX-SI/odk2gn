@@ -20,16 +20,17 @@ from gn_monitoring_odk.monitoring_config import (
 )
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 
-import csv
+log = logging.getLogger("app")
 
 def get_modules_info(module_code: str):
-        try:
-            module = TMonitoringModules.query.filter_by(
-                module_code=module_code
-            ).one()
-            return module
-        except NoResultFound:
-            return None
+    try:
+        module = TMonitoringModules.query.filter(
+            TMonitoringModules.module_code.ilike(module_code)
+        ).one()
+        return module
+    except NoResultFound:
+        log.error(f"No GeoNature module found for {module_code.lower()}")
+        raise
 
 def get_gn2_attachments_data(
         module:TMonitoringModules,
