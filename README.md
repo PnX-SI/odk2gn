@@ -34,7 +34,7 @@ Renseigner les paramètres de connexion au serveur central
 
 ```
 [central]
-base_url = "https://odk-test.cevennes-parcnational.net"
+base_url = "https://odk-central.monserveur.org"
 username = "username"
 password = "password"
 default_project_id = 1
