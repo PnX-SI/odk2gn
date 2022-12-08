@@ -138,7 +138,7 @@ def synchronize(module_code, project_id, form_id):
         form_data = get_submissions(project_id, form_id)
         print("NB SUB", len(form_data))
         for sub in form_data:
-            pp.pprint(sub)
+            # pp.pprint(sub)
             flatten_data = flatdict.FlatDict(sub, delimiter="/")
             observation_data = []
             try:
@@ -160,6 +160,7 @@ def synchronize(module_code, project_id, form_id):
             observers_list = []
             for key, val in flatten_data.items():
                 odk_column_name = key.split("/")[-1]
+                print(odk_column_name)
                 # specifig comment column
                 if odk_column_name == module_config["VISIT"].get("comments"):
                     visit_dict_to_post["comments"] = val
@@ -171,6 +172,8 @@ def synchronize(module_code, project_id, form_id):
                 # specific observers repeat
                 if odk_column_name == module_config["VISIT"].get("observers_repeat"):
                     for role in val:
+                        print(role)
+                        print("LAAAA", role[module_config["VISIT"].get("id_observer")])
                         observers_list.append(
                             int(role[module_config["VISIT"].get("id_observer")])
                         )
@@ -182,17 +185,17 @@ def synchronize(module_code, project_id, form_id):
                             val = [v.replace("_", " ") for v in val.split(" ")]
                     visit_dict_to_post["data"][odk_column_name] = val
 
-            #### temp
-            # visit_dict_to_post["id_dataset"] = 9744
-            ### fin temp
-            print("#############", visit_dict_to_post)
-            print("OBSERVERS", observers_list)
             visit = TMonitoringVisits(**visit_dict_to_post)
             visit.observers = (
                 DB.session.query(User)
                 .filter(User.id_role.in_(tuple(observers_list)))
                 .all()
             )
+            specific_column_posted = visit_dict_to_post["data"].keys()
+            missing_visit_cols_from_odk = list(set(visit_specific_column) - set(specific_column_posted))
+            if len(missing_visit_cols_from_odk) > 0:
+                log.warning("The following specific columns are missing from ODK form :\n-{}".format( "\n-".join(missing_visit_cols_from_odk))
+                )
             # get_and_post_medium(
             #     project_id=project_id,
             #     form_id=form_id,
