@@ -8,3 +8,4 @@ handler.setFormatter(
 
 root_logger = logging.getLogger("app")
 root_logger.addHandler(handler)
+root_logger.propagate = False
