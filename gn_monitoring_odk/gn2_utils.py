@@ -1,5 +1,6 @@
 
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.sql import func
 from geonature.utils.env import DB
 from geonature.core.users.models import (
     VUserslistForallMenu
@@ -62,9 +63,9 @@ def get_gn2_attachments_data(
             )
         # Sites
         if not skip_sites:
-            data = get_site_list(module.sites)
+            data = get_site_list(module.id_module)
             files['gn_sites.csv'] = to_csv(
-                header=("id_base_site", "base_site_name"),
+                header=("id_base_site", "base_site_name", "geometry"),
                 data=data
             )
 
@@ -101,13 +102,23 @@ def get_taxon_list(id_liste: int):
     return data
 
 
-def get_site_list(sites: []):
+def get_site_list(id_module: int):
     """Return tuple of TBase site for module
 
-    :param sites: Liste des sites
-    :type id_liste: []
+    :param id_module: Identifiant du module
+    :type id_module: int
     """
-    data = [(s.id_base_site, s.base_site_name) for s in sites]
+    data = DB.session.query(
+        TBaseSites.id_base_site,
+        TBaseSites.base_site_name,
+        func.concat(func.st_x(
+            func.st_centroid(TBaseSites.geom)),
+            " ",
+            func.st_y(func.st_centroid(TBaseSites.geom))
+        )
+    ).filter(
+        TBaseSites.modules.any(id_module=id_module)
+    ).all()
     return data
 
 
