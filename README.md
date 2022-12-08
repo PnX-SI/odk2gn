@@ -41,14 +41,18 @@ default_project_id = 1
 ```
 
 **Modules monitoring**
-Pour chaque module monitoring il faut définir un mapping qui permet d'établir un lien entre la structure du formulaire ODK et les données de GeoNature.
+Pour chaque module monitoring il faut définir un mapping qui permet d'établir un lien entre la structure du formulaire ODK et les données de GeoNature. Un mapping automatique des champs depuis la configuration du module dans gn_module_monitoring est réalisée si les champs ont le même nom. Si ce n'est pas le cas la correspondance doit être faite dans le fichier de configuration.
+
+La configuration permet de renseigner :
+ * le nom du "noeud" de la boucle (repeat) observation
+ * le nom des champs qui ne correspondent pas à la configuration spécifiée dans gn_module_monitoring.
 
 exemple protocole STOM
 ```
 [STOM]
     [STOM.SITE]
     [STOM.VISIT]
-        id_base_site = "<ecran>/id_base_site"
+        comments = "<ecran>/id_base_site"
         id_dataset = "visite/id_jdd"
     [STOM.OBSERVATION]
 ```
