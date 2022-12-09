@@ -34,17 +34,32 @@ default_project_id = 1
 ```
 
 **Modules monitoring**
-Pour chaque module monitoring il faut définir un mapping qui permet d'établir un lien entre la structure du formulaire ODK et les données de GeoNature. Un mapping automatique des champs depuis la configuration du module dans gn_module_monitoring est réalisée si les champs ont le même nom. Si ce n'est pas le cas la correspondance doit être faite dans le fichier de configuration.
 
-La configuration permet de renseigner :
- * le nom du "noeud" de la boucle (repeat) observation
- * le nom des champs qui ne correspondent pas à la configuration spécifiée dans gn_module_monitoring.
+Les formulaire monitoring ODK doivent respecter le template xlxs de monitoring fourni avec ce dépôt. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée destination de la base de données GeoNature (pour les champs générique des visites et observations). Tous les champs qui ne "match" pas ces correspondances seront poussés comme champ spécifique au format json.
 
-exemple protocole STOM (cette configuration correspond à la configuration par défaut et n'a pas besoin d'être spécifié
+Actuellement, seul les champs suivants sont configurables et peuvent être différents de la structure défini par le template xlsx:
+
+- Au niveau de la visite :
+
+  - le nom du "noeud" de la boucle (repeat) contenant les observateurs. Champ `observers_repeat`
+  - le nom du champ contenant l'id_role du noeud "observers_repeat". Champ `id_observer`
+  - le nom du champ contant le commentaire. Champ `comments`
+  - le nom du champ contenant le média. Champ `media`
+  - le type média. Champ `media_type`
+
+- Au niveau de l'observation :
+  - le nom du "noeud" de la boucle repeat contenant les observations. Champ `observations_repeat`
+  - le nom du champ contant le commentaire. Champ `comments`
+  - le nom du champ contenant le média. Champ `media`
+  - le type média. Champ `media_type`
+
+Amélioration : rendre tous les champs paramétrables...
+
+exemple protocole STOM (cette configuration correspond à la configuration par défaut et n'a pas besoin d'être spécifiée
+
 ```
 
 [STOM]
-    [STOM.SITE]
     [STOM.VISIT]
         # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
         comments = "comments_visit"
@@ -58,7 +73,7 @@ exemple protocole STOM (cette configuration correspond à la configuration par d
         media_type = "Photo"
     [STOM.OBSERVATION]
         # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
-        path = "observations"
+        observations_repeat = "observations"
         # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
         comments = "comments_observation"
         # nom du champ média de la visite (optionnel, defaut medias_visit)
@@ -78,29 +93,31 @@ source <path_vers_gn>/backend/venv/bin/activate
 ```
 
 ### Synchronisation des données de ODK vers GeoNature
-Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés
 
+Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés
 
 ```sh
 synchronize <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
 ```
 
 ### Mise à jour du formulaire ODK
-Publie sur ODK central une nouvelle version du formulaire avec une mise à jour des médias à partir des données de GeoNature. Les données envoyées sont :
- * liste des sites
- * liste des taxons
- * liste des observateurs
- * liste des jeux de données
- * liste des nomenclatures
 
+Publie sur ODK central une nouvelle version du formulaire avec une mise à jour des médias à partir des données de GeoNature. Les données envoyées sont :
+
+- liste des sites
+- liste des taxons
+- liste des observateurs
+- liste des jeux de données
+- liste des nomenclatures
 
 ```sh
 upgrade_odk_form <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
 ```
 
 Des options permettent de ne pas synchroniser un type de données:
-  * `--skip_taxons` : ne pas générer le fichier des taxons
-  * `--skip_observers` : ne pas générer le fichier des observateurs
-  * `--skip_jdd` : ne pas générer le fichier des jeux de données
-  * `--skip_sites` : ne pas générer le fichier des sites
-  * `--skip_nomenclatures` : ne pas générer le fichier des nomenclatures
+
+- `--skip_taxons` : ne pas générer le fichier des taxons
+- `--skip_observers` : ne pas générer le fichier des observateurs
+- `--skip_jdd` : ne pas générer le fichier des jeux de données
+- `--skip_sites` : ne pas générer le fichier des sites
+- `--skip_nomenclatures` : ne pas générer le fichier des nomenclatures
