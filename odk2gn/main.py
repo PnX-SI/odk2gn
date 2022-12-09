@@ -31,12 +31,10 @@ from odk2gn.odk_api import (
     get_attachment,
     ODKSchema,
 )
+from odk2gn.monitoring_utils import parse_and_create_visit, parse_and_create_obs
 from odk2gn.config_schema import ProcoleSchema
 
-from odk2gn.gn2_utils import (
-    get_modules_info,
-    get_gn2_attachments_data
-)
+from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data
 
 # TODO : post visite
 
@@ -113,74 +111,35 @@ def synchronize(module_code, project_id, form_id):
     with app.app_context() as app_ctx:
         log.info(f"--- Start synchro for module {module_code} ---")
         try:
-            module_config = config[module_code]
+            module_parser_config = config[module_code]
         except KeyError as e:
             log.error(f"No configuration found for module {module_code} ")
             raise
-        module_config = ProcoleSchema().load(module_config)
+        module_parser_config = ProcoleSchema().load(module_parser_config)
         gn_module = get_modules_info(module_code)
         monitoring_config = get_config(module_code.lower())
-        visit_generic_column = monitoring_config["visit"]["generic"]
-        visit_specific_column = monitoring_config["visit"]["specific"]
-        observation_generic_column = monitoring_config["observation"]["generic"]
-        observation_specific_column = monitoring_config["observation"]["specific"]
         form_data = get_submissions(project_id, form_id)
         for sub in form_data:
             flatten_data = flatdict.FlatDict(sub, delimiter="/")
-            observation_data = []
+            observations_list = []
             try:
-                observation_data = flatten_data.pop(
-                    module_config["OBSERVATION"]["path"]
+                observations_list = flatten_data.pop(
+                    module_parser_config["OBSERVATION"]["path"]
                 )
-                assert type(observation_data) is list
+                assert type(observations_list) is list
             except KeyError:
                 log.warning("No observation for this visit")
             except AssertionError:
                 log.error("Observation node is not a list")
                 raise
-            visit_uuid = uuid.uuid4()
-            visit_dict_to_post = {
-                "uuid_base_visit": visit_uuid,
-                "id_module": gn_module.id_module,
-                "data": {},
-            }
-            observers_list = []
-            for key, val in flatten_data.items():
-                odk_column_name = key.split("/")[-1]
-                # specifig comment column
-                if odk_column_name == module_config["VISIT"].get("comments"):
-                    visit_dict_to_post["comments"] = val
-                # specific media column
-                if odk_column_name == module_config["VISIT"].get("media"):
-                    visit_media_name = val
-                if odk_column_name in visit_generic_column.keys():
-                    # get val or the default value define in gn_monitoring json
-                    visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get("value")
-                # specific observers repeat
-                if odk_column_name == module_config["VISIT"].get("observers_repeat"):
-                    for role in val:
-                        observers_list.append(
-                            int(role[module_config["VISIT"].get("id_observer")])
-                        )
-                elif odk_column_name in visit_specific_column.keys():
-                    odk_field = odk_form_schema.get_field_info(odk_column_name)
-                    if odk_field["selectMultiple"]:
-                        if val:
-                            # HACK -> convert mutliSelect in list and replace _ by espace
-                            val = [v.replace("_", " ") for v in val.split(" ")]
-                    visit_dict_to_post["data"][odk_column_name] = val or visit_specific_column[odk_column_name].get("value")
-
-            visit = TMonitoringVisits(**visit_dict_to_post)
-            visit.observers = (
-                DB.session.query(User)
-                .filter(User.id_role.in_(tuple(observers_list)))
-                .all()
+            visit = parse_and_create_visit(
+                flatten_data,
+                module_parser_config,
+                monitoring_config,
+                gn_module,
+                odk_form_schema,
             )
-            specific_column_posted = visit_dict_to_post["data"].keys()
-            missing_visit_cols_from_odk = list(set(visit_specific_column) - set(specific_column_posted))
-            if len(missing_visit_cols_from_odk) > 0:
-                log.warning("The following specific columns are missing from ODK form :\n-{}".format( "\n-".join(missing_visit_cols_from_odk))
-                )
+
             # get_and_post_medium(
             #     project_id=project_id,
             #     form_id=form_id,
@@ -192,29 +151,10 @@ def synchronize(module_code, project_id, form_id):
             # # pp.pprint(sub)
 
             obs_media_name = None
-            for obs in observation_data:
-                observation_dict_to_post = {
-                    "data": {},
-                }
-                flatten_obs = flatdict.FlatDict(obs, delimiter="/")
-                for key, val in flatten_obs.items():
-                    odk_column_name = key.split("/")[-1]
-                    # specifig comment column
-                    if odk_column_name == module_config["OBSERVATION"].get("comments"):
-                        observation_dict_to_post["comments"] = val
-                    # specific media column
-                    if odk_column_name == module_config["OBSERVATION"].get("media"):
-                        obs_media_name = val
-                    if odk_column_name in observation_generic_column.keys():
-                        observation_dict_to_post[odk_column_name] = val or observation_generic_column[odk_column_name].get("value")
-                    elif odk_column_name in observation_specific_column.keys():
-                        odk_field = odk_form_schema.get_field_info(odk_column_name)
-                        if odk_field["selectMultiple"]:
-                            if val:
-                                # HACK -> convert mutliSelect in list and replace _ by espace
-                                val = [v.replace("_", " ") for v in val.split(" ")]
-                        observation_dict_to_post["data"][odk_column_name] = val or observation_specific_column[odk_column_name].get("value")
-                observation = TMonitoringObservations(**observation_dict_to_post)
+            for obs in observations_list:
+                observation = parse_and_create_obs(
+                    obs, module_parser_config, monitoring_config, odk_form_schema
+                )
                 visit.observations.append(observation)
             DB.session.add(visit)
             try:
@@ -234,21 +174,21 @@ def synchronize(module_code, project_id, form_id):
 @click.argument("module_code")
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
-@click.option('--skip_taxons', is_flag=True, help="Skip taxon sync.")
-@click.option('--skip_observers', is_flag=True, help="Skip observers sync.")
-@click.option('--skip_jdd', is_flag=True, help="Skip jdd sync.")
-@click.option('--skip_sites', is_flag=True, help="Skip sites sync.")
-@click.option('--skip_nomenclatures', is_flag=True, help="Skip nomenclatures sync.")
+@click.option("--skip_taxons", is_flag=True, help="Skip taxon sync.")
+@click.option("--skip_observers", is_flag=True, help="Skip observers sync.")
+@click.option("--skip_jdd", is_flag=True, help="Skip jdd sync.")
+@click.option("--skip_sites", is_flag=True, help="Skip sites sync.")
+@click.option("--skip_nomenclatures", is_flag=True, help="Skip nomenclatures sync.")
 def upgrade_odk_form(
-        module_code,
-        project_id,
-        form_id,
-        skip_taxons,
-        skip_observers,
-        skip_jdd,
-        skip_sites,
-        skip_nomenclatures
-    ):
+    module_code,
+    project_id,
+    form_id,
+    skip_taxons,
+    skip_observers,
+    skip_jdd,
+    skip_sites,
+    skip_nomenclatures,
+):
     log.info(f"--- Start upgrade form for module {module_code} ---")
 
     app = create_app()
@@ -263,12 +203,8 @@ def upgrade_odk_form(
             skip_observers=skip_observers,
             skip_jdd=skip_jdd,
             skip_sites=skip_sites,
-            skip_nomenclatures=skip_nomenclatures
+            skip_nomenclatures=skip_nomenclatures,
         )
         # Update form
-        update_form_attachment(
-            project_id=project_id,
-            xml_form_id=form_id,
-            files=files
-        )
+        update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")
