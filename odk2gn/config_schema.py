@@ -13,13 +13,6 @@ class GnODK(Schema):
     email_for_error = fields.Email()
 
 
-class SiteSchema(Schema):
-    media_name = fields.Str()
-    media_type = fields.Str(
-        validate=OneOf(["Photo", "PDF", "Audio", "Vidéo (fichier)"])
-    )
-
-
 class VisitSchema(Schema):
     observers_repeat = fields.Str(load_default="observer")
     id_observer = fields.Str(load_default="id_role")
@@ -32,7 +25,7 @@ class VisitSchema(Schema):
 
 
 class ObservationSchema(Schema):
-    path = fields.Str(load_default="observation")
+    observations_repeat = fields.Str(load_default="observation")
     comments = fields.Str()
     media = fields.Str(load_default="medias_observation")
     media_type = fields.Str(
@@ -43,6 +36,7 @@ class ObservationSchema(Schema):
 
 
 class ProcoleSchema(Schema):
-    SITE = fields.Nested(SiteSchema)
-    VISIT = fields.Nested(VisitSchema)
-    OBSERVATION = fields.Nested(ObservationSchema)
+    VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
+    OBSERVATION = fields.Nested(
+        ObservationSchema, load_default=ObservationSchema().load({})
+    )
