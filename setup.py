@@ -20,8 +20,8 @@ setuptools.setup(
     tests_require=[],
     entry_points={
         "console_scripts": [
-            "synchronize=gn_monitoring_odk.main:synchronize',
-            'upgrade_odk_form=gn_monitoring_odk.main:upgrade_odk_form",
+            "synchronize=gn_monitoring_odk.main:synchronize",
+            "upgrade_odk_form=gn_monitoring_odk.main:upgrade_odk_form",
             "test1=gn_monitoring_odk.main:get_and_post_medias",
             "odk_schema=gn_monitoring_odk.main:get_schema",
         ]
