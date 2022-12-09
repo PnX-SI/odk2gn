@@ -9,21 +9,21 @@ with (root_dir / "requirements.in").open() as f:
     requirements = f.read().splitlines()
 
 setuptools.setup(
-    name="gn_monitoring_odk",
+    name="odk2gn",
     version=version,
     description="GeoNature-monitoring ODK project",
     maintainer="OFB and PNX",
     # url='https://github.com/PnX-SI/gn_module_monitoring',
-    packages=setuptools.find_packages("gn_monitoring_odk"),
+    packages=setuptools.find_packages("odk2gn"),
     package_dir={"": "."},
     install_requires=requirements,
     tests_require=[],
     entry_points={
         "console_scripts": [
-            "synchronize=gn_monitoring_odk.main:synchronize",
-            "upgrade_odk_form=gn_monitoring_odk.main:upgrade_odk_form",
-            "test1=gn_monitoring_odk.main:get_and_post_medias",
-            "odk_schema=gn_monitoring_odk.main:get_schema",
+            "synchronize=odk2gn.main:synchronize",
+            "upgrade_odk_form=odk2gn.main:upgrade_odk_form",
+            "test1=odk2gn.main:get_and_post_medias",
+            "odk_schema=odk2gn.main:get_schema",
         ]
     },
     classifiers=[

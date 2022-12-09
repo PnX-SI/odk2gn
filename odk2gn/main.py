@@ -23,17 +23,17 @@ from pypnusershub.db.models import User
 
 from geonature.utils.env import DB
 
-from gn_monitoring_odk.config import config
-from gn_monitoring_odk.odk_api import (
+from odk2gn.config import config
+from odk2gn.odk_api import (
     get_submissions,
     update_form_attachment,
     get_attachments,
     get_attachment,
     ODKSchema,
 )
-from gn_monitoring_odk.config_schema import ProcoleSchema
+from odk2gn.config_schema import ProcoleSchema
 
-from gn_monitoring_odk.gn2_utils import (
+from odk2gn.gn2_utils import (
     get_modules_info,
     get_gn2_attachments_data
 )

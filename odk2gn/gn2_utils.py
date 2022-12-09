@@ -15,7 +15,7 @@ from pypnnomenclature.models import (
     TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 )
 
-from gn_monitoring_odk.monitoring_config import (
+from odk2gn.monitoring_config import (
     get_nomenclatures_fields
 )
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
