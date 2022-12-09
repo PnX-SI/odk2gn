@@ -1,4 +1,7 @@
 import logging
+import requests
+import json
+
 from datetime import datetime
 from pyodk.client import Client
 
@@ -56,6 +59,23 @@ def get_attachments(project_id, form_data):
 
     assert response.status_code == 200
 
+
+def update_review_state(project_id, xml_form_id, submission_id):
+
+    review_states = ["approved", "hasIssues", "rejected"]
+    token = client.auth.get_token(
+            username=client.config.central.username,
+            password=client.config.central.password,
+        )
+    review_submission_response = requests.patch(
+        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/submissions/{submission_id}",
+        data=json.dumps({"reviewState": review_states[2]}),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token,
+        },
+    )
+    print(review_submission_response.json())
 
 def update_form_attachment(project_id, xml_form_id, files):
     """Mise à jour du formulaires
