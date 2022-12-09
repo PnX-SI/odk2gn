@@ -70,9 +70,11 @@ exemple protocole STOM (cette configuration correspond à la configuration par d
 
 ## Commandes
 
-Avant de lancer une commande il faut s'assurer d'être dans le virtualenv de l'application
+Avant de lancer une commande il faut s'assurer d'être dans le virtualenv de l'application GeoNature et dans le dossier de l'application
+
 ```sh
-source venv/bin/activate
+cd  <path_vers_odk2gn>
+source <path_vers_gn>/backend/venv/bin/activate
 ```
 
 ### Synchronisation des données de ODK vers GeoNature
