@@ -47,7 +47,7 @@ exemple protocole STOM (cette configuration correspond à la configuration par d
     [STOM.SITE]
     [STOM.VISIT]
         # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
-        comment = "comments_visit"
+        comments = "comments_visit"
         # nom du champ média de la visite (optionnel, defaut medias_visit)
         media = "medias_visit"
         # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
@@ -60,7 +60,7 @@ exemple protocole STOM (cette configuration correspond à la configuration par d
         # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
         path = "observations"
         # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
-        comment = "comments_observation"
+        comments = "comments_observation"
         # nom du champ média de la visite (optionnel, defaut medias_visit)
         media = "medias_observation"
         # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
