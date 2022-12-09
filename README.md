@@ -97,7 +97,10 @@ source <path_vers_gn>/backend/venv/bin/activate
 
 ### Synchronisation des données de ODK vers GeoNature
 
-Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés :
+Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés. 
+
+De façon a distinguer les données intégrées en base, de celles non traitées le module opère une modification de la métadonnées `reviewState`
+Une fois une soumission intégrée en base son `reviewState` est modifiée en `approuved`. Si l'insertion dans GeoNature ne peut se faire la soumission est marquée en `hasIssue`. De cette façon l’administrateur de données peut traiter manuellement la données problèmatique via enketo.
 
 ```sh
 synchronize <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
