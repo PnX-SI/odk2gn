@@ -2,7 +2,7 @@
 
 Module python utilisant les modèles de GeoNature pour intégrer des données depuis l'API d'ODK Central vers la base de données de GeoNature, en utilisant pyodk.
 
-Il permet actuellement d'importer des données collectées avec ODK vers le module Monitoring de GeoNature et de mettre à jour les listes de valeurs du formulaire ODK en fonction des données de la base GeoNature
+Il permet actuellement d'importer des données collectées avec ODK vers le module Monitoring de GeoNature et de mettre à jour les listes de valeurs du formulaire ODK en fonction des données de la base GeoNature en se basant sur les fichiers de configuration du module monitoring
 
 ## Architecture
 
@@ -10,23 +10,16 @@ Il permet actuellement d'importer des données collectées avec ODK vers le modu
 
 ## Installation
 
+Bien qu'indépendant l'installation de ce module se fait dans l'environnement de GeoNature
+
 ```sh
-# Création du virtualenv
-python3 -m venv venv && source venv/bin/activate && pip install -U pip
+# Activation du virtual env de GeoNature
+source <path_vers_gn>/backend/venv/bin/activate
 
 # Installation du module
 pip install -e .
-
-# Installation de GeoNature
-cd <path_vers_gn>
-pip install -e .
-cd /backend
-pip install -r requirements-dev.in
-pip install -r requirements-submodules.in
-
-# Installation du module Monitoring
-pip install -e <path_vers_gn_module_monitoring>
 ```
+
 ## Configuration
 
 **ODK central**
@@ -47,21 +40,41 @@ La configuration permet de renseigner :
  * le nom du "noeud" de la boucle (repeat) observation
  * le nom des champs qui ne correspondent pas à la configuration spécifiée dans gn_module_monitoring.
 
-exemple protocole STOM
+exemple protocole STOM (cette configuration correspond à la configuration par défaut et n'a pas besoin d'être spécifié
 ```
+
 [STOM]
     [STOM.SITE]
     [STOM.VISIT]
-        comments = "<ecran>/id_base_site"
-        id_dataset = "visite/id_jdd"
+        # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
+        comments = "comments_visit"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_visit"
+        # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
+        observers_repeat = 'observer'
+        # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
+        id_observer = 'id_role'
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
     [STOM.OBSERVATION]
+        # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
+        path = "observations"
+        # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
+        comments = "comments_observation"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_observation"
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
+
 ```
 
 ## Commandes
 
-Avant de lancer une commande il faut s'assurer d'être dans le virtualenv de l'application
+Avant de lancer une commande il faut s'assurer d'être dans le virtualenv de l'application GeoNature et dans le dossier de l'application
+
 ```sh
-source venv/bin/activate
+cd  <path_vers_odk2gn>
+source <path_vers_gn>/backend/venv/bin/activate
 ```
 
 ### Synchronisation des données de ODK vers GeoNature
