@@ -30,7 +30,7 @@ def get_submissions(project_id, form_id):
             project_id=project_id,
             expand="*",
             # filter="__system/submissionDate ge 2022-12-06T14:56:00.000Z"
-            # filter= "__system/reviewState not rejected"
+            filter="__system/reviewState ne 'approved' or __system/reviewState ne 'hasIssues'",
         )
         return form_data["value"]
 
@@ -60,22 +60,35 @@ def get_attachments(project_id, form_data):
     assert response.status_code == 200
 
 
-def update_review_state(project_id, xml_form_id, submission_id):
+def update_review_state(project_id, form_id, submission_id, review_state):
+    """Update the review state
 
-    review_states = ["approved", "hasIssues", "rejected"]
+    :param projet id : the project id
+    :type projecet_id: int
+
+    :param form_id id : the xml form id
+    :type form_id: str
+
+    :param review_state id : the value of the state for update
+    :type form_id: str ("approved", "hasIssues", "rejected")
+    """
     token = client.auth.get_token(
-            username=client.config.central.username,
-            password=client.config.central.password,
-        )
+        username=client.config.central.username,
+        password=client.config.central.password,
+    )
     review_submission_response = requests.patch(
-        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/submissions/{submission_id}",
-        data=json.dumps({"reviewState": review_states[2]}),
+        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/submissions/{submission_id}",
+        data=json.dumps({"reviewState": review_state}),
         headers={
             "Content-Type": "application/json",
             "Authorization": "Bearer " + token,
         },
     )
-    print(review_submission_response.json())
+    try:
+        assert review_submission_response.status_code == 200
+    except AssertionError:
+        log.error("Error while update submision state")
+
 
 def update_form_attachment(project_id, xml_form_id, files):
     """Mise à jour du formulaires
@@ -92,7 +105,9 @@ def update_form_attachment(project_id, xml_form_id, files):
     """
     form_draft(project_id, xml_form_id)
     for file_name in files:
-        upload_form_attachment(project_id, xml_form_id, file_name=file_name, data=files[file_name])
+        upload_form_attachment(
+            project_id, xml_form_id, file_name=file_name, data=files[file_name]
+        )
     publish_form(project_id, xml_form_id)
 
 
@@ -110,6 +125,7 @@ def form_draft(project_id, xml_form_id):
         request = client.post(f"projects/{project_id}/forms/{xml_form_id}/draft")
         assert request.status_code == 200
 
+
 def upload_form_attachment(project_id, xml_form_id, file_name, data):
     """Upload fichier attaché du formulaire
 
@@ -124,14 +140,16 @@ def upload_form_attachment(project_id, xml_form_id, file_name, data):
     """
     response = client.post(
         f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/draft/attachments/{file_name}",
-        data=data.encode("utf-8", "strict")
+        data=data.encode("utf-8", "strict"),
     )
     if response.status_code == 404:
-        log.warning(f"Le fichier {file_name} n'existe pas dans la définition du formulaire")
+        log.warning(
+            f"Le fichier {file_name} n'existe pas dans la définition du formulaire"
+        )
     elif response.status_code == 200:
         log.info(f"fichier {file_name} téléversé")
     else:
-        #TODO raise error
+        # TODO raise error
         pass
 
 
@@ -143,7 +161,9 @@ def publish_form(project_id, xml_form_id):
     :type xml_form_id: str
     """
     version_number = datetime.now()
-    response = client.post(f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}")
+    response = client.post(
+        f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}"
+    )
     assert response.status_code == 200
 
 
