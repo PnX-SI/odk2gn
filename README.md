@@ -4,6 +4,8 @@ ODK2GN est un module python utilisant les modèles de GeoNature pour intégrer d
 
 Il permet actuellement d'importer des données collectées avec ODK vers le module Monitoring de GeoNature et de mettre à jour les listes de valeurs du formulaire ODK en fonction des données de la base de données GeoNature, en se basant sur les fichiers de configuration du module Monitoring.
 
+Développé dans le cadre du workshop ODK des parcs nationaux de France et de l'OFB (Décembre 2022) : https://geonature.fr/documents/2022-12-PNX-OFB-Workshop-ODK.pdf
+
 ## Architecture
 
 ![Architecture](docs/img/archi_global.jpeg)
@@ -58,12 +60,9 @@ Actuellement, seul les champs suivants sont configurables et peuvent être diff�
 
 Amélioration : rendre tous les champs paramétrables...
 
-exemple protocole STOM (cette configuration correspond à la configuration par défaut et n'a pas besoin d'être spécifiée
+Exemple protocole STOM (cette configuration correspond à la configuration par défaut et n'a pas besoin d'être spécifiée).
 
 ```
-
-```
-
 [STOM]
 [STOM.VISIT] # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
 comments = "comments_visit" # nom du champ média de la visite (optionnel, defaut medias_visit)
@@ -76,17 +75,16 @@ observations_repeat = "observations" # nom du champ commentaire de l'observation
 comments = "comments_observation" # nom du champ média de la visite (optionnel, defaut medias_visit)
 media = "medias_observation" # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
 media_type = "Photo"
-
 ````
 
 ## Templates et exemples de formulaires
 
-Un template de formulaire au format XLSX est fourni dans le dossier ``/form_template``. Il permet d'avoir la structure de base de définition d'un formulaire compatible avec le module Monitoring de GeoNature et la structure de données attendue par ODK2GN.
+Un template de formulaire au format XLSX est fourni dans le dossier ``/odk_template_form``. Il permet d'avoir la structure de base de définition d'un formulaire compatible avec le module Monitoring de GeoNature et la structure de données attendue par ODK2GN.
 
 Des exemples fonctionnels de formulaires sont aussi disponibles dans les dossiers d'exemples de protocoles de Monitoring :
 
-- https://github.com/PnX-SI/protocoles_suivi/tree/master/stom
-- https://github.com/PnX-SI/protocoles_suivi/tree/master/chiro
+- https://github.com/PnX-SI/protocoles_suivi/tree/master/chiro/odk_form
+- https://github.com/PnX-SI/protocoles_suivi/tree/master/stom/odk_form
 
 ## Commandes
 
