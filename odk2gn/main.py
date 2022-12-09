@@ -11,11 +11,6 @@ from geonature.utils.env import BACKEND_DIR
 from geonature.core.gn_commons.models import BibTablesLocation
 from pypnnomenclature.models import TNomenclatures
 
-from gn_module_monitoring.monitoring.models import (
-    TMonitoringSites,
-    TMonitoringVisits,
-    TMonitoringObservations,
-)
 from gn_module_monitoring.config.repositories import get_config
 from geonature.utils.utilsmails import send_mail
 from geonature.core.gn_commons.models import TMedias
@@ -30,6 +25,7 @@ from odk2gn.odk_api import (
     get_attachments,
     get_attachment,
     ODKSchema,
+    update_review_state,
 )
 from odk2gn.monitoring_utils import parse_and_create_visit, parse_and_create_obs
 from odk2gn.config_schema import ProcoleSchema
@@ -124,7 +120,7 @@ def synchronize(module_code, project_id, form_id):
             observations_list = []
             try:
                 observations_list = flatten_data.pop(
-                    module_parser_config["OBSERVATION"]["path"]
+                    module_parser_config["OBSERVATION"]["observations_repeat"]
                 )
                 assert type(observations_list) is list
             except KeyError:
@@ -159,6 +155,7 @@ def synchronize(module_code, project_id, form_id):
             DB.session.add(visit)
             try:
                 DB.session.commit()
+                update_review_state(project_id, form_id, sub["__id"], "approved")
             except SQLAlchemyError as e:
                 log.error("Error while posting data")
                 log.error(str(e))
@@ -167,6 +164,8 @@ def synchronize(module_code, project_id, form_id):
                     subject="Synchronisation ODK error",
                     msg_html=str(e),
                 )
+                update_review_state(project_id, form_id, sub["__id"], "hasIssues")
+
                 DB.session.rollback()
 
 

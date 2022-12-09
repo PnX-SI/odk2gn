@@ -26,7 +26,7 @@ def parse_and_create_visit(
     :param sub: a odk submission with flatten keys
     :type sub: dict
 
-    :param module_parser:_config the odk_gn parser configuration for the current module
+    # :param module_parser:_config the odk_gn parser configuration for the current module
     :type module_parser_config: dict
 
     :param monitoring_config: the monitoring configuration (return by get_config func of gn_module_monitoring func)
@@ -42,8 +42,9 @@ def parse_and_create_visit(
     """
     visit_generic_column = monitoring_config["visit"]["generic"]
     visit_specific_column = monitoring_config["visit"]["specific"]
-
-    visit_uuid = uuid.uuid4()
+    # get uuid from the submission and use it has visit UUID
+    visit_uuid = flatten_sub["__id"].split(":")[-1]
+    # DB.session.query(TMonitoringVisits).filter_by(uuid_base_visit=visit_uuid).exitst()
     visit_dict_to_post = {
         "uuid_base_visit": visit_uuid,
         "id_module": gn_module.id_module,
@@ -65,6 +66,8 @@ def parse_and_create_visit(
                     int(role[module_parser_config["VISIT"].get("id_observer")])
                 )
         if odk_column_name in visit_generic_column.keys():
+            print("CLEEE", key)
+            print("VAL", val)
             # get val or the default value define in gn_monitoring json
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[
                 odk_column_name

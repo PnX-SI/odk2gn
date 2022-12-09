@@ -22,7 +22,7 @@ email_for_error = "hot-limit@gmail.com"
         media_type = "Photo"
     [STOM.OBSERVATION]
         # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
-        path = "observations"
+        observations_repeat = "observations"
         # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
         comments = "comments_observation"
         # nom du champ média de la visite (optionnel, defaut medias_visit)
