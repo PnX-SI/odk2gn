@@ -1,4 +1,4 @@
-
+import logging
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import func
 from geonature.utils.env import DB
@@ -20,16 +20,17 @@ from gn_monitoring_odk.monitoring_config import (
 )
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 
-import csv
+log = logging.getLogger("app")
 
 def get_modules_info(module_code: str):
-        try:
-            module = TMonitoringModules.query.filter_by(
-                module_code=module_code
-            ).one()
-            return module
-        except NoResultFound:
-            return None
+    try:
+        module = TMonitoringModules.query.filter(
+            TMonitoringModules.module_code.ilike(module_code)
+        ).one()
+        return module
+    except NoResultFound:
+        log.error(f"No GeoNature module found for {module_code.lower()}")
+        raise
 
 def get_gn2_attachments_data(
         module:TMonitoringModules,
@@ -58,7 +59,7 @@ def get_gn2_attachments_data(
         if not skip_jdd:
             data = get_jdd_list(module.datasets)
             files['gn_jdds.csv'] = to_csv(
-                header=("id_role", "nom_complet"),
+                header=("id_dataset", "dataset_name"),
                 data=data
             )
         # Sites
@@ -111,10 +112,10 @@ def get_site_list(id_module: int):
     data = DB.session.query(
         TBaseSites.id_base_site,
         TBaseSites.base_site_name,
-        func.concat(func.st_x(
+        func.concat(func.st_y(
             func.st_centroid(TBaseSites.geom)),
             " ",
-            func.st_y(func.st_centroid(TBaseSites.geom))
+            func.st_x(func.st_centroid(TBaseSites.geom))
         )
     ).filter(
         TBaseSites.modules.any(id_module=id_module)

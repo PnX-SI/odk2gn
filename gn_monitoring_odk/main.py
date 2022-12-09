@@ -8,7 +8,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from geonature.app import create_app
 from geonature.utils.env import BACKEND_DIR
-from geonature.core.gn_commons.models import TModules
 from geonature.core.gn_commons.models import BibTablesLocation
 from pypnnomenclature.models import TNomenclatures
 
@@ -119,15 +118,7 @@ def synchronize(module_code, project_id, form_id):
             log.error(f"No configuration found for module {module_code} ")
             raise
         module_config = ProcoleSchema().load(module_config)
-        try:
-            gn_module = (
-                DB.session.query(TModules)
-                .filter_by(module_code=module_code.lower())
-                .one()
-            )
-        except (exc.NoResultFound) as e:
-            log.error(f"No GeoNature module found for {module_code.lower()}")
-            raise
+        gn_module = get_modules_info(module_code)
         monitoring_config = get_config(module_code.lower())
         visit_generic_column = monitoring_config["visit"]["generic"]
         visit_specific_column = monitoring_config["visit"]["specific"]

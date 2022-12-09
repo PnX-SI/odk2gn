@@ -7,7 +7,6 @@ default_project_id = 1
 [gn_odk]
 email_for_error = "hot-limit@gmail.com"
 
-
 [STOM]
     [STOM.SITE]
     [STOM.VISIT]
