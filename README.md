@@ -36,6 +36,8 @@ default_project_id = 1
 
 **Modules monitoring**
 
+Actuellement seul les niveaux "visites" et "observations" sont implémentés. Il n'est pas possible de créer des sites à partir des formulaires ODK.
+
 Les formulaire monitoring ODK doivent respecter le template xlxs de monitoring fourni avec ce dépôt. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée destination de la base de données GeoNature (pour les champs générique des visites et observations). Tous les champs qui ne "match" pas ces correspondances seront poussés comme champ spécifique au format json.
 
 Actuellement, seul les champs suivants sont configurables et peuvent être différents de la structure défini par le template xlsx:
@@ -97,7 +99,7 @@ source <path_vers_gn>/backend/venv/bin/activate
 
 ### Synchronisation des données de ODK vers GeoNature
 
-Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés. 
+Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés.
 
 De façon a distinguer les données intégrées en base, de celles non traitées le module opère une modification de la métadonnées `reviewState`
 Une fois une soumission intégrée en base son `reviewState` est modifiée en `approuved`. Si l'insertion dans GeoNature ne peut se faire la soumission est marquée en `hasIssue`. De cette façon l’administrateur de données peut traiter manuellement la données problèmatique via enketo.

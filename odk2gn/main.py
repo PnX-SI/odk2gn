@@ -109,8 +109,10 @@ def synchronize(module_code, project_id, form_id):
         try:
             module_parser_config = config[module_code]
         except KeyError as e:
-            log.error(f"No configuration found for module {module_code} ")
-            raise
+            log.warning(
+                f"No mapping found for module {module_code} - get the default ODK monitoring template mapping !  "
+            )
+            module_parser_config = {}
         module_parser_config = ProcoleSchema().load(module_parser_config)
         gn_module = get_modules_info(module_code)
         monitoring_config = get_config(module_code.lower())
