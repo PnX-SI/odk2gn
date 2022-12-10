@@ -9,5 +9,5 @@ ainsi que les champs spécifiques du protocole. Il peut renseigner un ou plusieu
 Il renseigne ensuite les observations de taxons de la visite.
 
 Exemples : 
-- Protocole STOM - 
-- Protocole Suivi des chiroptères - 
+- Protocole STOM - https://github.com/PnX-SI/protocoles_suivi/tree/master/stom/odk_form
+- Protocole Suivi des chiroptères - https://github.com/PnX-SI/protocoles_suivi/tree/master/chiro/odk_form
