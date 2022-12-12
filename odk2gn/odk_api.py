@@ -18,7 +18,10 @@ def get_attachment(project_id, form_id, uuid_sub, media_name):
     img = client.get(
         f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
     )
-    return img
+    if img.status_code == 200:
+        return img
+    else:
+        log.warning(f"Image not found for submission {uuid_sub}")
 
 
 def get_submissions(project_id, form_id):
@@ -29,35 +32,36 @@ def get_submissions(project_id, form_id):
             form_id=form_id,
             project_id=project_id,
             expand="*",
-            # filter="__system/submissionDate ge 2022-12-06T14:56:00.000Z"
-            filter="__system/reviewState ne 'approved' or __system/reviewState ne 'hasIssues'",
+            # TODO : try received or edited (but edited not actually support)
+            filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
+            # filter="__system/reviewState eq 'rejected'",
         )
         return form_data["value"]
 
 
-def get_attachments(project_id, form_data):
-    # #########################################
-    #  Attachments
-    # projects/1/forms/Sicen/submissions/{data['__id']}/attachments => Récupération de la liste des attachments pour une soumissions
-    # projects/1/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']} => Téléchargement de l'attachment pour la soumission
-    for data in form_data:
-        attachments_list = client.get(
-            f"projects/1/forms/Sicen/submissions/{data['__id']}/attachments"
-        )
-        print("Nombre de médias", {data["__id"]}, len(attachments_list.json()))
-        print(attachments_list.json())
-        for att in attachments_list.json():
-            img = client.get(
-                f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}"
-            )
-            print(
-                "URL###################",
-                f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}",
-            )
-            with open(att["name"], "wb") as out_file:
-                out_file.write(img.content)
+# def get_attachments(project_id, form_data):
+#     # #########################################
+#     #  Attachments
+#     # projects/1/forms/Sicen/submissions/{data['__id']}/attachments => Récupération de la liste des attachments pour une soumissions
+#     # projects/1/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']} => Téléchargement de l'attachment pour la soumission
+#     for data in form_data:
+#         attachments_list = client.get(
+#             f"projects/{project_id}/forms//submissions/{data['__id']}/attachments"
+#         )
+#         print("Nombre de médias", {data["__id"]}, len(attachments_list.json()))
+#         print(attachments_list.json())
+#         for att in attachments_list.json():
+#             img = client.get(
+#                 f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}"
+#             )
+#             print(
+#                 "URL###################",
+#                 f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}",
+#             )
+#             with open(att["name"], "wb") as out_file:
+#                 out_file.write(img.content)
 
-    assert response.status_code == 200
+#     assert response.status_code == 200
 
 
 def update_review_state(project_id, form_id, submission_id, review_state):

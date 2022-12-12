@@ -14,7 +14,7 @@ class GnODK(Schema):
 
 
 class VisitSchema(Schema):
-    observers_repeat = fields.Str(load_default="observer")
+    observers_repeat = fields.Str(load_default="observers")
     id_observer = fields.Str(load_default="id_role")
     media = fields.Str(load_default="medias_visit")
     media_type = fields.Str(
@@ -25,7 +25,7 @@ class VisitSchema(Schema):
 
 
 class ObservationSchema(Schema):
-    observations_repeat = fields.Str(load_default="observation")
+    observations_repeat = fields.Str(load_default="observations")
     comments = fields.Str()
     media = fields.Str(load_default="medias_observation")
     media_type = fields.Str(
