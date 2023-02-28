@@ -94,7 +94,7 @@ def get_taxon_list(id_liste: int):
     :type id_liste: int
     """
     data = (
-        DB.session.query(Taxref.cd_nom, Taxref.lb_nom, func.split_part(Taxref.nom_vern,',',1)
+        DB.session.query(Taxref.cd_nom, Taxref.lb_nom, func.split_part(Taxref.nom_vern,',',1))
         .filter(BibNoms.cd_nom == Taxref.cd_nom)
         .filter(BibNoms.id_nom == CorNomListe.id_nom)
         .filter(CorNomListe.id_liste == id_liste)
