@@ -118,7 +118,7 @@ def synchronize(module_code, project_id, form_id):
             module_parser_config = {}
         module_parser_config = ProcoleSchema().load(module_parser_config)
         gn_module = get_modules_info(module_code)
-        monitoring_config = get_config(module_code.lower())
+        monitoring_config = get_config(module_code)
         form_data = get_submissions(project_id, form_id)
         for sub in form_data:
             flatten_data = flatdict.FlatDict(sub, delimiter="/")

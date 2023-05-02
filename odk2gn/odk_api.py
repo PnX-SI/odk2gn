@@ -80,6 +80,7 @@ def update_review_state(project_id, form_id, submission_id, review_state):
         username=client.config.central.username,
         password=client.config.central.password,
     )
+    #pourquoi classe requests ici et non la methode de la classe Client de pyODK?
     review_submission_response = requests.patch(
         f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/submissions/{submission_id}",
         data=json.dumps({"reviewState": review_state}),
@@ -187,7 +188,9 @@ class ODKSchema:
             resp = client.get(
                 f"projects/{self.project_id}/forms/{self.form_id}/fields?odata=false"
             )
+            print (resp.status_code)
             assert resp.status_code == 200
+
             return resp.json()
 
     def get_field_info(self, field_name):

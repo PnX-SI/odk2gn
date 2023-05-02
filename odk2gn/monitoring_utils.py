@@ -65,11 +65,14 @@ def parse_and_create_visit(
                 observers_list.append(
                     int(role[module_parser_config["VISIT"].get("id_observer")])
                 )
+        #print("generic", visit_generic_column)
         if odk_column_name in visit_generic_column.keys():
+            #print("COLUMN", odk_column_name)
             # get val or the default value define in gn_monitoring json
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[
                 odk_column_name
             ].get("value")
+            #print(val)
         elif odk_column_name in visit_specific_column.keys():
             odk_field = odk_form_schema.get_field_info(odk_column_name)
             if odk_field["selectMultiple"]:

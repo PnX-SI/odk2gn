@@ -80,7 +80,7 @@ def get_gn2_attachments_data(
                 )
 
             nomenclatures = get_nomenclature_data(n_fields)
-            files['gn_nomenclature.csv'] = to_csv(
+            files['gn_nomenclatures.csv'] = to_csv(
                 header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
                 data=nomenclatures
             )
@@ -138,10 +138,14 @@ def get_jdd_list(datasets: []):
     :param datasets: List of associated dataset
     :type datasets: []
     """
-    ids = [jdd.id_dataset for jdd in datasets]
-    data = DB.session.query(
-        TDatasets.id_dataset, TDatasets.dataset_name
-    ).filter(TDatasets.id_dataset.in_(ids))
+    #TODO a refactoriser
+   # ids = [jdd.id_dataset for jdd in datasets]
+   # data = DB.session.query(
+   #     TDatasets.id_dataset, TDatasets.dataset_name
+    #).filter(TDatasets.id_dataset.in_(ids))
+    data=[]
+    for jdd in datasets:
+        data.append([jdd.id_dataset, jdd.dataset_name])
     return data
 
 def get_ref_nomenclature_list(
