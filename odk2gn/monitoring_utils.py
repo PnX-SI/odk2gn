@@ -1,6 +1,7 @@
 import logging
 import uuid
 import flatdict
+import csv
 
 
 from gn_module_monitoring.monitoring.models import (
@@ -12,6 +13,11 @@ from pypnusershub.db.models import User
 
 from geonature.utils.env import DB
 
+from odk2gn.gn2_utils import get_jdd_list
+
+from gn_module_monitoring.monitoring.models import (
+    TMonitoringModules
+)
 
 log = logging.getLogger("app")
 
@@ -52,6 +58,7 @@ def parse_and_create_visit(
     }
     observers_list = []
     for key, val in flatten_sub.items():
+       # print(str(key) + ' : ' + str(val) + ', ' )
         odk_column_name = key.split("/")[-1]
         # specifig comment column
         if odk_column_name == module_parser_config["VISIT"].get("comments"):
@@ -68,11 +75,20 @@ def parse_and_create_visit(
         #print("generic", visit_generic_column)
         if odk_column_name in visit_generic_column.keys():
             #print("COLUMN", odk_column_name)
+            if odk_column_name == "id_dataset":
+                #print(visit_generic_column['id_dataset'] +', ' + visit_generic_column.get('id_dataset'))
+                if val == None:
+                    jdds = get_jdd_list(gn_module.datasets)
+                    print(jdds)
+                    if len(jdds) == 1: 
+                        val = jdds[0][0]
+                    else:
+                        raise ValueError("Only one dataset should be passed this way.")
             # get val or the default value define in gn_monitoring json
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[
                 odk_column_name
             ].get("value")
-            #print(val)
+                
         elif odk_column_name in visit_specific_column.keys():
             odk_field = odk_form_schema.get_field_info(odk_column_name)
             if odk_field["selectMultiple"]:
