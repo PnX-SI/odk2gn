@@ -47,6 +47,16 @@ pp = pprint.PrettyPrinter(width=41, compact=True)
 #     pp.pprint(schema)
 
 
+@click.group()
+def synchronize():
+    pass
+
+
+@click.group()
+def upgrade_odk_form():
+    pass
+
+
 @click.command()
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
@@ -100,11 +110,11 @@ def get_and_post_medium(
                 out_file.write(img.content)
 
 
-@click.command()
+@synchronize.command(name="monitoring")
 @click.argument("module_code")
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
-def synchronize(module_code, project_id, form_id):
+def synchronize_monitoring(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
     app = create_app()
     with app.app_context() as app_ctx:
@@ -190,7 +200,7 @@ def synchronize(module_code, project_id, form_id):
                 DB.session.rollback()
 
 
-@click.command()
+@upgrade_odk_form.command(name="monitoring")
 @click.argument("module_code")
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
@@ -199,7 +209,7 @@ def synchronize(module_code, project_id, form_id):
 @click.option("--skip_jdd", is_flag=True, help="Skip jdd sync.")
 @click.option("--skip_sites", is_flag=True, help="Skip sites sync.")
 @click.option("--skip_nomenclatures", is_flag=True, help="Skip nomenclatures sync.")
-def upgrade_odk_form(
+def upgrade_monitoring(
     module_code,
     project_id,
     form_id,
