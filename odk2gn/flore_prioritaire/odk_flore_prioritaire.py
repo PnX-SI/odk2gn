@@ -25,33 +25,28 @@ from geonature.app import create_app
 from geonature.utils.env import BACKEND_DIR
 from geonature.core.gn_commons.models import BibTablesLocation
 
-client = Client('../.pyodk_config.toml')
+client = Client('config.toml')
 log = logging.getLogger("app")
 
 
-def get_taxons(id_liste):
+def get_taxons():
 #returns the list of taxons
     data = (
         DB.session.query(Taxref.cd_nom, Taxref.nom_complet, Taxref.nom_vern)
         .filter(BibNoms.cd_nom == Taxref.cd_nom)
         .filter(BibNoms.id_nom == CorNomListe.id_nom)
-        .filter(CorNomListe.id_liste == id_liste)
+        .filter(CorNomListe.id_liste == 100)
         .all()
     )
-    header = 'cd_nom,nom_complet,nom_vern'
+    header = ['cd_nom','nom_complet','nom_vern']
     return {'header': header, 'data': data}
 
 
-def get_observers(id_liste):
+def get_observers():
 #returns the list of observers
+    id_liste=1
     data = DB.session.query(VUserslistForallMenu.id_role, VUserslistForallMenu.nom_complet).filter_by(id_menu=id_liste)
-    header='id_role,nom_complet'
-    return {'header' : header, 'data': data}
-
-def get_organizations():
-#returns the list of organizations
-    data = 'placeholder'
-    header = ''
+    header=['id_role','nom_complet']
     return {'header' : header, 'data': data}
 
 
@@ -68,7 +63,7 @@ def get_nomenclatures():
     ).filter(
         BibNomenclaturesTypes.mnemonique.in_(nomenclatures)
     )
-    header='mnemonique,id_nomenclature,cd_nomenclature,label_default'
+    header=['mnemonique','id_nomenclature','cd_nomenclature','label_default']
     return {'header': header, 'data': data}
 
 
@@ -82,7 +77,7 @@ def to_csv(file_name, header, data):
         for d in data:
             writer.writerow(d)
 
-    return {'file_name' : file_name, 'content' : file}
+    return file
 
 def draft(project_id, form_id):
 #sets the ODK central entry for the form to a draft state
@@ -96,21 +91,23 @@ def write_files():
     files = []
     nomenclatures = get_nomenclatures()
     files.append(
-        to_csv('pf_nomenclatures.csv', nomenclatures['header'], nomenclatures['data'])
+        to_csv('pf_nomenclatures.csv', 
+                nomenclatures['header'], 
+                nomenclatures['data'])
     )
     taxons = get_taxons()
     files.append(
-        to_csv('pf_taxons.csv', taxons['header'], taxons['data'])
+        to_csv('pf_taxons.csv', 
+               taxons['header'], 
+               taxons['data'])
     )
     observers = get_observers()
     files.append(
-        to_csv('pf_observers.csv', observers['header'], observers['data'])
+        to_csv('pf_observers.csv', 
+               observers['header'], 
+               observers['data'])
     )
-    organizations = get_organizations()
-    files.append(
-        to_csv('pf_organizations.csv', organizations['header'], organizations['data'])
-    )
-    return files 
+    return files
 
 
 def upload_file(project_id, form_id, file_name, data):
@@ -159,9 +156,10 @@ def update_review_state(project_id, form_id, submission_id, review_state):
 def update_odk_form(project_id, form_id):
 #updates the odk form with the new csv files
     files = write_files()
+    print(files)
     draft(project_id, form_id)
     for file in files:
-        upload_file(project_id, form_id, file['file_name'], file['content'])
+        upload_file(project_id, form_id, file, files[file])
     publish(project_id, form_id)
 
 
