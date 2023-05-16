@@ -74,16 +74,6 @@ def parse_and_create_visit(
                 )
         #print("generic", visit_generic_column)
         if odk_column_name in visit_generic_column.keys():
-            #print("COLUMN", odk_column_name)
-            if odk_column_name == "id_dataset":
-                #print(visit_generic_column['id_dataset'] +', ' + visit_generic_column.get('id_dataset'))
-                if val == None:
-                    jdds = get_jdd_list(gn_module.datasets)
-                    print(jdds)
-                    if len(jdds) == 1: 
-                        val = jdds[0][0]
-                    else:
-                        raise ValueError("Only one dataset should be passed this way.")
             # get val or the default value define in gn_monitoring json
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[
                 odk_column_name
@@ -98,6 +88,15 @@ def parse_and_create_visit(
             visit_dict_to_post["data"][odk_column_name] = val or visit_specific_column[
                 odk_column_name
             ].get("value")
+        
+    if visit_dict_to_post['id_dataset'] == None:
+        jdds = get_jdd_list(gn_module.datasets)
+        if len(jdds) == 1: 
+            val = jdds[0][0]
+            visit_dict_to_post['id_dataset'] = val
+        else:
+            raise Exception("Only one dataset should be passed this way.")
+        
 
     visit = TMonitoringVisits(**visit_dict_to_post)
     visit.observers = (
@@ -139,12 +138,15 @@ def parse_and_create_obs(
     # TODO : make a class and not get these column a each loop
     observation_generic_column = monitoring_config["observation"]["generic"]
     observation_specific_column = monitoring_config["observation"]["specific"]
+   
     observation_dict_to_post = {
         "uuid_observation": gn_uuid_obs,
         "data": {},
     }
+    
     for key, val in flatten_obs.items():
         odk_column_name = key.split("/")[-1]
+        
         # specifig comment column
         if odk_column_name == module_parser_config["OBSERVATION"].get("comments"):
             observation_dict_to_post["comments"] = val
@@ -157,6 +159,16 @@ def parse_and_create_obs(
             ] = val or observation_generic_column[odk_column_name].get("value")
         elif odk_column_name in observation_specific_column.keys():
             odk_field = odk_form_schema.get_field_info(odk_column_name)
+            column_widget = observation_specific_column[odk_column_name].get('type_widget')
+            print(column_widget)
+            if odk_field['type'] == 'string' and column_widget == 'nomenclature':
+                org_val = val
+                try:
+                    val = int(val, 10)
+                except ValueError:
+                        val = org_val
+
+            #if odk_specific_column['type_widget'] == 'nomenclature' and odk_field['type'] == 'string' :
             if odk_field["selectMultiple"]:
                 if val:
                     # HACK -> convert mutliSelect in list and replace _ by espace

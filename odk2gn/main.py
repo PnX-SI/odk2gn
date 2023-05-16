@@ -85,7 +85,7 @@ def get_and_post_medium(
                 .one()
             )
             media = {
-                "media_path": f"static/medias/{medias_name}",
+                "media_path": f"media/attachments/{medias_name}",
                 "uuid_attached_row": uuid_gn_object,
                 "id_table_location": table_location.id_table_location,
                 "id_nomenclature_media_type": media_type.id_nomenclature,
@@ -95,7 +95,7 @@ def get_and_post_medium(
             DB.session.add(media)
             DB.session.commit()
             with open(
-                BACKEND_DIR / "static" / "medias" / medias_name, "wb"
+                BACKEND_DIR / "media" / "attachments" / medias_name, "wb"
             ) as out_file:
                 out_file.write(img.content)
 
@@ -120,6 +120,7 @@ def synchronize(module_code, project_id, form_id):
         gn_module = get_modules_info(module_code)
         monitoring_config = get_config(module_code)
         form_data = get_submissions(project_id, form_id)
+        print(form_data)
         for sub in form_data:
             flatten_data = flatdict.FlatDict(sub, delimiter="/")
             observations_list = []
