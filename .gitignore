@@ -1,6 +1,7 @@
 config.toml
 *.jpg
 .vscode/*
+*.csv
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
