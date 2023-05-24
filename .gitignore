@@ -1,8 +1,8 @@
 config.toml
 *.jpg
 .vscode/*
-coordonnees.txt
 *.csv
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
