@@ -26,7 +26,7 @@ def parse_and_create_visit(
     :param sub: a odk submission with flatten keys
     :type sub: dict
 
-    # :param module_parser:_config the odk_gn parser configuration for the current module
+    :param module_parser:_config the odk_gn parser configuration for the current module
     :type module_parser_config: dict
 
     :param monitoring_config: the monitoring configuration (return by get_config func of gn_module_monitoring func)
@@ -66,8 +66,6 @@ def parse_and_create_visit(
                     int(role[module_parser_config["VISIT"].get("id_observer")])
                 )
         if odk_column_name in visit_generic_column.keys():
-            print("CLEEE", key)
-            print("VAL", val)
             # get val or the default value define in gn_monitoring json
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[
                 odk_column_name
@@ -100,14 +98,14 @@ def parse_and_create_visit(
 
 
 def parse_and_create_obs(
-    observation_dict, module_parser_config, monitoring_config, odk_form_schema
+    flatten_obs, module_parser_config, monitoring_config, odk_form_schema, gn_uuid_obs
 ):
     """
     Parse and create an TMonitoringObservations object from a odk observation
     Return a TMonitoringObservations object
 
-    :param observation_dict: a odk submission with flatten keys
-    :type observation_dict: dict
+    :param flatten_obs: a odk submission with flatten keys
+    :type flatten_obs: dict
 
     :param module_parser:_config the odk_gn parser configuration for the current module
     :type module_parser_config: dict
@@ -122,11 +120,10 @@ def parse_and_create_obs(
     # TODO : make a class and not get these column a each loop
     observation_generic_column = monitoring_config["observation"]["generic"]
     observation_specific_column = monitoring_config["observation"]["specific"]
-    obs_media_name = None
     observation_dict_to_post = {
+        "uuid_observation": gn_uuid_obs,
         "data": {},
     }
-    flatten_obs = flatdict.FlatDict(observation_dict, delimiter="/")
     for key, val in flatten_obs.items():
         odk_column_name = key.split("/")[-1]
         # specifig comment column

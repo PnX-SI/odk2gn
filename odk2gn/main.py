@@ -22,7 +22,6 @@ from odk2gn.config import config
 from odk2gn.odk_api import (
     get_submissions,
     update_form_attachment,
-    get_attachments,
     get_attachment,
     ODKSchema,
     update_review_state,
@@ -48,6 +47,16 @@ pp = pprint.PrettyPrinter(width=41, compact=True)
 #     pp.pprint(schema)
 
 
+@click.group()
+def synchronize():
+    pass
+
+
+@click.group()
+def upgrade_odk_form():
+    pass
+
+
 @click.command()
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
@@ -68,40 +77,44 @@ def get_and_post_medium(
     app = create_app()
     with app.app_context():
         img = get_attachment(project_id, form_id, uuid_sub, filename)
-        medias_name = f"{uuid_sub}_{filename}"
-        table_location = (
-            DB.session.query(BibTablesLocation)
-            .filter_by(
-                schema_name="gn_monitoring",
-                table_name=monitoring_table,
+        if img:
+            uuid_sub = uuid_sub.split(":")[1]
+            medias_name = f"{uuid_sub}_{filename}"
+            table_location = (
+                DB.session.query(BibTablesLocation)
+                .filter_by(
+                    schema_name="gn_monitoring",
+                    table_name=monitoring_table,
+                )
+                .one()
             )
-            .one()
-        )
-        media_type = (
-            DB.session.query(TNomenclatures)
-            .filter_by(mnemonique=media_type)
-            .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
-            .one()
-        )
-        media = {
-            "media_path": f"static/medias/{medias_name}",
-            "uuid_attached_row": uuid_gn_object,
-            "id_table_location": table_location.id_table_location,
-            "id_nomenclature_media_type": media_type.id_nomenclature,
-        }
+            media_type = (
+                DB.session.query(TNomenclatures)
+                .filter_by(mnemonique=media_type)
+                .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
+                .one()
+            )
+            media = {
+                "media_path": f"static/medias/{medias_name}",
+                "uuid_attached_row": uuid_gn_object,
+                "id_table_location": table_location.id_table_location,
+                "id_nomenclature_media_type": media_type.id_nomenclature,
+            }
 
-        media = TMedias(**media)
-        DB.session.add(media)
-        DB.session.commit()
-        with open(BACKEND_DIR / "static" / "medias" / medias_name, "wb") as out_file:
-            out_file.write(img.content)
+            media = TMedias(**media)
+            DB.session.add(media)
+            DB.session.commit()
+            with open(
+                BACKEND_DIR / "static" / "medias" / medias_name, "wb"
+            ) as out_file:
+                out_file.write(img.content)
 
 
-@click.command()
+@synchronize.command(name="monitoring")
 @click.argument("module_code")
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
-def synchronize(module_code, project_id, form_id):
+def synchronize_monitoring(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
     app = create_app()
     with app.app_context() as app_ctx:
@@ -109,8 +122,10 @@ def synchronize(module_code, project_id, form_id):
         try:
             module_parser_config = config[module_code]
         except KeyError as e:
-            log.error(f"No configuration found for module {module_code} ")
-            raise
+            log.warning(
+                f"No mapping found for module {module_code} - get the default ODK monitoring template mapping !  "
+            )
+            module_parser_config = {}
         module_parser_config = ProcoleSchema().load(module_parser_config)
         gn_module = get_modules_info(module_code)
         monitoring_config = get_config(module_code.lower())
@@ -135,21 +150,37 @@ def synchronize(module_code, project_id, form_id):
                 gn_module,
                 odk_form_schema,
             )
+            get_and_post_medium(
+                project_id=project_id,
+                form_id=form_id,
+                uuid_sub=flatten_data.get("meta/instanceID"),
+                filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
+                monitoring_table="t_base_visits",
+                media_type=module_parser_config["VISIT"]["media_type"],
+                uuid_gn_object=visit.uuid_base_visit,
+            )
 
-            # get_and_post_medium(
-            #     project_id=project_id,
-            #     form_id=form_id,
-            #     uuid_sub=flatten_obs("meta/instanceID").split(":")[1],
-            #     filename=visit_media_name,
-            #     monitoring_table="t_base_visits",
-            #     uuid_gn_object=gn_uuid,
-            # )
-            # # pp.pprint(sub)
-
-            obs_media_name = None
             for obs in observations_list:
+                gn_uuid_obs = uuid.uuid4()
+                flatten_obs = flatdict.FlatDict(obs, delimiter="/")
+
                 observation = parse_and_create_obs(
-                    obs, module_parser_config, monitoring_config, odk_form_schema
+                    flatten_obs,
+                    module_parser_config,
+                    monitoring_config,
+                    odk_form_schema,
+                    gn_uuid_obs,
+                )
+                get_and_post_medium(
+                    project_id=project_id,
+                    form_id=form_id,
+                    uuid_sub=flatten_data.get("meta/instanceID"),
+                    filename=flatten_obs.get(
+                        module_parser_config["OBSERVATION"]["media"]
+                    ),
+                    monitoring_table="t_observations",
+                    media_type=module_parser_config["OBSERVATION"]["media_type"],
+                    uuid_gn_object=gn_uuid_obs,
                 )
                 visit.observations.append(observation)
             DB.session.add(visit)
@@ -169,7 +200,7 @@ def synchronize(module_code, project_id, form_id):
                 DB.session.rollback()
 
 
-@click.command()
+@upgrade_odk_form.command(name="monitoring")
 @click.argument("module_code")
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
@@ -178,7 +209,7 @@ def synchronize(module_code, project_id, form_id):
 @click.option("--skip_jdd", is_flag=True, help="Skip jdd sync.")
 @click.option("--skip_sites", is_flag=True, help="Skip sites sync.")
 @click.option("--skip_nomenclatures", is_flag=True, help="Skip nomenclatures sync.")
-def upgrade_odk_form(
+def upgrade_monitoring(
     module_code,
     project_id,
     form_id,
