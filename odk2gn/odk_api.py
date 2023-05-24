@@ -76,7 +76,7 @@ def update_review_state(project_id, form_id, submission_id, review_state):
     :param review_state id : the value of the state for update
     :type form_id: str ("approved", "hasIssues", "rejected")
     """
-    token = client.auth.get_token(
+    token = client.session.auth.service.get_token(
         username=client.config.central.username,
         password=client.config.central.password,
     )
