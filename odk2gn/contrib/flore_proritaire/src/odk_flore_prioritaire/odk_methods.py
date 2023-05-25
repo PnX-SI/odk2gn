@@ -11,7 +11,7 @@ import flatdict
 from sqlalchemy.orm import exc
 from sqlalchemy.exc import SQLAlchemyError
 
-from odk2gn.odk_api import ODKSchema, publish_form, form_draft, get_submissions, update_review_state
+from odk2gn.odk_api import ODKSchema,get_submissions, update_review_state
 from odk2gn.gn2_utils import to_csv
 from pyodk.client import Client
 from datetime import datetime
@@ -96,43 +96,6 @@ def write_files():
                observers['data'])
     return files
     
-
-
-def upload_file(project_id, form_id, file_name, data):
-    response = client.post(
-        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/draft/attachments/{file_name}",
-        data=data.encode("utf-8", "strict"),
-    )
-    if response.status_code == 404:
-        log.warning(
-            f"Le fichier {file_name} n'existe pas dans la définition du formulaire"
-        )
-    elif response.status_code == 200:
-        log.info(f"fichier {file_name} téléversé")
-    else:
-        # TODO raise error
-        pass
-
-
-"""def update_review_state(project_id, form_id, submission_id, review_state):
-#updates the review state of the submissions
-    token = client.session.auth.service.get_token(
-        username=client.config.central.username,
-        password=client.config.central.password,
-    )
-    review_submission_response = client.patch(
-        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/submissions/{submission_id}",
-        data=json.dumps({"reviewState": review_state}),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token,
-        },
-    )
-    try:
-        assert review_submission_response.status_code == 200
-    except AssertionError:
-        log.error("Error while update submision state")"""
-
 def to_int(val):
     org_val = val
     try:
