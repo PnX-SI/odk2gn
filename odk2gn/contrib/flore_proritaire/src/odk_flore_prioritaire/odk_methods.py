@@ -199,6 +199,16 @@ def get_nomenclature(id_nomenclature):
         ).first()
     return nom
 
+def get_nomenclature_id(type_mnemonique, cd_nomenclature):
+    id = DB.session.query(TNomenclatures.id_nomenclature).filter(
+        BibNomenclaturesTypes.mnemonique == type_mnemonique
+    ).filter(
+        BibNomenclaturesTypes.id_type == TNomenclatures.id_type
+    ).filter(
+        TNomenclatures.cd_nomenclature == cd_nomenclature
+        ).first()
+    return id
+
 def get_user(id_role):
     user = DB.session.query(User).filter(
         User.id_role == id_role
@@ -240,7 +250,7 @@ def update_priority_flora_db(project_id, form_id):
             habitat = ap['habitat']
             t_ap.id_nomenclature_habitat = int(habitat['id_nomenclature_habitat']) or None
             t_ap.favorable_status_percent = habitat['favorable_status_percent'] or None
-            t_ap.id_nomenclature_threat_level = int(habitat['id_nomenclature_threat_level']) or None
+            t_ap.id_nomenclature_threat_level = get_nomenclature_id('THREAT_LEVEL', habitat['threat_level']) or None
             t_ap.id_nomenclature_phenology = int(ap['id_nomenclature_phenology']) or None
             frequency_est = ap['frequency_est']
             t_ap.id_nomenclature_frequency_method = int(frequency_est['id_nomenclature_frequency_method']) or None
@@ -255,7 +265,7 @@ def update_priority_flora_db(project_id, form_id):
             else:
                 t_ap.total_max = None
                 t_ap.total_min = None
-            t_ap.id_nomenclature_counting = count['id_nomenclature_counting']
+            t_ap.id_nomenclature_counting = get_nomenclature_id('COUNTING_TYPE', count['counting_method']) or None
             t_ap.comment = ap['comment']
             t_ap.perturbations = []
             t_ap.physiognomies = []
