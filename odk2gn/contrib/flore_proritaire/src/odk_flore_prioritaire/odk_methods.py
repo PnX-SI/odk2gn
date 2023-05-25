@@ -144,7 +144,6 @@ def update_priority_flora_db(project_id, form_id):
     form_data = get_submissions(project_id, form_id)
     id_dataset = DB.session.query(TDatasets.id_dataset).filter(TDatasets.dataset_shortname=='PRIORITY_FLORA').first()
     for sub in form_data :
-        print(sub)
         zp = TZprospect()
         zp.id_dataset = id_dataset
         format_coords(sub['zp_geom_4326'])
@@ -156,10 +155,8 @@ def update_priority_flora_db(project_id, form_id):
         zp.initial_insert = "ODK"
         zp.observers = []
         for observer in sub['observaters']:
-            print(observer)
             id_role = to_int(observer['id_role'])
             obs = get_user(id_role)
-            print(obs)
             zp.observers.append(obs)
         DB.session.add(zp)
         DB.session.flush()
