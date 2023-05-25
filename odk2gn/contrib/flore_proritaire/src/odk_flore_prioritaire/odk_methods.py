@@ -221,7 +221,6 @@ def update_priority_flora_db(project_id, form_id):
     form_data = get_submissions(project_id, form_id)
     id_dataset = DB.session.query(TDatasets.id_dataset).filter(TDatasets.dataset_shortname=='PRIORITY_FLORA').first()
     for sub in form_data :
-        print(sub)
         zp = TZprospect()
         zp.id_dataset = id_dataset
         format_coords(sub['zp_geom_4326'])
