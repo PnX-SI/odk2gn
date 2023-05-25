@@ -167,15 +167,15 @@ def update_priority_flora_db(project_id, form_id):
             t_ap.geom_4326 = to_wkt(ap['ap_geom_4326'])
             situation = ap['situation']
             t_ap.area = situation['ap_area']
-            t_ap.id_nomenclature_incline = to_int(situation['id_nomenclature_incline']) or None
+            t_ap.id_nomenclature_incline = to_int(situation['id_nomenclature_incline']) 
             habitat = ap['habitat']
-            t_ap.id_nomenclature_habitat = to_int(habitat['id_nomenclature_habitat']) or None
-            t_ap.favorable_status_percent = habitat['favorable_status_percent'] or None
-            t_ap.id_nomenclature_threat_level = get_nomenclature_id('THREAT_LEVEL', habitat['threat_level']) or None
-            t_ap.id_nomenclature_phenology = to_int(ap['id_nomenclature_phenology']) or None
+            t_ap.id_nomenclature_habitat = to_int(habitat['id_nomenclature_habitat'])
+            t_ap.favorable_status_percent = habitat['favorable_status_percent'] 
+            t_ap.id_nomenclature_threat_level = get_nomenclature_id('THREAT_LEVEL', habitat['threat_level']) 
+            t_ap.id_nomenclature_phenology = to_int(ap['id_nomenclature_phenology']) 
             frequency_est = ap['frequency_est']
-            t_ap.id_nomenclature_frequency_method = to_int(frequency_est['id_nomenclature_frequency_method']) or None
-            t_ap.frequency = frequency_est['frequency'] or None
+            t_ap.id_nomenclature_frequency_method = to_int(frequency_est['id_nomenclature_frequency_method']) 
+            t_ap.frequency = frequency_est['frequency'] 
             count = ap['count']
             if count['counting_method']=='1':
                 t_ap.total_max = count['num']
@@ -186,7 +186,7 @@ def update_priority_flora_db(project_id, form_id):
             else:
                 t_ap.total_max = None
                 t_ap.total_min = None
-            t_ap.id_nomenclature_counting = get_nomenclature_id('COUNTING_TYPE', count['counting_method']) or None
+            t_ap.id_nomenclature_counting = get_nomenclature_id('COUNTING_TYPE', count['counting_method']) 
             t_ap.comment = ap['comment']
             t_ap.perturbations = []
             t_ap.physiognomies = []
