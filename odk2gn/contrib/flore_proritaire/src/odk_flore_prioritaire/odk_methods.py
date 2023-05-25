@@ -173,11 +173,10 @@ def get_submissions(project_id, form_id):
         return form_data["value"]
 
 
-def to_int(dict,key):
-    val = dict[key]
+def to_int(val):
     org_val = val
     try:
-        val = int(dict[key])
+        val = int()
     except:
         val = org_val
     return val 
@@ -227,14 +226,14 @@ def update_priority_flora_db(project_id, form_id):
         zp.id_dataset = id_dataset
         format_coords(sub['zp_geom_4326'])
         zp.geom_4326 = to_wkt(sub['zp_geom_4326'])
-        zp.cd_nom =  to_int(sub, 'cd_nom')
+        zp.cd_nom =  to_int(sub['cd_nom'])
         zp.date_min= sub['date_min']
         zp.date_max = sub['date_max']
         zp.area = sub['zp_area']
         zp.initial_insert = "ODK"
         zp.observers = []
         for observer in sub['observaters']:
-            id_role = int(observer['id_role'])
+            id_role = to_int(observer['id_role'])
             obs = get_user(id_role)
             zp.observers.append(obs)
         DB.session.add(zp)
@@ -246,14 +245,14 @@ def update_priority_flora_db(project_id, form_id):
             t_ap.geom_4326 = to_wkt(ap['ap_geom_4326'])
             situation = ap['situation']
             t_ap.area = situation['ap_area']
-            t_ap.id_nomenclature_incline = int(situation['id_nomenclature_incline']) or None
+            t_ap.id_nomenclature_incline = to_int(situation['id_nomenclature_incline']) or None
             habitat = ap['habitat']
-            t_ap.id_nomenclature_habitat = int(habitat['id_nomenclature_habitat']) or None
+            t_ap.id_nomenclature_habitat = to_int(habitat['id_nomenclature_habitat']) or None
             t_ap.favorable_status_percent = habitat['favorable_status_percent'] or None
             t_ap.id_nomenclature_threat_level = get_nomenclature_id('THREAT_LEVEL', habitat['threat_level']) or None
-            t_ap.id_nomenclature_phenology = int(ap['id_nomenclature_phenology']) or None
+            t_ap.id_nomenclature_phenology = to_int(ap['id_nomenclature_phenology']) or None
             frequency_est = ap['frequency_est']
-            t_ap.id_nomenclature_frequency_method = int(frequency_est['id_nomenclature_frequency_method']) or None
+            t_ap.id_nomenclature_frequency_method = to_int(frequency_est['id_nomenclature_frequency_method']) or None
             t_ap.frequency = frequency_est['frequency'] or None
             count = ap['count']
             if count['counting_method']=='1':
@@ -272,13 +271,13 @@ def update_priority_flora_db(project_id, form_id):
             if situation['physiognomies'] is not None:
                 physiognomies = situation['physiognomies'].split(' ')
                 for physiog in physiognomies:
-                    id_physiog = int(physiog)
+                    id_physiog = to_int(physiog)
                     phys = get_nomenclature(id_physiog)
                     t_ap.physiognomies.append(phys)
             if habitat['perturbations'] is not None:
                 perturbations = habitat['perturbations'].split(' ')
                 for perturb in perturbations:
-                    id_perturb = int(perturb)
+                    id_perturb = to_int(perturb)
                     pert = get_nomenclature(id_perturb)
                     t_ap.perturbations.append(pert)
 
