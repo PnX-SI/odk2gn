@@ -11,7 +11,7 @@ import flatdict
 from sqlalchemy.orm import exc
 from sqlalchemy.exc import SQLAlchemyError
 
-from odk2gn.odk_api import ODKSchema
+from odk2gn.odk_api import ODKSchema, publish_form, form_draft, get_submissions, update_review_state
 from odk2gn.gn2_utils import to_csv
 from pyodk.client import Client
 from datetime import datetime
@@ -79,14 +79,6 @@ def get_nomenclatures():
     return {'header': header, 'data': data}
 
 
-
-def draft(project_id, form_id):
-#sets the ODK central entry for the form to a draft state
-    with client:
-        request = client.post(f"projects/{project_id}/forms/{form_id}/draft")
-        assert request.status_code == 200
-
-
 def write_files():
 #updates the csv file attachments on ODK central
     files={}
@@ -122,15 +114,7 @@ def upload_file(project_id, form_id, file_name, data):
         pass
 
 
-def publish(project_id, form_id):
-#publishes the form
-    version_number = datetime.now()
-    response = client.post(
-        f"projects/{project_id}/forms/{form_id}/draft/publish?version={version_number}"
-    )
-    assert response.status_code == 200
-
-def update_review_state(project_id, form_id, submission_id, review_state):
+"""def update_review_state(project_id, form_id, submission_id, review_state):
 #updates the review state of the submissions
     token = client.session.auth.service.get_token(
         username=client.config.central.username,
@@ -147,36 +131,12 @@ def update_review_state(project_id, form_id, submission_id, review_state):
     try:
         assert review_submission_response.status_code == 200
     except AssertionError:
-        log.error("Error while update submision state")
-
-def update_odk_form(project_id, form_id):
-#updates the odk form with the new csv files
-    files = write_files()
-    draft(project_id, form_id)
-    for file_name in files:
-            upload_file(project_id, form_id, file_name, files[file_name])
-    publish(project_id, form_id)
-
-
-def get_submissions(project_id, form_id):
-    # Creation client odk central
-    form_data = None
-    with client:
-        form_data = client.submissions.get_table(
-            form_id=form_id,
-            project_id=project_id,
-            expand="*",
-            # TODO : try received or edited (but edited not actually support)
-            filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
-            # filter="__system/reviewState eq 'rejected'",
-        )
-        return form_data["value"]
-
+        log.error("Error while update submision state")"""
 
 def to_int(val):
     org_val = val
     try:
-        val = int()
+        val = int(val)
     except:
         val = org_val
     return val 
@@ -221,19 +181,22 @@ def update_priority_flora_db(project_id, form_id):
     form_data = get_submissions(project_id, form_id)
     id_dataset = DB.session.query(TDatasets.id_dataset).filter(TDatasets.dataset_shortname=='PRIORITY_FLORA').first()
     for sub in form_data :
+        print(sub)
         zp = TZprospect()
         zp.id_dataset = id_dataset
         format_coords(sub['zp_geom_4326'])
         zp.geom_4326 = to_wkt(sub['zp_geom_4326'])
-        zp.cd_nom =  to_int(sub['cd_nom'])
+        zp.cd_nom =  sub['cd_nom']
         zp.date_min= sub['date_min']
         zp.date_max = sub['date_max']
         zp.area = sub['zp_area']
         zp.initial_insert = "ODK"
         zp.observers = []
         for observer in sub['observaters']:
+            print(observer)
             id_role = to_int(observer['id_role'])
             obs = get_user(id_role)
+            print(obs)
             zp.observers.append(obs)
         DB.session.add(zp)
         DB.session.flush()

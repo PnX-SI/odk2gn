@@ -1,6 +1,7 @@
 import click
-from odk_flore_prioritaire.odk_methods import update_odk_form, update_priority_flora_db
+from odk_flore_prioritaire.odk_methods import update_priority_flora_db, write_files
 from odk2gn.main import synchronize, upgrade_odk_form
+from odk2gn.odk_api import update_form_attachment
 from geonature.app import create_app
 
 
@@ -19,4 +20,5 @@ def synchronize(project_id, form_id):
 def upgrade_odk_form(project_id, form_id):
     app = create_app()
     with app.app_context() as app_ctx:
-        update_odk_form(project_id=project_id, form_id=form_id)
+        files = write_files()
+        update_form_attachment(project_id, form_id, files)

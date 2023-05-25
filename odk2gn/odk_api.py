@@ -81,7 +81,7 @@ def update_review_state(project_id, form_id, submission_id, review_state):
         password=client.config.central.password,
     )
     #pourquoi classe requests ici et non la methode de la classe Client de pyODK?
-    review_submission_response = requests.patch(
+    review_submission_response = client.patch(
         f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/submissions/{submission_id}",
         data=json.dumps({"reviewState": review_state}),
         headers={
