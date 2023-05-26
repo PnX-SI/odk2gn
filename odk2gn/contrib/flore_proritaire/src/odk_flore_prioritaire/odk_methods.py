@@ -10,9 +10,10 @@ from shapely.geometry import shape
 import flatdict
 from sqlalchemy.orm import exc
 from sqlalchemy.exc import SQLAlchemyError
+import sqlalchemy
 
 from odk2gn.odk_api import ODKSchema,get_submissions, update_review_state
-from odk2gn.gn2_utils import to_csv
+from odk2gn.gn2_utils import to_csv, get_taxon_list, get_observer_list, get_nomenclatures_to_filter
 from pyodk.client import Client
 from datetime import datetime
 from geonature.utils.env import DB
@@ -35,65 +36,52 @@ from geonature.core.gn_commons.models import BibTablesLocation
 client = Client('config.toml')
 log = logging.getLogger("app")
 
-
-def get_taxons():
-#returns the list of taxons
-    code_liste = geonature_config["PRIORITY_FLORA"]["taxons_list_code"]
-    data = (
-        DB.session.query(Taxref.cd_nom, Taxref.nom_complet, Taxref.nom_vern)
-        .filter(BibNoms.cd_nom == Taxref.cd_nom)
-        .filter(BibNoms.id_nom == CorNomListe.id_nom)
-        .filter(CorNomListe.id_liste == BibListes.id_liste)
+def get_id_taxon_liste(code_liste):
+    id = (
+        DB.session.query(BibListes.id_liste)
         .filter(BibListes.code_liste == code_liste)
-        .all()
     )
-    header = ['cd_nom','nom_complet','nom_vern']
-    return {'header': header, 'data': data}
+    return id
 
-
-def get_observers():
-#returns the list of observers
-    code_liste = geonature_config["PRIORITY_FLORA"]['observers_list_code']
-    data = (
-        DB.session.query(VUserslistForallMenu.id_role, VUserslistForallMenu.nom_complet)
-        .filter(UserList.id_liste == VUserslistForallMenu.id_menu)
-        .filter(UserList.code_liste == code_liste))
-    header=['id_role','nom_complet']
-    return {'header' : header, 'data': data}
+def get_id_observer_liste(code_liste):
+    id = (
+        DB.session.query(UserList.id_liste)
+        .filter(UserList.code_liste == code_liste)
+    )
+    return id
 
 
 def get_nomenclatures():
 #returns the list of nomenclatures
     nomenclatures = ['TYPE_PERTURBATION', 'INCLINE_TYPE', 'PHYSIOGNOMY_TYPE', 'HABITAT_STATUS', 'THREAT_LEVEL', 'PHENOLOGY_TYPE', 'FREQUENCY_METHOD', 'COUNTING_TYPE']
-    data = DB.session.query(
-        BibNomenclaturesTypes.mnemonique,
-        TNomenclatures.id_nomenclature,
-        TNomenclatures.cd_nomenclature,
-        TNomenclatures.label_default
-    ).filter(
-        BibNomenclaturesTypes.id_type == TNomenclatures.id_type
-    ).filter(
+    data = get_nomenclatures_to_filter().filter(
         BibNomenclaturesTypes.mnemonique.in_(nomenclatures)
     )
-    header=['mnemonique','id_nomenclature','cd_nomenclature','label_default']
-    return {'header': header, 'data': data}
+    return data
 
 
 def write_files():
 #updates the csv file attachments on ODK central
     files={}
     nomenclatures = get_nomenclatures()
+    nom_header = ['mnemonique','id_nomenclature','cd_nomenclature','label_default']
     files['pf_nomenclatures.csv'] = to_csv(
-                                nomenclatures['header'],
-                                nomenclatures['data'])
-    taxons = get_taxons()
+                                nom_header,
+                                nomenclatures)
+    taxons = get_taxon_list(
+        get_id_taxon_liste(geonature_config["PRIORITY_FLORA"]["taxons_list_code"])
+    )
+    taxon_header = ['cd_nom','nom_complet','nom_vern']
     files['pf_taxons.csv'] = to_csv(
-               taxons['header'], 
-               taxons['data'])
-    observers = get_observers()
+               taxon_header, 
+               taxons)
+    observers = get_observer_list(
+        get_id_observer_liste(geonature_config["PRIORITY_FLORA"]['observers_list_code'])
+    )
+    obs_header = ['id_role','nom_complet']
     files['pf_observers.csv'] =  to_csv( 
-               observers['header'], 
-               observers['data'])
+               obs_header, 
+               observers)
     return files
     
 def to_int(val):
@@ -136,7 +124,6 @@ def get_user(id_role):
         User.id_role == id_role
     ).first()
     return user
-
 
 
 def update_priority_flora_db(project_id, form_id):

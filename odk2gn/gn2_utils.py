@@ -138,22 +138,12 @@ def get_jdd_list(datasets: list):
     :param datasets: List of associated dataset
     :type datasets: []
     """
-    #TODO a refactoriser
-   # ids = [jdd.id_dataset for jdd in datasets]
-   # data = DB.session.query(
-   #     TDatasets.id_dataset, TDatasets.dataset_name
-    #).filter(TDatasets.id_dataset.in_(ids))
     data=[]
     for jdd in datasets:
         data.append([jdd.id_dataset, jdd.dataset_name])
     return data
 
-def get_ref_nomenclature_list(
-        code_nomenclature_type: str,
-        cd_nomenclatures: list = None,
-        regne: str = None,
-        group2_inpn: str = None,
-    ):
+def get_nomenclatures_to_filter():
     q = DB.session.query(
         BibNomenclaturesTypes.mnemonique,
         TNomenclatures.id_nomenclature,
@@ -161,7 +151,16 @@ def get_ref_nomenclature_list(
         TNomenclatures.label_default
     ).filter(
         BibNomenclaturesTypes.id_type == TNomenclatures.id_type
-    ).filter(
+    )
+    return q
+
+def get_ref_nomenclature_list(
+        code_nomenclature_type: str,
+        cd_nomenclatures: list = None,
+        regne: str = None,
+        group2_inpn: str = None,
+    ):
+    q = get_nomenclatures_to_filter().filter(
         BibNomenclaturesTypes.mnemonique == code_nomenclature_type
     )
     if cd_nomenclatures:
