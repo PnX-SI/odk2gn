@@ -16,7 +16,7 @@ def synchronize(project_id, form_id):
     with app.app_context() as app_ctx:
         log.info(f"--- Start synchro for priority flora ---")
         update_priority_flora_db(project_id=project_id, form_id=form_id)
-
+    log.info("--- Done ---")
 
 
 @upgrade_odk_form.command(name="flore-prio")
@@ -26,7 +26,6 @@ def upgrade_odk_form(project_id, form_id):
     log.info("--- Start upgrade form for priority flora ---")
     app = create_app()
     with app.app_context() as app_ctx:
-        
         files = write_files()
         update_form_attachment(project_id, form_id, files)
     log.info("--- Done ---")
