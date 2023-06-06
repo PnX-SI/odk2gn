@@ -2,7 +2,7 @@ config.toml
 *.jpg
 .vscode/*
 *.csv
-
+odk_template_form/*.csv
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

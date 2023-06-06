@@ -1,4 +1,5 @@
 import logging
+import os
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import func
 from geonature.utils.env import DB
@@ -21,6 +22,19 @@ from odk2gn.monitoring_config import (
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 
 log = logging.getLogger("app")
+
+def find_all(name, path):
+    result = []
+    for root, dirs, files in os.walk(path):
+        if name in files:
+            result.append(os.path.join(root, name))
+    return result
+
+def find_odk_path(paths):
+    for p in paths:
+        if "odk2gn" in p:
+            return p
+
 
 def get_modules_info(module_code: str):
     try:

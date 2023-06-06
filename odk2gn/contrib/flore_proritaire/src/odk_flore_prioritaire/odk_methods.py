@@ -12,7 +12,7 @@ from sqlalchemy.orm import exc
 from sqlalchemy.exc import SQLAlchemyError
 import sqlalchemy
 
-from odk2gn.odk_api import ODKSchema,get_submissions, update_review_state
+from odk2gn.odk_api import ODKSchema,get_submissions, update_review_state, client
 from odk2gn.gn2_utils import to_csv, get_taxon_list, get_observer_list, get_nomenclatures_to_filter
 from pyodk.client import Client
 from datetime import datetime
@@ -33,20 +33,33 @@ from geonature.app import create_app
 from geonature.utils.env import BACKEND_DIR
 from geonature.core.gn_commons.models import BibTablesLocation
 
-client = Client('config.toml')
+
 log = logging.getLogger("app")
 
 def get_id_taxon_liste(code_liste):
+    """gets the list ids for the taxons
+    
+    Keyword arguments:
+    code_liste -- code string for the list
+    Return: id_liste int
+    """
+    
     id = (
         DB.session.query(BibListes.id_liste)
-        .filter(BibListes.code_liste == code_liste)
+        .filter(BibListes.code_liste == code_liste).first()
     )
     return id
 
 def get_id_observer_liste(code_liste):
+    """gets the list ids for the observers
+    
+    Keyword arguments:
+    code_liste -- code string for the list
+    Return: id_liste int
+    """
     id = (
         DB.session.query(UserList.id_liste)
-        .filter(UserList.code_liste == code_liste)
+        .filter(UserList.code_liste == code_liste).first()
     )
     return id
 
@@ -84,7 +97,14 @@ def write_files():
                observers)
     return files
     
-def to_int(val):
+def nomenclature_to_int(val):
+    """formats the nomenclature id data for the db
+    
+    Keyword arguments:
+    argument -- id_nomenclature as string
+    Return: id_nomenclature
+    """
+    
     org_val = val
     try:
         val = int(val)
@@ -93,23 +113,56 @@ def to_int(val):
     return val 
 
 def to_wkt(geom):
+    """reformats the geographic data as a WKT
+    
+    Keyword arguments:
+    argument -- geoJSON geography
+    Return: WKT geography
+    """
+    
     s = json.dumps(geom)
     g1 = geojson.loads(s)
     g2 = shape(g1)
     return g2.wkt
 
 def format_coords(geom):
+    """removes the z coordinate of a geoJSON
+    
+    Keyword arguments:
+    geom -- geoJSON geography
+    Return: the argument as just x and y coordinates
+    """
+    
     for coords in geom['coordinates']:
         for point in coords:
-            point.pop(-1)
+            if len(point) == 3:
+                point.pop(-1)
+            if len(point) == 4:
+                point.pop(-1)
+                point.pop(-1)
 
 def get_nomenclature(id_nomenclature):
+    """gets the corresponding nomenclature object
+    
+    Keyword arguments:
+    id_nomenclature -- int
+    Return: TNomenclature object
+    """
+    
     nom = DB.session.query(TNomenclatures).filter(
         TNomenclatures.id_nomenclature == id_nomenclature
         ).first()
     return nom
 
 def get_nomenclature_id(type_mnemonique, cd_nomenclature):
+    """gets the id of the corresponding nomenclature object
+    
+    Keyword arguments:
+    type_mnemonique -- string representing the type of nomenclature 
+    cd_nomenclature -- code representing the user value for the nomenclature 
+    Return: id_nomenclature : corresponding nomenclature id
+    """
+    
     id = DB.session.query(TNomenclatures.id_nomenclature).filter(
         BibNomenclaturesTypes.mnemonique == type_mnemonique
     ).filter(
@@ -120,6 +173,13 @@ def get_nomenclature_id(type_mnemonique, cd_nomenclature):
     return id
 
 def get_user(id_role):
+    """gets the db user object
+    
+    Keyword arguments:
+    id_role -- int
+    Return: user
+    """
+    
     user = DB.session.query(User).filter(
         User.id_role == id_role
     ).first()
@@ -128,11 +188,15 @@ def get_user(id_role):
 
 def update_priority_flora_db(project_id, form_id):
 #adds the new ODK submissions to the db
+    #gets the new ODK submissions
     form_data = get_submissions(project_id, form_id)
+    #gets the dataset id, which is fixed
     id_dataset = DB.session.query(TDatasets.id_dataset).filter(TDatasets.dataset_shortname=='PRIORITY_FLORA').first()
     for sub in form_data :
+        #create and seed the prospection zone object
         zp = TZprospect()
         zp.id_dataset = id_dataset
+        #format the geographical coordinates in WKT with no z coordinate
         format_coords(sub['zp_geom_4326'])
         zp.geom_4326 = to_wkt(sub['zp_geom_4326'])
         zp.cd_nom =  sub['cd_nom']
@@ -141,55 +205,67 @@ def update_priority_flora_db(project_id, form_id):
         zp.area = sub['zp_area']
         zp.initial_insert = "ODK"
         zp.observers = []
+        #manage observer list
         for observer in sub['observaters']:
-            id_role = to_int(observer['id_role'])
+            id_role = nomenclature_to_int(observer['id_role'])
             obs = get_user(id_role)
             zp.observers.append(obs)
         DB.session.add(zp)
         DB.session.flush()
+        #flush to be able to use id_zp as we need it for the ap
         for ap in sub['aps']:
+            #create and seed the presence area object
             t_ap = TApresence()
             t_ap.id_zp = zp.id_zp
             format_coords(ap['ap_geom_4326'])
             t_ap.geom_4326 = to_wkt(ap['ap_geom_4326'])
+            t_ap.altitude_min = None
+            t_ap.altitude_max = None
+            #situation : all of the geographical info for the ap
             situation = ap['situation']
             t_ap.area = situation['ap_area']
-            t_ap.id_nomenclature_incline = to_int(situation['id_nomenclature_incline']) 
+            t_ap.id_nomenclature_incline = nomenclature_to_int(situation['id_nomenclature_incline']) 
+            #habitat : all the information about the habitat of the flora
             habitat = ap['habitat']
-            t_ap.id_nomenclature_habitat = to_int(habitat['id_nomenclature_habitat'])
+            t_ap.id_nomenclature_habitat = nomenclature_to_int(habitat['id_nomenclature_habitat'])
             t_ap.favorable_status_percent = habitat['favorable_status_percent'] 
             t_ap.id_nomenclature_threat_level = get_nomenclature_id('THREAT_LEVEL', habitat['threat_level']) 
-            t_ap.id_nomenclature_phenology = to_int(ap['id_nomenclature_phenology']) 
+            t_ap.id_nomenclature_phenology = nomenclature_to_int(ap['id_nomenclature_phenology'])
+            #frequency : how the frequency was estimated 
             frequency_est = ap['frequency_est']
-            t_ap.id_nomenclature_frequency_method = to_int(frequency_est['id_nomenclature_frequency_method']) 
-            t_ap.frequency = frequency_est['frequency'] 
+            t_ap.id_nomenclature_frequency_method = nomenclature_to_int(frequency_est['id_nomenclature_frequency_method']) 
+            t_ap.frequency = frequency_est['frequency']
+            #count : number of individuals and how they were counted 
             count = ap['count']
-            if count['counting_method']=='1':
+            if count['counting_method']=='1': #counting all individuals, so we have only one value for both min and max
                 t_ap.total_max = count['num']
                 t_ap.total_min = count['num']
-            elif count['counting_method']=='2':
+            elif count['counting_method']=='2': #estimating from a sample, so min value and max value
                 t_ap.total_max = count['total_max']
                 t_ap.total_min = count['total_min']
-            else:
+                if t_ap.total_max == t_ap.total_min:
+                    log.warning("min and max values are equal")
+            else: #no count 
                 t_ap.total_max = None
                 t_ap.total_min = None
             t_ap.id_nomenclature_counting = get_nomenclature_id('COUNTING_TYPE', count['counting_method']) 
             t_ap.comment = ap['comment']
+            #handling perturbations and physiognomies
             t_ap.perturbations = []
             t_ap.physiognomies = []
             if situation['physiognomies'] is not None:
                 physiognomies = situation['physiognomies'].split(' ')
                 for physiog in physiognomies:
-                    id_physiog = to_int(physiog)
+                    id_physiog = nomenclature_to_int(physiog)
                     phys = get_nomenclature(id_physiog)
                     t_ap.physiognomies.append(phys)
             if habitat['perturbations'] is not None:
                 perturbations = habitat['perturbations'].split(' ')
                 for perturb in perturbations:
-                    id_perturb = to_int(perturb)
+                    id_perturb = nomenclature_to_int(perturb)
                     pert = get_nomenclature(id_perturb)
                     t_ap.perturbations.append(pert)
-
+                #implementation depends on db implementation of effective_presence
                 """    c_ap_perturb = CorApPerturbation()
                     c_ap_perturb.id_nomenclature = id_perturb
                     c_ap_perturb.id_ap = t_ap.id_ap

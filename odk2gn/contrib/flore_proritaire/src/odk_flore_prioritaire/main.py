@@ -12,6 +12,14 @@ log = logging.getLogger("app")
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
 def synchronize(project_id, form_id):
+    """synchronize the db for priority flora module
+    
+    Keyword arguments:
+    project_id -- int, the id of the odk project
+    form_id -- string, the form_id defined on the form
+    
+    """
+    
     app = create_app()
     with app.app_context() as app_ctx:
         log.info(f"--- Start synchro for priority flora ---")
@@ -23,6 +31,13 @@ def synchronize(project_id, form_id):
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
 def upgrade_odk_form(project_id, form_id):
+    """update the csv files for priority flora module
+    
+    Keyword arguments:
+    project_id -- int, the id of the odk project
+    form_id -- string, the form_id defined on the form
+    """
+    
     log.info("--- Start upgrade form for priority flora ---")
     app = create_app()
     with app.app_context() as app_ctx:
