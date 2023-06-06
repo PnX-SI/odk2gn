@@ -56,6 +56,8 @@ def synchronize():
 def upgrade_odk_form():
     pass
 
+def dummy():
+    return get_submissions(1, "deux")
 
 @click.command()
 @click.option("--project_id", required=True, type=int)

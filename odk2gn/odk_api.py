@@ -4,14 +4,14 @@ import json
 
 from datetime import datetime
 from pyodk.client import Client
-from odk2gn.gn2_utils import find_all, find_odk_path
+from odk2gn.config import config_file
+
 
 log = logging.getLogger("app")
 
-paths = find_all("config.toml","/")
-odk_path = find_odk_path(paths=paths)
 
-client = Client(config_path=odk_path)
+
+client = Client(config_path=config_file)
 
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):

@@ -23,17 +23,6 @@ from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 
 log = logging.getLogger("app")
 
-def find_all(name, path):
-    result = []
-    for root, dirs, files in os.walk(path):
-        if name in files:
-            result.append(os.path.join(root, name))
-    return result
-
-def find_odk_path(paths):
-    for p in paths:
-        if "odk2gn" in p:
-            return p
 
 
 def get_modules_info(module_code: str):

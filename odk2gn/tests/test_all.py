@@ -6,7 +6,7 @@ from odk2gn.gn2_utils import get_jdd_list
 # from odk2gn.odk_api import dummy
 
 
-@pytest.mark.usefixtures("client_class", "temporary_transaction")
+@pytest.mark.usefixtures()
 class TestCommand:
     def test_synchronize_monitoring(self, mocker, submissions):
         from odk2gn.main import dummy
@@ -18,7 +18,7 @@ class TestCommand:
         assert True
 
 
-@pytest.mark.usefixtures("client_class", "temporary_transaction")
+@pytest.mark.usefixtures()
 class TestUtilsFunctions:
     def test_get_jdd_list1(self, datasets):
         formated_ds = get_jdd_list(datasets)
