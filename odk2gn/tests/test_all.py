@@ -1,7 +1,7 @@
 import pytest
 
 from odk2gn.tests.fixtures import app, submissions, _session, datasets, header, data, taxon, module, point
-#from odk2gn.tests.fixtures import site
+from odk2gn.tests.fixtures import site
 from odk2gn.gn2_utils import get_jdd_list, to_csv, get_site_list, get_taxon_list
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import to_wkt
 #from odk2gn.odk_api import dummy
@@ -18,6 +18,9 @@ class TestCommand:
         # la vrai fonction a "mocker" est synchronize_monitoring et non 'dummy'
         submissions = dummy()
         assert isinstance(submissions, list)
+    
+  """def test_upgrade_odk_form_monitoring(self, mocker):
+      assert """
 
 
 @pytest.mark.usefixtures()
@@ -34,8 +37,12 @@ class TestUtilsFunctions:
         taxons = get_taxon_list(100)
         assert taxon in taxons
 
-    """def test_get_site_list1(self, site, module):
-        sites = module.id_module
-        assert site in sites"""
+    def test_get_site_list1(self, site, module):
+        sites = get_site_list(module.id_module)
+        assert site in sites
+    
+    #def test_get_nomenclature_list1(self, module):
+
+    
     
 

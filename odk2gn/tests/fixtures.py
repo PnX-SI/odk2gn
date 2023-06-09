@@ -7,6 +7,7 @@ from geonature import create_app
 from geonature.core.gn_meta.models import (
     TDatasets
 )
+from sqlalchemy.event import listen, remove
 from geonature.core.gn_commons.models import TModules
 
 from pypnusershub.db.models import UserList, User
@@ -25,7 +26,9 @@ point = {
   }
 }
 
-
+def get_site_type():
+    site_type = (BibNomenclaturesTypes.query.filter_by(mnemonique='TYPE_SITE').first())
+    return site_type
 
 @pytest.fixture(scope='function')
 def taxon():
@@ -59,6 +62,8 @@ def _session(app):
     return db.session
 
 
+
+
 @pytest.fixture()
 def submissions():
     return [{'sub_id': 1, 'taxon': 'Homo sapiens'}, {'sub_id' : 22, 'taxon' : 'Nardus stricta'}]
@@ -82,6 +87,7 @@ def module():
             active_backend=False,
         )
         db.session.add(new_module)
+        db.session.commit()
     return new_module
 
 @pytest.fixture(scope='function')
@@ -101,7 +107,7 @@ def nomenclature():
         label_default = 'test', 
         label_fr = 'Test'
         )
-
+        db.session.flush()
         nomenclature = TNomenclatures(
             id_type = type_nom.id_nomenclature,
             cd_nomenclature = 'test',
@@ -109,18 +115,31 @@ def nomenclature():
             label_fr = 'Test',
             active = True
         )
-        db.session.add(type_nom, nomenclature)        
+        db.session.add(type_nom, nomenclature)      
+        db.session.commit()  
     return nomenclature
 
 @pytest.fixture(scope='function')
 def site():
+    
     with db.session.begin_nested():
+        id_site_type = (BibNomenclaturesTypes.id_type).query.filter(BibNomenclaturesTypes.mnemonique=='TYPE_SITE').first()
+        nom = TNomenclatures(
+            id_type = id_site_type,
+            cd_nomenclature = 'test_site',
+            label_default = 'test_site', 
+            label_fr = 'Site Test',
+            active = True
+        )
+        db.session.add(nom)
+        db.session.flush()
+
         test_site=TBaseSites(
         base_site_name = "test_site", 
         geom = to_wkt(point['geometry']),
-            
+        id_nomenclature_type_site = nom.id_nomenclature
         )
-        
         db.session.add(test_site)        
     return test_site
+
 
