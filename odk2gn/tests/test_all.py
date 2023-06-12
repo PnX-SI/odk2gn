@@ -70,12 +70,11 @@ class TestUtilsFunctions:
 
     def test_get_site_list1(self, site, module):
         sites = get_site_list(module.id_module)
-        site = site(module)
-        assert site in sites
+        assert site.id_base_site in [s[0] for s in sites]
 
     def test_get_nomenclature_list1(self, nomenclature):
-        nomenclatures = get_ref_nomenclature_list(code_nomenclature_type="test")
-        assert nomenclature in nomenclatures
+        nomenclatures = get_ref_nomenclature_list(code_nomenclature_type="TEST")
+        assert nomenclature.id_nomenclature in [nom[1] for nom in nomenclatures]
 
     def test_bidule(self, test):
         user = db.session.query(User).filter_by(identifiant="bidule").one()
