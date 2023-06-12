@@ -64,8 +64,6 @@ class TestUtilsFunctions:
     def test_get_observer_list1(self, observers_and_list):
         observers = get_observer_list(observers_and_list.id_liste)
         user = observers_and_list.users[0]
-        print("LAAAA", observers_and_list)
-        print("LAAAA", observers)
         assert user.id_role in [obs[0] for obs in observers]
 
     def test_get_site_list1(self, site, module):

@@ -148,11 +148,10 @@ def site(module):
 
 @pytest.fixture(scope="function")
 def observers_and_list():
-    # with db.session.begin_nested():
-    obs_list = UserList(code_liste="test_list", nom_liste="test_liste")
-    obs = User(identifiant="test", nom_role="User", prenom_role="test")
-    obs_list.users.append(obs)
-    db.session.add(obs)
-    db.session.add(obs_list)
-    db.session.commit()
+    with db.session.begin_nested():
+        obs_list = UserList(code_liste="test_list", nom_liste="test_liste")
+        obs = User(identifiant="test", nom_role="User", prenom_role="test")
+        obs_list.users.append(obs)
+        db.session.add(obs)
+        db.session.add(obs_list)
     return obs_list
