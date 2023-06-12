@@ -21,9 +21,7 @@ from utils_flask_sqla.tests.utils import JSONClient
 
 point = {"geometry": {"type": "Point", "coordinates": [6.0535113, 44.5754145]}}
 
-type_nom = BibNomenclaturesTypes(
-    mnemonique="TEST", label_default="test", label_fr="Test"
-)
+type_nom = BibNomenclaturesTypes(mnemonique="TEST", label_default="test", label_fr="Test")
 
 
 @pytest.fixture(scope="function")
@@ -31,7 +29,6 @@ def test():
     with db.session.begin_nested():
         obs = User(identifiant="bidule", nom_role="bidule", prenom_role="bidule")
         db.session.add(obs)
-        # db.session.commit()
     return obs
 
 
