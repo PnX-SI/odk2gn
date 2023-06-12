@@ -14,7 +14,7 @@ from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
 from gn_module_monitoring.monitoring.models import (
-    TMonitoringModules, TMonitoringSites
+    TMonitoringModules, TMonitoringSites, TMonitoringSitesGroups
 )
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 from utils_flask_sqla.tests.utils import JSONClient
@@ -26,9 +26,25 @@ point = {
   }
 }
 
-def get_site_type():
-    site_type = (BibNomenclaturesTypes.query.filter_by(mnemonique='TYPE_SITE').first())
-    return site_type
+type_nom = BibNomenclaturesTypes(
+            mnemonique = 'TEST',
+            label_default = 'test', 
+            label_fr = 'Test'
+        )
+
+
+
+
+
+
+def create_nomenclature(nomenclature_type, cd_nomenclature, label_default, label_fr):
+    nom = TNomenclatures(
+            id_type = nomenclature_type.id_type,
+            cd_nomenclature = cd_nomenclature,
+            label_default = label_default, 
+            label_fr = label_fr,
+    )
+    return nom
 
 @pytest.fixture(scope='function')
 def taxon():
@@ -52,9 +68,9 @@ def app():
         fixtures must commit their database changes in a nested transaction
         (i.e. in a with db.session.begin_nested() block).
         """
-        transaction = db.session.begin_nested()  # execute tests in a savepoint
+        # transaction = db.session.begin_nested()  # execute tests in a savepoint
         yield app
-        transaction.rollback()  # rollback all database changes
+        # transaction.rollback()  # rollback all database changes
 
 
 @pytest.fixture
@@ -87,7 +103,6 @@ def module():
             active_backend=False,
         )
         db.session.add(new_module)
-        db.session.commit()
     return new_module
 
 @pytest.fixture(scope='function')
@@ -96,50 +111,59 @@ def header():
 
 @pytest.fixture(scope='function')
 def data():
-    return ('1' +'2'), ('3','4')
+    return ('1','2'), ('3','4')
 
 @pytest.fixture(scope='function')
 def nomenclature():
     with db.session.begin_nested():
-
-        type_nom = BibNomenclaturesTypes(
-        mneumonique = 'TEST',
-        label_default = 'test', 
-        label_fr = 'Test'
-        )
+        db.session.add(type_nom)
         db.session.flush()
-        nomenclature = TNomenclatures(
-            id_type = type_nom.id_nomenclature,
-            cd_nomenclature = 'test',
-            label_default = 'test', 
-            label_fr = 'Test',
-            active = True
-        )
-        db.session.add(type_nom, nomenclature)      
-        db.session.commit()  
+        nomenclature = create_nomenclature(type_nom, 'test', 'test', 'test')
+        nomenclature.active=True
+        db.session.add(nomenclature)      
     return nomenclature
 
 @pytest.fixture(scope='function')
-def site():
-    
+def site(module):
+
+    site_type = db.session.query(BibNomenclaturesTypes).filter(BibNomenclaturesTypes.mnemonique=='TYPE_SITE').one()
+
     with db.session.begin_nested():
-        id_site_type = (BibNomenclaturesTypes.id_type).query.filter(BibNomenclaturesTypes.mnemonique=='TYPE_SITE').first()
-        nom = TNomenclatures(
-            id_type = id_site_type,
-            cd_nomenclature = 'test_site',
-            label_default = 'test_site', 
-            label_fr = 'Site Test',
-            active = True
-        )
+
+        # a créer en dehors de la fonction
+        nom = create_nomenclature(nomenclature_type=site_type,cd_nomenclature='test_site',label_default ='test_site', label_fr = 'Site Test')
+        nom.active = True
         db.session.add(nom)
         db.session.flush()
 
-        test_site=TBaseSites(
-        base_site_name = "test_site", 
-        geom = to_wkt(point['geometry']),
-        id_nomenclature_type_site = nom.id_nomenclature
+        mon_site = TMonitoringSites(
+            base_site_name = "test_site", 
+            geom = to_wkt(point['geometry']),
+            id_nomenclature_type_site = nom.id_nomenclature,
+            id_module = module.id_module,
         )
-        db.session.add(test_site)        
-    return test_site
+        mon_site.modules.append(module)
 
+        module.sites.append(mon_site)
+        db.session.add(mon_site) 
+
+    return mon_site
+
+
+@pytest.fixture(scope="function")
+def observers_and_list():
+    # with db.session.begin_nested():
+    obs_list = UserList(
+    code_liste = 'test_list',
+    nom_liste = 'test_liste')
+    obs = User(
+        identifiant = 'test',
+        nom_role = 'User',
+        prenom_role = 'test'
+    )
+    obs_list.users.append(obs)
+    db.session.add(obs)
+    db.session.add(obs_list)
+    db.session.commit()
+    return obs_list
 

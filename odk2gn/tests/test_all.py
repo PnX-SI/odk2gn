@@ -1,10 +1,13 @@
 import pytest
 
-from odk2gn.tests.fixtures import app, submissions, _session, datasets, header, data, taxon, module, point
+from odk2gn.tests.fixtures import app, submissions, _session, datasets, header, data, taxon, module, point, module, nomenclature,  observers_and_list
 from odk2gn.tests.fixtures import site
-from odk2gn.gn2_utils import get_jdd_list, to_csv, get_site_list, get_taxon_list
+from odk2gn.gn2_utils import get_jdd_list, to_csv, get_site_list, get_taxon_list, get_observer_list, get_nomenclature_data, get_ref_nomenclature_list
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import to_wkt
 #from odk2gn.odk_api import dummy
+
+from utils_flask_sqla.tests.fixtures import temporary_transaction
+
 
 
 
@@ -23,7 +26,7 @@ class TestCommand:
       assert """
 
 
-@pytest.mark.usefixtures()
+# @pytest.mark.usefixtures("")
 class TestUtilsFunctions:
     def test_get_jdd_list1(self, datasets):
         formated_ds = get_jdd_list(datasets)
@@ -37,11 +40,22 @@ class TestUtilsFunctions:
         taxons = get_taxon_list(100)
         assert taxon in taxons
 
+    def test_get_observer_list1(self,observers_and_list):
+        observers = get_observer_list(observers_and_list.id_liste)
+        user = observers_and_list.users[0]
+        print("LAAAA", observers_and_list)
+        print("LAAAA", observers)
+        assert user.id_role in [obs[0] for obs in observers]
+
     def test_get_site_list1(self, site, module):
         sites = get_site_list(module.id_module)
-        assert site in sites
+        site = site(module)
+        assert site in sites 
+
     
-    #def test_get_nomenclature_list1(self, module):
+    def test_get_nomenclature_list1(self, nomenclature):
+        nomenclatures=get_ref_nomenclature_list(code_nomenclature_type='test')
+        assert nomenclature in nomenclatures
 
     
     

@@ -126,13 +126,14 @@ def get_site_list(id_module: int):
     return data
 
 
+#à refactor
 def get_observer_list(id_liste: int):
     """Return tuple of Observers for id_liste
 
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
-    data = DB.session.query(VUserslistForallMenu.id_role, VUserslistForallMenu.nom_complet).filter_by(id_menu=id_liste)
+    data = DB.session.query(VUserslistForallMenu.id_role, VUserslistForallMenu.nom_complet).filter_by(id_menu=id_liste).all()
     return data
 
 def get_jdd_list(datasets: list):
