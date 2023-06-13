@@ -1,4 +1,4 @@
-import pytest
+import pytest, csv
 import uuid
 
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import to_wkt
@@ -52,13 +52,17 @@ def create_nomenclature(nomenclature_type, cd_nomenclature, label_default, label
 
 
 @pytest.fixture(scope="function")
-def taxon():
-    taxon = (
-        815096,
-        "Homo sapiens Linnaeus, 1758",
-        "Homme moderne, Homme de Cro-Magnon",
-    )
-    return taxon
+def taxon_and_list():
+    picto = db.session.query(BibListes.picto).filter(BibListes.code_liste == "100").first()
+    taxon = db.session.query(Taxref).filter_by(nom_complet="Homo sapiens Linnaeus, 1758").first()
+    with db.session.begin_nested():
+        tax_nom = BibNoms(cd_nom=taxon.cd_nom, cd_ref=taxon.cd_nom, nom_francais=taxon.nom_vern)
+        taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test", picto=picto)
+        cnl = CorNomListe(bib_nom=tax_nom, bib_liste=taxon_test_list)
+        tax_nom.listes.append(cnl)
+        taxon_test_list.cnl.append(cnl)
+        db.session.add(tax_nom, taxon_test_list)
+    return {"taxon": taxon, "tax_list": taxon_test_list}
 
 
 @pytest.fixture()
@@ -93,12 +97,22 @@ def module():
 
 @pytest.fixture(scope="function")
 def header():
-    return "column1", "column2"
+    return ("column1", "column2")
 
 
 @pytest.fixture(scope="function")
 def data():
     return ("1", "2"), ("3", "4")
+
+
+@pytest.fixture
+def the_csv(header, data):
+    with open("test.csv", "w") as file:
+        writer = csv.writer(file, delimiter=",")
+        writer.writerow(header)
+        writer.writerows(data)
+        file.close()
+    return file
 
 
 @pytest.fixture(scope="function")
@@ -150,8 +164,10 @@ def site(module):
 def observers_and_list():
     with db.session.begin_nested():
         obs_list = UserList(code_liste="test_list", nom_liste="test_liste")
-        obs = User(identifiant="test", nom_role="User", prenom_role="test")
+        obs = User(
+            identifiant="test", groupe=False, active=True, nom_role="User", prenom_role="test"
+        )
         obs_list.users.append(obs)
         db.session.add(obs)
         db.session.add(obs_list)
-    return obs_list
+    return {"list": obs_list, "user_list": obs_list.users}

@@ -1,17 +1,18 @@
-import pytest
+import pytest, csv, sys
 
 from odk2gn.tests.fixtures import (
     submissions,
     datasets,
     header,
     data,
-    taxon,
+    taxon_and_list,
     module,
     point,
     module,
     nomenclature,
     observers_and_list,
     test,
+    the_csv,
 )
 from odk2gn.tests.fixtures import site
 from odk2gn.gn2_utils import (
@@ -53,26 +54,53 @@ class TestUtilsFunctions:
         formated_ds = get_jdd_list(datasets)
         assert formated_ds == [[1, "ds1"], [2, "ds2"]]
 
-    def test_to_csv1(self, header, data):
-        csv = to_csv(header, data)
-        assert csv == "column1,column2" + "\n" + "1,2" + "\n" + "3,4"
+    def test_to_csv1(self, header, data, the_csv):
+        content = to_csv(header, data).split("\n")
+        # load and lib csv
+        with open("test.csv", "r") as file:
+            reader = csv.reader(file)
+            for c in content:
+                c_line = c.split(",")
+                r_line = reader.__next__()
+                assert c_line == r_line
 
-    def test_get_taxon_list1(self, taxon):
-        taxons = get_taxon_list(100)
-        assert taxon in taxons
+    def test_get_taxon_list1(self, taxon_and_list):
+        taxons = get_taxon_list(taxon_and_list["tax_list"].id_liste)
+        # autre chose)
+        assert taxon_and_list["taxon"].cd_nom in [t[0] for t in taxons]
+        assert (
+            type(taxons[0][0]) is int and type(taxons[0][1]) is str and type(taxons[0][2]) is str
+        )
 
     def test_get_observer_list1(self, observers_and_list):
-        observers = get_observer_list(observers_and_list.id_liste)
-        user = observers_and_list.users[0]
+        observers = get_observer_list(observers_and_list["list"].id_liste)
+        print("observers: ", observers)
+        user = observers_and_list["user_list"][0]
+        print(observers[0])
         assert user.id_role in [obs[0] for obs in observers]
+        assert type(observers) is list
+        assert type(observers[0][0]) is int and type(observers[0][1]) is str
 
     def test_get_site_list1(self, site, module):
         sites = get_site_list(module.id_module)
+        print(site, sites)
         assert site.id_base_site in [s[0] for s in sites]
+        assert type(sites) is list
+        assert type(sites[0][0]) is int and type(sites[0][1]) is str
+        geom = sites[0][2].split(" ")
+        assert len(geom) == 2
 
     def test_get_nomenclature_list1(self, nomenclature):
         nomenclatures = get_ref_nomenclature_list(code_nomenclature_type="TEST")
+        print(nomenclatures)
         assert nomenclature.id_nomenclature in [nom[1] for nom in nomenclatures]
+        assert type(nomenclatures) is list
+        assert (
+            type(nomenclatures[0][1]) is int
+            and type(nomenclatures[0][0]) is str
+            and type(nomenclatures[0][2]) is str
+            and type(nomenclatures[0][3]) is str
+        )
 
     def test_bidule(self, test):
         user = db.session.query(User).filter_by(identifiant="bidule").one()
