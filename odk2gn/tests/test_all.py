@@ -16,7 +16,7 @@ from odk2gn.tests.fixtures import (
 )
 from odk2gn.tests.fixtures import site
 from odk2gn.gn2_utils import (
-    get_jdd_list,
+    format_jdd_list,
     to_csv,
     get_site_list,
     get_taxon_list,
@@ -50,8 +50,8 @@ class TestCommand:
 
 @pytest.mark.usefixtures("temporary_transaction")
 class TestUtilsFunctions:
-    def test_get_jdd_list1(self, datasets):
-        ds = get_jdd_list(datasets)
+    def test_format_jdd_list1(self, datasets):
+        ds = format_jdd_list(datasets)
         print(ds)
         assert type(ds) is list
         dict_cols = set(ds[0].keys())

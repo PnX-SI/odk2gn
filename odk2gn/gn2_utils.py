@@ -48,7 +48,7 @@ def get_gn2_attachments_data(
         files["gn_observateurs.csv"] = to_csv(header=("id_role", "nom_complet"), data=data)
     # JDD
     if not skip_jdd:
-        data = get_jdd_list(module.datasets)
+        data = format_jdd_list(module.datasets)
         files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
     # Sites
     if not skip_sites:
@@ -114,25 +114,17 @@ def get_site_list(id_module: int):
     return data
 
 
-# à refactor
 def get_observer_list(id_liste: int):
     """Return tuple of Observers for id_liste
 
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
-    res = []
-    data = (
-        DB.session.query(VUserslistForallMenu.id_role, VUserslistForallMenu.nom_complet)
-        .filter_by(id_menu=id_liste)
-        .all()
-    )
-    for d in data:
-        res.append({"id_role": d[0], "nom_complet": d[1]})
-    return res
+    data = DB.session.query(VUserslistForallMenu).filter_by(id_menu=id_liste).all()
+    return [obs.as_dict() for obs in data]
 
 
-def get_jdd_list(datasets: list):
+def format_jdd_list(datasets: list):
     """Return tuple of Dataset
 
     :param datasets: List of associated dataset

@@ -13,11 +13,9 @@ from pypnusershub.db.models import User
 
 from geonature.utils.env import DB
 
-from odk2gn.gn2_utils import get_jdd_list
+from odk2gn.gn2_utils import format_jdd_list
 
-from gn_module_monitoring.monitoring.models import (
-    TMonitoringModules
-)
+from gn_module_monitoring.monitoring.models import TMonitoringModules
 
 log = logging.getLogger("app")
 
@@ -58,7 +56,7 @@ def parse_and_create_visit(
     }
     observers_list = []
     for key, val in flatten_sub.items():
-       # print(str(key) + ' : ' + str(val) + ', ' )
+        # print(str(key) + ' : ' + str(val) + ', ' )
         odk_column_name = key.split("/")[-1]
         # specifig comment column
         if odk_column_name == module_parser_config["VISIT"].get("comments"):
@@ -69,16 +67,14 @@ def parse_and_create_visit(
         # specific observers repeat
         if odk_column_name == module_parser_config["VISIT"].get("observers_repeat"):
             for role in val:
-                observers_list.append(
-                    int(role[module_parser_config["VISIT"].get("id_observer")])
-                )
-        #print("generic", visit_generic_column)
+                observers_list.append(int(role[module_parser_config["VISIT"].get("id_observer")]))
+        # print("generic", visit_generic_column)
         if odk_column_name in visit_generic_column.keys():
             # get val or the default value define in gn_monitoring json
-            visit_dict_to_post[odk_column_name] = val or visit_generic_column[
-                odk_column_name
-            ].get("value")
-                
+            visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get(
+                "value"
+            )
+
         elif odk_column_name in visit_specific_column.keys():
             odk_field = odk_form_schema.get_field_info(odk_column_name)
             if odk_field["selectMultiple"]:
@@ -88,24 +84,19 @@ def parse_and_create_visit(
             visit_dict_to_post["data"][odk_column_name] = val or visit_specific_column[
                 odk_column_name
             ].get("value")
-        
-    if visit_dict_to_post['id_dataset'] == None:
-        jdds = get_jdd_list(gn_module.datasets)
-        if len(jdds) == 1: 
+
+    if visit_dict_to_post["id_dataset"] == None:
+        jdds = format_jdd_list(gn_module.datasets)
+        if len(jdds) == 1:
             val = jdds[0][0]
-            visit_dict_to_post['id_dataset'] = val
+            visit_dict_to_post["id_dataset"] = val
         else:
             raise Exception("Only one dataset should be passed this way.")
-        
 
     visit = TMonitoringVisits(**visit_dict_to_post)
-    visit.observers = (
-        DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
-    )
+    visit.observers = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
     specific_column_posted = visit_dict_to_post["data"].keys()
-    missing_visit_cols_from_odk = list(
-        set(visit_specific_column) - set(specific_column_posted)
-    )
+    missing_visit_cols_from_odk = list(set(visit_specific_column) - set(specific_column_posted))
     if len(missing_visit_cols_from_odk) > 0:
         log.warning(
             "The following specific columns are missing from ODK form :\n-{}".format(
@@ -138,15 +129,15 @@ def parse_and_create_obs(
     # TODO : make a class and not get these column a each loop
     observation_generic_column = monitoring_config["observation"]["generic"]
     observation_specific_column = monitoring_config["observation"]["specific"]
-   
+
     observation_dict_to_post = {
         "uuid_observation": gn_uuid_obs,
         "data": {},
     }
-    
+
     for key, val in flatten_obs.items():
         odk_column_name = key.split("/")[-1]
-        
+
         # specifig comment column
         if odk_column_name == module_parser_config["OBSERVATION"].get("comments"):
             observation_dict_to_post["comments"] = val
@@ -154,26 +145,26 @@ def parse_and_create_obs(
         if odk_column_name == module_parser_config["OBSERVATION"].get("media"):
             obs_media_name = val
         if odk_column_name in observation_generic_column.keys():
-            observation_dict_to_post[
+            observation_dict_to_post[odk_column_name] = val or observation_generic_column[
                 odk_column_name
-            ] = val or observation_generic_column[odk_column_name].get("value")
+            ].get("value")
         elif odk_column_name in observation_specific_column.keys():
             odk_field = odk_form_schema.get_field_info(odk_column_name)
-            column_widget = observation_specific_column[odk_column_name].get('type_widget')
+            column_widget = observation_specific_column[odk_column_name].get("type_widget")
             print(column_widget)
-            if odk_field['type'] == 'string' and column_widget == 'nomenclature':
+            if odk_field["type"] == "string" and column_widget == "nomenclature":
                 org_val = val
                 try:
                     val = int(val, 10)
                 except ValueError:
-                        val = org_val
+                    val = org_val
 
-            #if odk_specific_column['type_widget'] == 'nomenclature' and odk_field['type'] == 'string' :
+            # if odk_specific_column['type_widget'] == 'nomenclature' and odk_field['type'] == 'string' :
             if odk_field["selectMultiple"]:
                 if val:
                     # HACK -> convert mutliSelect in list and replace _ by espace
                     val = [v.replace("_", " ") for v in val.split(" ")]
-            observation_dict_to_post["data"][
+            observation_dict_to_post["data"][odk_column_name] = val or observation_specific_column[
                 odk_column_name
-            ] = val or observation_specific_column[odk_column_name].get("value")
+            ].get("value")
     return TMonitoringObservations(**observation_dict_to_post)
