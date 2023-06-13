@@ -89,10 +89,18 @@ class TestUtilsFunctions:
 
     def test_get_nomenclature_list1(self, nomenclature):
         nomenclatures = get_ref_nomenclature_list(code_nomenclature_type="TEST")
-        print(nomenclatures)
         assert nomenclature.id_nomenclature in [nom["id_nomenclature"] for nom in nomenclatures]
         assert type(nomenclatures) is list
         dict_cols = set(nomenclatures[0].keys())
+        assert set(
+            ["code_nomenclature_type", "id_nomenclature", "cd_nomenclature", "label_default"]
+        ).issubset(dict_cols)
+        assert nomenclatures[0]["code_nomenclature_type"] == "TEST"
+        noms2 = get_ref_nomenclature_list(code_nomenclature_type="TEST", cd_nomenclatures=["test"])
+        print(noms2)
+        assert nomenclature.id_nomenclature in [nom["id_nomenclature"] for nom in noms2]
+        assert type(noms2) is list
+        dict_cols = set(noms2[0].keys())
         assert set(
             ["code_nomenclature_type", "id_nomenclature", "cd_nomenclature", "label_default"]
         ).issubset(dict_cols)
