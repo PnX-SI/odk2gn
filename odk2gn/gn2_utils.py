@@ -1,5 +1,7 @@
 import logging
 import os
+import csv
+import tempfile
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import func
 from geonature.utils.env import DB
@@ -72,19 +74,19 @@ def get_gn2_attachments_data(
 
 
 def get_taxon_list(id_liste: int):
-    """Return tuple of Taxref for id_liste
+    """Return dict of Taxref
 
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
     data = (
-        DB.session.query(Taxref.cd_nom, Taxref.nom_complet, Taxref.nom_vern)
+        DB.session.query(Taxref)
         .filter(BibNoms.cd_nom == Taxref.cd_nom)
         .filter(BibNoms.id_nom == CorNomListe.id_nom)
         .filter(CorNomListe.id_liste == id_liste)
         .all()
     )
-    return data
+    return [tax.as_dict() for tax in data]
 
 
 def get_site_list(id_module: int):
@@ -106,6 +108,9 @@ def get_site_list(id_module: int):
         .filter(TBaseSites.modules.any(id_module=id_module))
         .all()
     )
+    res = []
+    for d in data:
+        res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
     return data
 
 
@@ -116,12 +121,15 @@ def get_observer_list(id_liste: int):
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
+    res = []
     data = (
         DB.session.query(VUserslistForallMenu.id_role, VUserslistForallMenu.nom_complet)
         .filter_by(id_menu=id_liste)
         .all()
     )
-    return data
+    for d in data:
+        res.append({"id_role": d[0], "nom_complet": d[1]})
+    return res
 
 
 def get_jdd_list(datasets: list):
@@ -132,7 +140,7 @@ def get_jdd_list(datasets: list):
     """
     data = []
     for jdd in datasets:
-        data.append([jdd.id_dataset, jdd.dataset_name])
+        data.append({"id_dataset": jdd.id_dataset, "dataset_name": jdd.dataset_name})
     return data
 
 
@@ -164,8 +172,17 @@ def get_ref_nomenclature_list(
         ).filter(CorTaxrefNomenclature.regne == regne)
         if group2_inpn:
             q = q.filter(CorTaxrefNomenclature.group2_inpn == group2_inpn)
-
-    return q.all()
+    res = []
+    for d in q.all():
+        res.append(
+            {
+                "code_nomenclature_type": d[0],
+                "id_nomenclature": d[1],
+                "cd_nomenclature": d[2],
+                "label_default": d[3],
+            }
+        )
+        return res
 
 
 def get_nomenclature_data(nomenclatures_fields):
@@ -175,18 +192,15 @@ def get_nomenclature_data(nomenclatures_fields):
     return data
 
 
-def to_csv(header, data):
-    """Return tuple in csv format
-
-    :param header: _description_
-    :type header: _type_
-    :param data: _description_
-    :type data: _type_
-    :return: _description_
-    :rtype: _type_
-    """
-    out = []
-    out.append(",".join(header))
-    for d in data:
-        out.append(",".join(map(str, d)))
-    return "\n".join(out)
+def to_csv(header: list[str], data: list[dict]):
+    temp_csv = tempfile.NamedTemporaryFile(delete=False)
+    with open(temp_csv.name, "w") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=header, extrasaction="ignore")
+        writer.writeheader()
+        for row in data:
+            writer.writerow(row)
+    res = None
+    with open(temp_csv.name, "r") as csvfile:
+        res = csvfile.read()
+    os.unlink(temp_csv.name)
+    return res

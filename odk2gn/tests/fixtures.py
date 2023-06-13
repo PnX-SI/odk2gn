@@ -97,12 +97,12 @@ def module():
 
 @pytest.fixture(scope="function")
 def header():
-    return ("column1", "column2")
+    return ["column1", "column2"]
 
 
 @pytest.fixture(scope="function")
 def data():
-    return ("1", "2"), ("3", "4")
+    return [["1", "2"], ["3", "4"]]
 
 
 @pytest.fixture

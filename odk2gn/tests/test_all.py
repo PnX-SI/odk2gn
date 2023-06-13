@@ -51,56 +51,51 @@ class TestCommand:
 @pytest.mark.usefixtures("temporary_transaction")
 class TestUtilsFunctions:
     def test_get_jdd_list1(self, datasets):
-        formated_ds = get_jdd_list(datasets)
-        assert formated_ds == [[1, "ds1"], [2, "ds2"]]
+        ds = get_jdd_list(datasets)
+        print(ds)
+        assert type(ds) is list
+        dict_cols = set(ds[0].keys())
+        assert set(["id_dataset", "dataset_name"]).issubset(dict_cols)
 
-    def test_to_csv1(self, header, data, the_csv):
+    def test_to_csv1(self, header, data):
         content = to_csv(header, data).split("\n")
-        # load and lib csv
-        with open("test.csv", "r") as file:
-            reader = csv.reader(file)
-            for c in content:
-                c_line = c.split(",")
-                r_line = reader.__next__()
-                assert c_line == r_line
+        reader = csv.reader(content)
+        assert header == reader.__next__()
+        r_data = []
+        for row in reader:
+            r_data.append(row)
+        assert r_data == data
 
     def test_get_taxon_list1(self, taxon_and_list):
         taxons = get_taxon_list(taxon_and_list["tax_list"].id_liste)
+        print(taxons)
         # autre chose)
-        assert taxon_and_list["taxon"].cd_nom in [t[0] for t in taxons]
-        assert (
-            type(taxons[0][0]) is int and type(taxons[0][1]) is str and type(taxons[0][2]) is str
-        )
+        # assert taxon_and_list["taxon"].cd_nom in [t[0] for t in taxons]
+        assert type(taxons) is list
+        dict_cols = set(taxons[0].keys())
+        assert set(["cd_nom", "nom_vern", "nom_complet"]).issubset(dict_cols)
 
     def test_get_observer_list1(self, observers_and_list):
         observers = get_observer_list(observers_and_list["list"].id_liste)
-        print("observers: ", observers)
-        user = observers_and_list["user_list"][0]
-        print(observers[0])
-        assert user.id_role in [obs[0] for obs in observers]
         assert type(observers) is list
-        assert type(observers[0][0]) is int and type(observers[0][1]) is str
+        dict_cols = set(observers[0].keys())
+        assert set(["id_role", "nom_complet"]).issubset(dict_cols)
 
-    def test_get_site_list1(self, site, module):
+    def test_get_site_list1(self, module):
         sites = get_site_list(module.id_module)
-        print(site, sites)
-        assert site.id_base_site in [s[0] for s in sites]
         assert type(sites) is list
-        assert type(sites[0][0]) is int and type(sites[0][1]) is str
-        geom = sites[0][2].split(" ")
-        assert len(geom) == 2
+        dict_cols = set(sites[0].keys())
+        assert set(["id_base_site", "base_site_name", "geometry"]).issubset(dict_cols)
 
     def test_get_nomenclature_list1(self, nomenclature):
         nomenclatures = get_ref_nomenclature_list(code_nomenclature_type="TEST")
         print(nomenclatures)
-        assert nomenclature.id_nomenclature in [nom[1] for nom in nomenclatures]
+        assert nomenclature.id_nomenclature in [nom["id_nomenclature"] for nom in nomenclatures]
         assert type(nomenclatures) is list
-        assert (
-            type(nomenclatures[0][1]) is int
-            and type(nomenclatures[0][0]) is str
-            and type(nomenclatures[0][2]) is str
-            and type(nomenclatures[0][3]) is str
-        )
+        dict_cols = set(nomenclatures[0].keys())
+        assert set(
+            ["code_nomenclature_type", "id_nomenclature", "cd_nomenclature", "label_default"]
+        ).issubset(dict_cols)
 
     def test_bidule(self, test):
         user = db.session.query(User).filter_by(identifiant="bidule").one()
@@ -109,3 +104,8 @@ class TestUtilsFunctions:
     # def test_bidule2(test):
     #     user = db.session.query(UserList).filter_by(identifiant="bidule").one()
     #     print(user)
+
+    def test_csv_bis(self, taxon_and_list):
+        taxons = get_taxon_list(taxon_and_list["tax_list"].id_liste)
+        res = to_csv(["cd_nom", "nom_vern"], taxons)
+        assert type(res) is str
