@@ -66,11 +66,29 @@ def taxon_and_list():
 
 
 @pytest.fixture()
-def submissions():
-    return [
-        {"sub_id": 1, "taxon": "Homo sapiens"},
-        {"sub_id": 22, "taxon": "Nardus stricta"},
+def submissions(site, observers_and_list):
+    sub = [
+        {
+            "sub_id": 1,
+            "taxon": "Homo sapiens",
+            "id_base_site": site.id_base_site,
+            "base_site_name": site.base_site_name,
+            "visit_1": {"observaters": [{"id_role": observers_and_list["user_list"][0].id_role}]},
+            "observations": [],
+        },
+        {
+            "sub_id": 22,
+            "taxon": "Nardus stricta",
+            "id_base_site": site.id_base_site,
+            "base_site_name": site.base_site_name,
+            "visit_1": {
+                "observaters": [{"id_role": observers_and_list["user_list"][0].id_role}],
+                "observations": [],
+            },
+        },
     ]
+
+    return sub
 
 
 @pytest.fixture(scope="function")
@@ -171,3 +189,54 @@ def observers_and_list():
         db.session.add(obs)
         db.session.add(obs_list)
     return {"list": obs_list, "user_list": obs_list.users}
+
+
+[
+    {
+        "__id": "uuid:e7f07ff5-35ca-4184-aa92-2f137bcebe35",
+        "start": "2023-06-14T12:00:46.971+02:00",
+        "end": "2023-06-14T12:01:13.191+02:00",
+        "day": "2023-06-14",
+        "deviceid": "odk-test.cevennes-parcnational.net:zgUu1bxrv1KQfdaO",
+        "presentation": None,
+        "method_site_choice": "map",
+        "visit_point": {"site_list": None, "site_map": "20"},
+        "id_base_site": "20",
+        "base_site_name": "placette_1",
+        "visit_1": {
+            "visit_date_min": "2023-06-14T12:00:46.983+02:00",
+            "visit_date_max": "2023-06-14T12:00:46.989+02:00",
+            "hauteur_nard": 1,
+            "hauteur_moy_vegetation": 1,
+            "id_nomenclature_tech_collecte_campanule": None,
+            "observers@odata.navigationLink": "Submissions('uuid%3Ae7f07ff5-35ca-4184-aa92-2f137bcebe35')/visit_1/observers",
+            "observers": [{"id_role": "3", "__id": "419e8f3d180d9770eb46577c85ef9a29951d290f"}],
+        },
+        "medias_visit": None,
+        "dataset": {"id_dataset": None, "comments_visit": None},
+        "meta": {"instanceID": "uuid:e7f07ff5-35ca-4184-aa92-2f137bcebe35"},
+        "__system": {
+            "submissionDate": "2023-06-14T09:59:43.639Z",
+            "updatedAt": None,
+            "submitterId": "98",
+            "submitterName": "Xavier Davis",
+            "attachmentsPresent": 0,
+            "attachmentsExpected": 0,
+            "status": None,
+            "reviewState": None,
+            "deviceId": None,
+            "edits": 0,
+            "formVersion": "2023-05-26 12:14:25.534367",
+        },
+        "observations@odata.navigationLink": "Submissions('uuid%3Ae7f07ff5-35ca-4184-aa92-2f137bcebe35')/observations",
+        "observations": [
+            {
+                "sp_choice": {"cd_nom": "195069", "pourcentage_recouvrement": 100},
+                "sp_label": None,
+                "sp_nbre": {"comments_observation": None},
+                "medias_observation": None,
+                "__id": "f21f5277f567b332aadebb3a388cc203debf8123",
+            }
+        ],
+    }
+]

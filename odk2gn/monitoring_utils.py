@@ -88,7 +88,7 @@ def parse_and_create_visit(
     if visit_dict_to_post["id_dataset"] == None:
         jdds = format_jdd_list(gn_module.datasets)
         if len(jdds) == 1:
-            val = jdds[0][0]
+            val = jdds[0]["id_dataset"]
             visit_dict_to_post["id_dataset"] = val
         else:
             raise Exception("Only one dataset should be passed this way.")
@@ -103,6 +103,7 @@ def parse_and_create_visit(
                 "\n-".join(missing_visit_cols_from_odk)
             )
         )
+    print(visit)
     return visit
 
 
@@ -167,4 +168,6 @@ def parse_and_create_obs(
             observation_dict_to_post["data"][odk_column_name] = val or observation_specific_column[
                 odk_column_name
             ].get("value")
-    return TMonitoringObservations(**observation_dict_to_post)
+    obs = TMonitoringObservations(**observation_dict_to_post)
+    print(obs)
+    return TMonitoringObservations(obs)

@@ -1,4 +1,6 @@
 import pytest, csv, sys
+from click.testing import CliRunner
+
 
 from odk2gn.tests.fixtures import (
     submissions,
@@ -33,16 +35,20 @@ from pypnusershub.db.models import UserList, User
 from geonature.utils.env import db
 
 
-@pytest.mark.usefixtures()
+@pytest.mark.usefixtures("temporary_transaction")
 class TestCommand:
-    def test_synchronize_monitoring(self, mocker, submissions):
-        from odk2gn.main import dummy
+    def test_synchronize_monitoring(self, module, mocker, submissions):
+        from odk2gn.main import dummy, synchronize_monitoring, get_submissions
 
+        print(submissions)
         mocker.patch("odk2gn.main.get_submissions", return_value=submissions)
-
+        runner = CliRunner()
+        result = runner.invoke(
+            synchronize_monitoring, [module.module_code, "--project_id", 99, "--form_id", "bidon"]
+        )
         # la vrai fonction a "mocker" est synchronize_monitoring et non 'dummy'
-        submissions = dummy()
-        assert isinstance(submissions, list)
+        print(result.output, result.exit_code)
+        assert result.exit_code == 0
 
     """def test_upgrade_odk_form_monitoring(self, mocker):
       assert """

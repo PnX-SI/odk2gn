@@ -56,8 +56,10 @@ def synchronize():
 def upgrade_odk_form():
     pass
 
+
 def dummy():
     return get_submissions(1, "deux")
+
 
 @click.command()
 @click.option("--project_id", required=True, type=int)
@@ -106,9 +108,7 @@ def get_and_post_medium(
             media = TMedias(**media)
             DB.session.add(media)
             DB.session.commit()
-            with open(
-                BACKEND_DIR / "media" / "attachments" / medias_name, "wb"
-            ) as out_file:
+            with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
                 out_file.write(img.content)
 
 
@@ -178,9 +178,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                     project_id=project_id,
                     form_id=form_id,
                     uuid_sub=flatten_data.get("meta/instanceID"),
-                    filename=flatten_obs.get(
-                        module_parser_config["OBSERVATION"]["media"]
-                    ),
+                    filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
                     monitoring_table="t_observations",
                     media_type=module_parser_config["OBSERVATION"]["media_type"],
                     uuid_gn_object=gn_uuid_obs,
@@ -201,6 +199,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 update_review_state(project_id, form_id, sub["__id"], "hasIssues")
 
                 DB.session.rollback()
+    return {"visit": visit, "observation": observation or None}
 
 
 @upgrade_odk_form.command(name="monitoring")
