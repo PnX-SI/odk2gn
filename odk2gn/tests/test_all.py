@@ -1,5 +1,6 @@
 import pytest, csv, sys
 from click.testing import CliRunner
+import uuid
 
 
 from odk2gn.tests.fixtures import (
@@ -15,6 +16,10 @@ from odk2gn.tests.fixtures import (
     observers_and_list,
     test,
     the_csv,
+    mon_schema_fields,
+    my_config,
+    visit,
+    attachment,
 )
 from odk2gn.tests.fixtures import site
 from odk2gn.gn2_utils import (
@@ -25,29 +30,36 @@ from odk2gn.gn2_utils import (
     get_observer_list,
     get_nomenclature_data,
     get_ref_nomenclature_list,
+    get_modules_info,
 )
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import to_wkt
 
-# from odk2gn.odk_api import dummy
+from odk2gn.odk_api import ODKSchema
 
 from pypnusershub.db.models import UserList, User
 
 from geonature.utils.env import db
 
 
+from odk2gn.main import synchronize, synchronize_monitoring, get_submissions
+
+
 @pytest.mark.usefixtures("temporary_transaction")
 class TestCommand:
-    def test_synchronize_monitoring(self, module, mocker, submissions):
-        from odk2gn.main import dummy, synchronize_monitoring, get_submissions
-
-        print(submissions)
+    def test_synchronize_monitoring(
+        self, mocker, submissions, mon_schema_fields, module, my_config, attachment
+    ):
         mocker.patch("odk2gn.main.get_submissions", return_value=submissions)
+        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
+        mocker.patch("odk2gn.main.get_config", return_value=my_config)
+        mocker.patch("odk2gn.main.get_attachment", return_value=attachment)
         runner = CliRunner()
         result = runner.invoke(
-            synchronize_monitoring, [module.module_code, "--project_id", 99, "--form_id", "bidon"]
+            synchronize,
+            ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
         )
         # la vrai fonction a "mocker" est synchronize_monitoring et non 'dummy'
-        print(result.output, result.exit_code)
+        print(result.exit_code, result.output, result.exc_info)
         assert result.exit_code == 0
 
     """def test_upgrade_odk_form_monitoring(self, mocker):
@@ -114,6 +126,10 @@ class TestUtilsFunctions:
     def test_bidule(self, test):
         user = db.session.query(User).filter_by(identifiant="bidule").one()
         print(user)
+
+    def test_get_modules_info1(self, module):
+        mod = get_modules_info(module.module_code)
+        assert mod == module
 
     # def test_bidule2(test):
     #     user = db.session.query(UserList).filter_by(identifiant="bidule").one()

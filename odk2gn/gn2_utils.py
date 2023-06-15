@@ -25,7 +25,7 @@ def get_modules_info(module_code: str):
         ).one()
         return module
     except NoResultFound:
-        log.error(f"No GeoNature module found for {module_code.lower()}")
+        log.error(f"No GeoNature module found for {module_code}")
         raise
 
 

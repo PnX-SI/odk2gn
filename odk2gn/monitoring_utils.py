@@ -103,7 +103,7 @@ def parse_and_create_visit(
                 "\n-".join(missing_visit_cols_from_odk)
             )
         )
-    print(visit)
+
     return visit
 
 

@@ -130,16 +130,18 @@ def synchronize_monitoring(module_code, project_id, form_id):
             module_parser_config = {}
         module_parser_config = ProcoleSchema().load(module_parser_config)
         gn_module = get_modules_info(module_code)
+
         monitoring_config = get_config(module_code)
         form_data = get_submissions(project_id, form_id)
-        print(form_data)
         for sub in form_data:
+            print(sub)
             flatten_data = flatdict.FlatDict(sub, delimiter="/")
             observations_list = []
             try:
                 observations_list = flatten_data.pop(
                     module_parser_config["OBSERVATION"]["observations_repeat"]
                 )
+
                 assert type(observations_list) is list
             except KeyError:
                 log.warning("No observation for this visit")
@@ -153,6 +155,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 gn_module,
                 odk_form_schema,
             )
+            print(visit)
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
@@ -162,6 +165,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 media_type=module_parser_config["VISIT"]["media_type"],
                 uuid_gn_object=visit.uuid_base_visit,
             )
+            print("allo")
 
             for obs in observations_list:
                 gn_uuid_obs = uuid.uuid4()
@@ -188,6 +192,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
             try:
                 DB.session.commit()
                 update_review_state(project_id, form_id, sub["__id"], "approved")
+
             except SQLAlchemyError as e:
                 log.error("Error while posting data")
                 log.error(str(e))
@@ -197,9 +202,8 @@ def synchronize_monitoring(module_code, project_id, form_id):
                     msg_html=str(e),
                 )
                 update_review_state(project_id, form_id, sub["__id"], "hasIssues")
-
+                print("aaaaa")
                 DB.session.rollback()
-    return {"visit": visit, "observation": observation or None}
 
 
 @upgrade_odk_form.command(name="monitoring")

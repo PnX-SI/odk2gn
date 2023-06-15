@@ -69,23 +69,14 @@ def taxon_and_list():
 def submissions(site, observers_and_list):
     sub = [
         {
-            "sub_id": 1,
-            "taxon": "Homo sapiens",
-            "id_base_site": site.id_base_site,
-            "base_site_name": site.base_site_name,
-            "visit_1": {"observaters": [{"id_role": observers_and_list["user_list"][0].id_role}]},
-            "observations": [],
-        },
-        {
-            "sub_id": 22,
-            "taxon": "Nardus stricta",
-            "id_base_site": site.id_base_site,
-            "base_site_name": site.base_site_name,
-            "visit_1": {
-                "observaters": [{"id_role": observers_and_list["user_list"][0].id_role}],
+            "site": {
+                "id_base_site": site.id_base_site,
+                "base_site_name": site.base_site_name,
+                "visit": {"observers": [{"id_role": observers_and_list["user_list"][0].id_role}]},
+                "dataset": {"id_dataset": 1},
                 "observations": [],
             },
-        },
+        }
     ]
 
     return sub
@@ -191,52 +182,173 @@ def observers_and_list():
     return {"list": obs_list, "user_list": obs_list.users}
 
 
-[
-    {
-        "__id": "uuid:e7f07ff5-35ca-4184-aa92-2f137bcebe35",
-        "start": "2023-06-14T12:00:46.971+02:00",
-        "end": "2023-06-14T12:01:13.191+02:00",
-        "day": "2023-06-14",
-        "deviceid": "odk-test.cevennes-parcnational.net:zgUu1bxrv1KQfdaO",
-        "presentation": None,
-        "method_site_choice": "map",
-        "visit_point": {"site_list": None, "site_map": "20"},
-        "id_base_site": "20",
-        "base_site_name": "placette_1",
-        "visit_1": {
-            "visit_date_min": "2023-06-14T12:00:46.983+02:00",
-            "visit_date_max": "2023-06-14T12:00:46.989+02:00",
-            "hauteur_nard": 1,
-            "hauteur_moy_vegetation": 1,
-            "id_nomenclature_tech_collecte_campanule": None,
-            "observers@odata.navigationLink": "Submissions('uuid%3Ae7f07ff5-35ca-4184-aa92-2f137bcebe35')/visit_1/observers",
-            "observers": [{"id_role": "3", "__id": "419e8f3d180d9770eb46577c85ef9a29951d290f"}],
+# _get_schema_fields_data
+
+
+@pytest.fixture(scope="function")
+def mon_schema_fields():
+    return [
+        {
+            "path": "/start",
+            "name": "start",
+            "type": "dateTime",
+            "binary": None,
+            "selectMultiple": None,
         },
-        "medias_visit": None,
-        "dataset": {"id_dataset": None, "comments_visit": None},
-        "meta": {"instanceID": "uuid:e7f07ff5-35ca-4184-aa92-2f137bcebe35"},
-        "__system": {
-            "submissionDate": "2023-06-14T09:59:43.639Z",
-            "updatedAt": None,
-            "submitterId": "98",
-            "submitterName": "Xavier Davis",
-            "attachmentsPresent": 0,
-            "attachmentsExpected": 0,
-            "status": None,
-            "reviewState": None,
-            "deviceId": None,
-            "edits": 0,
-            "formVersion": "2023-05-26 12:14:25.534367",
+        {
+            "path": "/end",
+            "name": "end",
+            "type": "dateTime",
+            "binary": None,
+            "selectMultiple": None,
         },
-        "observations@odata.navigationLink": "Submissions('uuid%3Ae7f07ff5-35ca-4184-aa92-2f137bcebe35')/observations",
-        "observations": [
-            {
-                "sp_choice": {"cd_nom": "195069", "pourcentage_recouvrement": 100},
-                "sp_label": None,
-                "sp_nbre": {"comments_observation": None},
-                "medias_observation": None,
-                "__id": "f21f5277f567b332aadebb3a388cc203debf8123",
-            }
-        ],
-    }
-]
+        {"path": "/day", "name": "day", "type": "date", "binary": None, "selectMultiple": None},
+        {
+            "path": "/deviceid",
+            "name": "deviceid",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/presentation",
+            "name": "presentation",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/method_site_choice",
+            "name": "method_site_choice",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_point",
+            "name": "visit_point",
+            "type": "structure",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_point/site_list",
+            "name": "site_list",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_point/site_map",
+            "name": "site_map",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/id_base_site",
+            "name": "id_base_site",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/base_site_name",
+            "name": "base_site_name",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_1",
+            "name": "visit_1",
+            "type": "structure",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_1/visit_date_min",
+            "name": "visit_date_min",
+            "type": "dateTime",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_1/visit_date_max",
+            "name": "visit_date_max",
+            "type": "dateTime",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_1/observers",
+            "name": "observers",
+            "type": "repeat",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/visit_1/observers/id_role",
+            "name": "id_role",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/dataset",
+            "name": "dataset",
+            "type": "structure",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/dataset/id_dataset",
+            "name": "id_dataset",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/dataset/comments_visit",
+            "name": "comments_visit",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/observations",
+            "name": "observations",
+            "type": "repeat",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/meta",
+            "name": "meta",
+            "type": "structure",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/meta/instanceID",
+            "name": "instanceID",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+    ]
+
+
+@pytest.fixture(scope="function")
+def my_config():
+    return {"tree": {"module": {"site": {"visit": {"observation"}}}}}
+
+
+@pytest.fixture(scope="function")
+def attachment():
+    return ""
+
+
+@pytest.fixture(scope="function")
+def visit(submissions):
+    return submissions[0]["site"]["visit"]
