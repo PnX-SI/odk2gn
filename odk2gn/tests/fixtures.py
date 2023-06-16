@@ -1,13 +1,13 @@
 import pytest, csv
 import uuid
-
+import datetime
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import to_wkt
 from geonature.utils.env import db
 from geonature import create_app
 from geonature.core.gn_meta.models import TDatasets
 from sqlalchemy.event import listen, remove
 from geonature.core.gn_commons.models import TModules
-
+from gn_module_monitoring.config.repositories import get_config
 from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
@@ -66,17 +66,21 @@ def taxon_and_list():
 
 
 @pytest.fixture()
-def submissions(site, observers_and_list):
+def submissions(site, observers_and_list, module, taxon_and_list):
     sub = [
         {
-            "site": {
-                "id_base_site": site.id_base_site,
-                "base_site_name": site.base_site_name,
-                "visit": {"observers": [{"id_role": observers_and_list["user_list"][0].id_role}]},
-                "dataset": {"id_dataset": 1},
-                "observations": [],
+            "__id": str(uuid.uuid4()),
+            "id_base_site": site.id_base_site,
+            "base_site_name": site.base_site_name,
+            "visit": {
+                "visit_date_min": datetime.date.today(),
+                "id_module": module.id_module,
+                "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
+                "hauteur_moy_vegetation": 12,
             },
-        }
+            "dataset": {"id_dataset": 1},
+            "observations": [{"cd_nom": taxon_and_list["taxon"].cd_nom, "comptage": 1}],
+        },
     ]
 
     return sub
@@ -341,7 +345,7 @@ def mon_schema_fields():
 
 @pytest.fixture(scope="function")
 def my_config():
-    return {"tree": {"module": {"site": {"visit": {"observation"}}}}}
+    return get_config()
 
 
 @pytest.fixture(scope="function")
@@ -352,3 +356,34 @@ def attachment():
 @pytest.fixture(scope="function")
 def visit(submissions):
     return submissions[0]["site"]["visit"]
+
+
+{
+    "__id": "uuid:4602b51f-557c-4232-af32-7ecf657e25fe",
+    "id_base_site": "6494",
+    "base_site_name": "Maison Deroy",
+    "visit_1": {
+        "visit_date_min": "2023-05-24T14:27:00.000+02:00",
+        "observers": [{"id_role": "1604", "__id": "1f7495d11ab7477b290f7cf8349e272d984c66a9"}],
+    },
+    "dataset": {
+        "id_dataset": None,
+    },
+    "no_data": "chiro",
+    "observations@odata.navigationLink": "Submissions('uuid%3A4602b51f-557c-4232-af32-7ecf657e25fe')/observations",
+    "observations": [
+        {
+            "sp_choice": {"cd_nom": "186233"},
+            "id_nomenclature_behaviour": None,
+            "id_nomenclature_bio_condition": None,
+            "id_nomenclature_bio_status": None,
+            "id_nomenclature_obs_technique": None,
+            "id_nomenclature_life_stage": None,
+            "id_nomenclature_sex": None,
+            "sp_label": None,
+            "sp_nbre": {"count_min": 1, "count_max": 1, "comments_observation": None},
+            "medias_observation": None,
+            "__id": "f531cb5d8c817cdd8b9ee64f4019a0e3f27ff89f",
+        }
+    ],
+}

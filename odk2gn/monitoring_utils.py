@@ -152,12 +152,11 @@ def parse_and_create_obs(
         elif odk_column_name in observation_specific_column.keys():
             odk_field = odk_form_schema.get_field_info(odk_column_name)
             column_widget = observation_specific_column[odk_column_name].get("type_widget")
-            print(column_widget)
             if odk_field["type"] == "string" and column_widget == "nomenclature":
                 org_val = val
                 try:
                     val = int(val, 10)
-                except ValueError:
+                except:
                     val = org_val
 
             # if odk_specific_column['type_widget'] == 'nomenclature' and odk_field['type'] == 'string' :
@@ -169,5 +168,4 @@ def parse_and_create_obs(
                 odk_column_name
             ].get("value")
     obs = TMonitoringObservations(**observation_dict_to_post)
-    print(obs)
-    return TMonitoringObservations(obs)
+    return obs

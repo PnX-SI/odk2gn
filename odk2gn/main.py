@@ -192,6 +192,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 odk_form_schema,
                 gn_uuid_obs,
             )
+            print(observation)
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
@@ -204,10 +205,13 @@ def synchronize_monitoring(module_code, project_id, form_id):
             visit.observations.append(observation)
         DB.session.add(visit)
         try:
+            print("ça marche")
             DB.session.commit()
+            print("ça marche toujours")
             update_review_state(project_id, form_id, sub["__id"], "approved")
 
         except SQLAlchemyError as e:
+            print("ça marche pas")
             log.error("Error while posting data")
             log.error(str(e))
             send_mail(
