@@ -3,6 +3,8 @@ import click
 import uuid
 
 import flatdict
+from flask import has_app_context
+
 from sqlalchemy.orm import exc
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -49,12 +51,24 @@ pp = pprint.PrettyPrinter(width=41, compact=True)
 
 @click.group()
 def synchronize():
-    pass
+    # For testing we mock an app with an already context pushed
+    # we push app context only if it's not done
+    app = create_app()
+    if not has_app_context():
+        app.app_context().push()
 
 
 @click.group()
 def upgrade_odk_form():
-    pass
+    app = create_app()
+    if not has_app_context():
+        app.app_context().push()
+
+
+@click.command("test")
+def test():
+    fetched_module = get_modules_info("MODULE_1")
+    click.echo("Beau test")
 
 
 def dummy():
@@ -78,6 +92,7 @@ def get_and_post_medium(
     media_type,
     uuid_gn_object,
 ):
+    # TODO : remove app context
     app = create_app()
     with app.app_context():
         img = get_attachment(project_id, form_id, uuid_sub, filename)
@@ -118,92 +133,92 @@ def get_and_post_medium(
 @click.option("--form_id", required=True, type=str)
 def synchronize_monitoring(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
-    app = create_app()
-    with app.app_context() as app_ctx:
-        log.info(f"--- Start synchro for module {module_code} ---")
+
+    log.info(f"--- Start synchro for module {module_code} ---")
+    try:
+        module_parser_config = config[module_code]
+    except KeyError as e:
+        log.warning(
+            f"No mapping found for module {module_code} - get the default ODK monitoring template mapping !  "
+        )
+        module_parser_config = {}
+    module_parser_config = ProcoleSchema().load(module_parser_config)
+    gn_module = get_modules_info(module_code)
+
+    monitoring_config = get_config(module_code)
+    form_data = get_submissions(project_id, form_id)
+    for sub in form_data:
+        print(sub)
+        flatten_data = flatdict.FlatDict(sub, delimiter="/")
+        observations_list = []
         try:
-            module_parser_config = config[module_code]
-        except KeyError as e:
-            log.warning(
-                f"No mapping found for module {module_code} - get the default ODK monitoring template mapping !  "
+            observations_list = flatten_data.pop(
+                module_parser_config["OBSERVATION"]["observations_repeat"]
             )
-            module_parser_config = {}
-        module_parser_config = ProcoleSchema().load(module_parser_config)
-        gn_module = get_modules_info(module_code)
 
-        monitoring_config = get_config(module_code)
-        form_data = get_submissions(project_id, form_id)
-        for sub in form_data:
-            print(sub)
-            flatten_data = flatdict.FlatDict(sub, delimiter="/")
-            observations_list = []
-            try:
-                observations_list = flatten_data.pop(
-                    module_parser_config["OBSERVATION"]["observations_repeat"]
-                )
+            assert type(observations_list) is list
+        except KeyError:
+            log.warning("No observation for this visit")
+        except AssertionError:
+            log.error("Observation node is not a list")
+            raise
+        visit = parse_and_create_visit(
+            flatten_data,
+            module_parser_config,
+            monitoring_config,
+            gn_module,
+            odk_form_schema,
+        )
+        print(visit)
+        get_and_post_medium(
+            project_id=project_id,
+            form_id=form_id,
+            uuid_sub=flatten_data.get("meta/instanceID"),
+            filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
+            monitoring_table="t_base_visits",
+            media_type=module_parser_config["VISIT"]["media_type"],
+            uuid_gn_object=visit.uuid_base_visit,
+        )
+        print("allo")
 
-                assert type(observations_list) is list
-            except KeyError:
-                log.warning("No observation for this visit")
-            except AssertionError:
-                log.error("Observation node is not a list")
-                raise
-            visit = parse_and_create_visit(
-                flatten_data,
+        for obs in observations_list:
+            gn_uuid_obs = uuid.uuid4()
+            flatten_obs = flatdict.FlatDict(obs, delimiter="/")
+
+            observation = parse_and_create_obs(
+                flatten_obs,
                 module_parser_config,
                 monitoring_config,
-                gn_module,
                 odk_form_schema,
+                gn_uuid_obs,
             )
-            print(visit)
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
                 uuid_sub=flatten_data.get("meta/instanceID"),
-                filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
-                monitoring_table="t_base_visits",
-                media_type=module_parser_config["VISIT"]["media_type"],
-                uuid_gn_object=visit.uuid_base_visit,
+                filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
+                monitoring_table="t_observations",
+                media_type=module_parser_config["OBSERVATION"]["media_type"],
+                uuid_gn_object=gn_uuid_obs,
             )
-            print("allo")
+            visit.observations.append(observation)
+        DB.session.add(visit)
+        try:
+            DB.session.commit()
+            update_review_state(project_id, form_id, sub["__id"], "approved")
 
-            for obs in observations_list:
-                gn_uuid_obs = uuid.uuid4()
-                flatten_obs = flatdict.FlatDict(obs, delimiter="/")
-
-                observation = parse_and_create_obs(
-                    flatten_obs,
-                    module_parser_config,
-                    monitoring_config,
-                    odk_form_schema,
-                    gn_uuid_obs,
-                )
-                get_and_post_medium(
-                    project_id=project_id,
-                    form_id=form_id,
-                    uuid_sub=flatten_data.get("meta/instanceID"),
-                    filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
-                    monitoring_table="t_observations",
-                    media_type=module_parser_config["OBSERVATION"]["media_type"],
-                    uuid_gn_object=gn_uuid_obs,
-                )
-                visit.observations.append(observation)
-            DB.session.add(visit)
-            try:
-                DB.session.commit()
-                update_review_state(project_id, form_id, sub["__id"], "approved")
-
-            except SQLAlchemyError as e:
-                log.error("Error while posting data")
-                log.error(str(e))
-                send_mail(
-                    config["gn_odk"]["email_for_error"],
-                    subject="Synchronisation ODK error",
-                    msg_html=str(e),
-                )
-                update_review_state(project_id, form_id, sub["__id"], "hasIssues")
-                print("aaaaa")
-                DB.session.rollback()
+        except SQLAlchemyError as e:
+            log.error("Error while posting data")
+            log.error(str(e))
+            send_mail(
+                config["gn_odk"]["email_for_error"],
+                subject="Synchronisation ODK error",
+                msg_html=str(e),
+            )
+            update_review_state(project_id, form_id, sub["__id"], "hasIssues")
+            print("aaaaa")
+            DB.session.rollback()
+    log.info(f"--- Finish synchronize for module {module_code} ---")
 
 
 @upgrade_odk_form.command(name="monitoring")
@@ -228,7 +243,7 @@ def upgrade_monitoring(
     log.info(f"--- Start upgrade form for module {module_code} ---")
 
     app = create_app()
-
+    # TODO : remove app context
     with app.app_context() as app_ctx:
         # Get Module
         module = get_modules_info(module_code=module_code)

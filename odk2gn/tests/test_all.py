@@ -41,18 +41,20 @@ from pypnusershub.db.models import UserList, User
 from geonature.utils.env import db
 
 
-from odk2gn.main import synchronize, synchronize_monitoring, get_submissions
+from odk2gn.main import synchronize, synchronize_monitoring, get_submissions, test
+from odk2gn.main import get_modules_info
 
 
 @pytest.mark.usefixtures("temporary_transaction")
 class TestCommand:
     def test_synchronize_monitoring(
-        self, mocker, submissions, mon_schema_fields, module, my_config, attachment
+        self, mocker, submissions, mon_schema_fields, module, my_config, attachment, app
     ):
         mocker.patch("odk2gn.main.get_submissions", return_value=submissions)
         mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
         mocker.patch("odk2gn.main.get_config", return_value=my_config)
         mocker.patch("odk2gn.main.get_attachment", return_value=attachment)
+        mocker.patch("odk2gn.main.create_app", return_value=app)
         runner = CliRunner()
         result = runner.invoke(
             synchronize,
@@ -64,6 +66,12 @@ class TestCommand:
 
     """def test_upgrade_odk_form_monitoring(self, mocker):
       assert """
+
+    def test_bis(self, module):
+        runner = CliRunner()
+
+        result = runner.invoke(test)
+        assert result.exit_code == 0
 
 
 @pytest.mark.usefixtures("temporary_transaction")
