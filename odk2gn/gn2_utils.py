@@ -191,10 +191,9 @@ def to_csv(header: list[str], data: list[dict]):
         writer.writeheader()
         for row in data:
             writer.writerow(row)
+
     res = None
     with open(temp_csv.name, "r") as csvfile:
         res = csvfile.read()
-        print("res = ", res)
-    print("hello")
     os.unlink(temp_csv.name)
     return res

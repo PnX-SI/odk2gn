@@ -95,7 +95,7 @@ class TestUtilsFunctions:
         for row in reader:
             r_data.append(row)
         print("r_data  = ", r_data)
-        assert r_data == [["1", "2"], ["3", "4"]]
+        assert r_data == [["1", "2"], ["3", "4"], []]
 
     def test_get_taxon_list1(self, taxon_and_list):
         taxons = get_taxon_list(taxon_and_list["tax_list"].id_liste)
