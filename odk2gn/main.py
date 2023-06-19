@@ -12,7 +12,8 @@ from geonature.app import create_app
 from geonature.utils.env import BACKEND_DIR
 from geonature.core.gn_commons.models import BibTablesLocation
 from pypnnomenclature.models import TNomenclatures
-
+from gn_module_monitoring.monitoring.models import TMonitoringSites
+from geonature.core.gn_monitoring.models import TBaseSites
 from gn_module_monitoring.config.repositories import get_config
 from geonature.utils.utilsmails import send_mail
 from geonature.core.gn_commons.models import TMedias
@@ -93,38 +94,36 @@ def get_and_post_medium(
     uuid_gn_object,
 ):
     # TODO : remove app context
-    app = create_app()
-    with app.app_context():
-        img = get_attachment(project_id, form_id, uuid_sub, filename)
-        if img:
-            uuid_sub = uuid_sub.split(":")[1]
-            medias_name = f"{uuid_sub}_{filename}"
-            table_location = (
-                DB.session.query(BibTablesLocation)
-                .filter_by(
-                    schema_name="gn_monitoring",
-                    table_name=monitoring_table,
-                )
-                .one()
+    img = get_attachment(project_id, form_id, uuid_sub, filename)
+    if img:
+        uuid_sub = uuid_sub.split(":")[1]
+        medias_name = f"{uuid_sub}_{filename}"
+        table_location = (
+            DB.session.query(BibTablesLocation)
+            .filter_by(
+                schema_name="gn_monitoring",
+                table_name=monitoring_table,
             )
-            media_type = (
-                DB.session.query(TNomenclatures)
-                .filter_by(mnemonique=media_type)
-                .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
-                .one()
-            )
-            media = {
-                "media_path": f"media/attachments/{medias_name}",
-                "uuid_attached_row": uuid_gn_object,
-                "id_table_location": table_location.id_table_location,
-                "id_nomenclature_media_type": media_type.id_nomenclature,
-            }
+            .one()
+        )
+        media_type = (
+            DB.session.query(TNomenclatures)
+            .filter_by(mnemonique=media_type)
+            .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
+            .one()
+        )
+        media = {
+            "media_path": f"media/attachments/{medias_name}",
+            "uuid_attached_row": uuid_gn_object,
+            "id_table_location": table_location.id_table_location,
+            "id_nomenclature_media_type": media_type.id_nomenclature,
+        }
 
-            media = TMedias(**media)
-            DB.session.add(media)
-            DB.session.commit()
-            with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
-                out_file.write(img.content)
+        media = TMedias(**media)
+        DB.session.add(media)
+        DB.session.commit()
+        with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
+            out_file.write(img.content)
 
 
 @synchronize.command(name="monitoring")
@@ -148,9 +147,9 @@ def synchronize_monitoring(module_code, project_id, form_id):
     monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
     for sub in form_data:
-        print(sub)
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
         observations_list = []
+
         try:
             observations_list = flatten_data.pop(
                 module_parser_config["OBSERVATION"]["observations_repeat"]
@@ -162,6 +161,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
         except AssertionError:
             log.error("Observation node is not a list")
             raise
+
         visit = parse_and_create_visit(
             flatten_data,
             module_parser_config,
@@ -169,7 +169,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
             gn_module,
             odk_form_schema,
         )
-        print(visit)
+
         get_and_post_medium(
             project_id=project_id,
             form_id=form_id,
@@ -179,7 +179,6 @@ def synchronize_monitoring(module_code, project_id, form_id):
             media_type=module_parser_config["VISIT"]["media_type"],
             uuid_gn_object=visit.uuid_base_visit,
         )
-        print("allo")
 
         for obs in observations_list:
             gn_uuid_obs = uuid.uuid4()
@@ -192,7 +191,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 odk_form_schema,
                 gn_uuid_obs,
             )
-            print(observation)
+
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
@@ -205,13 +204,10 @@ def synchronize_monitoring(module_code, project_id, form_id):
             visit.observations.append(observation)
         DB.session.add(visit)
         try:
-            print("ça marche")
             DB.session.commit()
-            print("ça marche toujours")
             update_review_state(project_id, form_id, sub["__id"], "approved")
 
         except SQLAlchemyError as e:
-            print("ça marche pas")
             log.error("Error while posting data")
             log.error(str(e))
             send_mail(
@@ -220,7 +216,6 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 msg_html=str(e),
             )
             update_review_state(project_id, form_id, sub["__id"], "hasIssues")
-            print("aaaaa")
             DB.session.rollback()
     log.info(f"--- Finish synchronize for module {module_code} ---")
 

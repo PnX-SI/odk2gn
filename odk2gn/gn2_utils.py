@@ -111,7 +111,7 @@ def get_site_list(id_module: int):
     res = []
     for d in data:
         res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
-    return data
+    return res
 
 
 def get_observer_list(id_liste: int):
@@ -194,5 +194,7 @@ def to_csv(header: list[str], data: list[dict]):
     res = None
     with open(temp_csv.name, "r") as csvfile:
         res = csvfile.read()
+        print("res = ", res)
+    print("hello")
     os.unlink(temp_csv.name)
     return res

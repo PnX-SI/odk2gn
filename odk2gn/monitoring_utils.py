@@ -14,7 +14,7 @@ from pypnusershub.db.models import User
 from geonature.utils.env import DB
 
 from odk2gn.gn2_utils import format_jdd_list
-
+from geonature.core.gn_monitoring.models import TBaseSites
 from gn_module_monitoring.monitoring.models import TMonitoringModules
 
 log = logging.getLogger("app")
@@ -44,6 +44,7 @@ def parse_and_create_visit(
 
 
     """
+
     visit_generic_column = monitoring_config["visit"]["generic"]
     visit_specific_column = monitoring_config["visit"]["specific"]
     # get uuid from the submission and use it has visit UUID
@@ -84,7 +85,6 @@ def parse_and_create_visit(
             visit_dict_to_post["data"][odk_column_name] = val or visit_specific_column[
                 odk_column_name
             ].get("value")
-
     if visit_dict_to_post["id_dataset"] == None:
         jdds = format_jdd_list(gn_module.datasets)
         if len(jdds) == 1:
@@ -92,7 +92,6 @@ def parse_and_create_visit(
             visit_dict_to_post["id_dataset"] = val
         else:
             raise Exception("Only one dataset should be passed this way.")
-
     visit = TMonitoringVisits(**visit_dict_to_post)
     visit.observers = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
     specific_column_posted = visit_dict_to_post["data"].keys()
@@ -103,7 +102,6 @@ def parse_and_create_visit(
                 "\n-".join(missing_visit_cols_from_odk)
             )
         )
-
     return visit
 
 

@@ -65,7 +65,7 @@ def taxon_and_list():
     return {"taxon": taxon, "tax_list": taxon_test_list}
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def submissions(site, observers_and_list, module, taxon_and_list):
     sub = [
         {
@@ -82,7 +82,6 @@ def submissions(site, observers_and_list, module, taxon_and_list):
             "observations": [{"cd_nom": taxon_and_list["taxon"].cd_nom, "comptage": 1}],
         },
     ]
-
     return sub
 
 
@@ -115,7 +114,7 @@ def header():
 
 @pytest.fixture(scope="function")
 def data():
-    return [["1", "2"], ["3", "4"]]
+    return [{"column1": "1", "column2": "2"}, {"column1": "3", "column2": "4"}]
 
 
 @pytest.fixture
@@ -140,7 +139,7 @@ def nomenclature():
 
 
 @pytest.fixture(scope="function")
-def site(module):
+def site_type():
     site_type = (
         db.session.query(BibNomenclaturesTypes)
         .filter(BibNomenclaturesTypes.mnemonique == "TYPE_SITE")
@@ -148,29 +147,29 @@ def site(module):
     )
 
     with db.session.begin_nested():
-        # a créer en dehors de la fonction
-        nom = create_nomenclature(
+        site_type_nom = create_nomenclature(
             nomenclature_type=site_type,
             cd_nomenclature="test_site",
             label_default="test_site",
             label_fr="Site Test",
         )
-        nom.active = True
-        db.session.add(nom)
-        db.session.flush()
+        site_type_nom.active = True
+        db.session.add(site_type_nom)
+    return site_type_nom
 
-        mon_site = TMonitoringSites(
+
+@pytest.fixture(scope="function")
+def site(module, site_type):
+    with db.session.begin_nested():
+        b_site = TBaseSites(
             base_site_name="test_site",
             geom=to_wkt(point["geometry"]),
-            id_nomenclature_type_site=nom.id_nomenclature,
-            id_module=module.id_module,
+            id_nomenclature_type_site=site_type.id_nomenclature,
         )
-        mon_site.modules.append(module)
 
-        module.sites.append(mon_site)
-        db.session.add(mon_site)
-
-    return mon_site
+        b_site.modules.append(module)
+        db.session.add(b_site)
+    return b_site
 
 
 @pytest.fixture(scope="function")
@@ -184,9 +183,6 @@ def observers_and_list():
         db.session.add(obs)
         db.session.add(obs_list)
     return {"list": obs_list, "user_list": obs_list.users}
-
-
-# _get_schema_fields_data
 
 
 @pytest.fixture(scope="function")
@@ -344,6 +340,16 @@ def mon_schema_fields():
 
 
 @pytest.fixture(scope="function")
+def mail():
+    pass
+
+
+@pytest.fixture(scope="function")
+def review_state():
+    pass
+
+
+@pytest.fixture(scope="function")
 def my_config():
     return get_config()
 
@@ -351,39 +357,3 @@ def my_config():
 @pytest.fixture(scope="function")
 def attachment():
     return ""
-
-
-@pytest.fixture(scope="function")
-def visit(submissions):
-    return submissions[0]["site"]["visit"]
-
-
-{
-    "__id": "uuid:4602b51f-557c-4232-af32-7ecf657e25fe",
-    "id_base_site": "6494",
-    "base_site_name": "Maison Deroy",
-    "visit_1": {
-        "visit_date_min": "2023-05-24T14:27:00.000+02:00",
-        "observers": [{"id_role": "1604", "__id": "1f7495d11ab7477b290f7cf8349e272d984c66a9"}],
-    },
-    "dataset": {
-        "id_dataset": None,
-    },
-    "no_data": "chiro",
-    "observations@odata.navigationLink": "Submissions('uuid%3A4602b51f-557c-4232-af32-7ecf657e25fe')/observations",
-    "observations": [
-        {
-            "sp_choice": {"cd_nom": "186233"},
-            "id_nomenclature_behaviour": None,
-            "id_nomenclature_bio_condition": None,
-            "id_nomenclature_bio_status": None,
-            "id_nomenclature_obs_technique": None,
-            "id_nomenclature_life_stage": None,
-            "id_nomenclature_sex": None,
-            "sp_label": None,
-            "sp_nbre": {"count_min": 1, "count_max": 1, "comments_observation": None},
-            "medias_observation": None,
-            "__id": "f531cb5d8c817cdd8b9ee64f4019a0e3f27ff89f",
-        }
-    ],
-}
