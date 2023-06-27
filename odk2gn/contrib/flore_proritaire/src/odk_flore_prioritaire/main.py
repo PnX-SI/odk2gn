@@ -39,8 +39,6 @@ def upgrade_odk_form(project_id, form_id):
     """
 
     log.info("--- Start upgrade form for priority flora ---")
-    app = create_app()
-    with app.app_context() as app_ctx:
-        files = write_files()
-        update_form_attachment(project_id, form_id, files)
+    files = write_files()
+    update_form_attachment(project_id, form_id, files)
     log.info("--- Done ---")

@@ -68,10 +68,20 @@ def get_nomenclatures():
         "FREQUENCY_METHOD",
         "COUNTING_TYPE",
     ]
+    res = []
     data = get_nomenclatures_to_filter().filter(
         BibNomenclaturesTypes.mnemonique.in_(nomenclatures)
     )
-    return data
+    for d in data:
+        res.append(
+            {
+                "mnemonique": d[0],
+                "id_nomenclature": d[1],
+                "cd_nomenclature": d[2],
+                "label_default": d[3],
+            }
+        )
+    return res
 
 
 def write_files():
@@ -130,14 +140,21 @@ def format_coords(geom):
     geom -- geoJSON geography
     Return: the argument as just x and y coordinates
     """
-
-    for coords in geom["coordinates"]:
-        for point in coords:
-            if len(point) == 3:
-                point.pop(-1)
-            if len(point) == 4:
-                point.pop(-1)
-                point.pop(-1)
+    if geom["type"] == "Polygon":
+        for coords in geom["coordinates"]:
+            for point in coords:
+                if len(point) == 3:
+                    point.pop(-1)
+                if len(point) == 4:
+                    point.pop(-1)
+                    point.pop(-1)
+    if geom["type"] == "Point":
+        p = geom["coordinates"]
+        if len(p) == 3:
+            p.pop(-1)
+        if len(p) == 4:
+            p.pop(-1)
+            p.pop(-1)
 
 
 def get_nomenclature(id_nomenclature):
@@ -202,17 +219,18 @@ def update_priority_flora_db(project_id, form_id):
         zp = TZprospect()
         zp.id_dataset = id_dataset
         # format the geographical coordinates in WKT with no z coordinate
-        format_coords(sub["zp_geom_4326"])
+        c = format_coords(sub["zp_geom_4326"])
         zp.geom_4326 = to_wkt(sub["zp_geom_4326"])
         zp.cd_nom = sub["cd_nom"]
         zp.date_min = sub["date_min"]
-        zp.date_max = sub["date_max"]
+        zp.date_max = sub["date_min"]
         zp.area = sub["zp_area"]
         zp.initial_insert = "ODK"
         zp.observers = []
         # manage observer list
-        for observer in sub["observaters"]:
-            id_role = nomenclature_to_int(observer["id_role"])
+        observers = sub["observers"].split(" ")
+        for observer in observers:
+            id_role = nomenclature_to_int(observer)
             obs = get_user(id_role)
             zp.observers.append(obs)
         DB.session.add(zp)
@@ -222,13 +240,19 @@ def update_priority_flora_db(project_id, form_id):
             # create and seed the presence area object
             t_ap = TApresence()
             t_ap.id_zp = zp.id_zp
-            format_coords(ap["ap_geom_4326"])
-            t_ap.geom_4326 = to_wkt(ap["ap_geom_4326"])
+            if ap["type_geom"] == "point":
+                ap_geom_4326 = ap["ap_geom_point"]
+                area = ap["situation"]["ap_area_point"]
+            if ap["type_geom"] == "shape":
+                ap_geom_4326 = ap["ap_geom_shape"]
+                area = ap["situation"]["ap_area_shape"]
+            format_coords(ap_geom_4326)
+            t_ap.geom_4326 = to_wkt(ap_geom_4326)
+            t_ap.area = area
             t_ap.altitude_min = None
             t_ap.altitude_max = None
             # situation : all of the geographical info for the ap
             situation = ap["situation"]
-            t_ap.area = situation["ap_area"]
             t_ap.id_nomenclature_incline = nomenclature_to_int(
                 situation["id_nomenclature_incline"]
             )
@@ -297,5 +321,5 @@ def update_priority_flora_db(project_id, form_id):
         except SQLAlchemyError as e:
             log.error("Error while posting data")
             log.error(str(e))
-            update_review_state(project_id, form_id, sub["__id"], "hasIssues")
+            # update_review_state(project_id, form_id, sub["__id"], "hasIssues")
             DB.session.rollback()

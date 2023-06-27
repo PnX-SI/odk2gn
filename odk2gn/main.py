@@ -240,21 +240,19 @@ def upgrade_monitoring(
     skip_nomenclatures,
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
-
-    app = create_app()
-    # TODO : remove app context
-    with app.app_context() as app_ctx:
-        # Get Module
-        module = get_modules_info(module_code=module_code)
-        # Get gn2 attachments data
-        files = get_gn2_attachments_data(
-            module=module,
-            skip_taxons=skip_taxons,
-            skip_observers=skip_observers,
-            skip_jdd=skip_jdd,
-            skip_sites=skip_sites,
-            skip_nomenclatures=skip_nomenclatures,
-        )
-        # Update form
-        update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
+    log.info("on passe ici")
+    module = get_modules_info(module_code=module_code)
+    log.info(module)
+    # Get gn2 attachments data
+    files = get_gn2_attachments_data(
+        module=module,
+        skip_taxons=skip_taxons,
+        skip_observers=skip_observers,
+        skip_jdd=skip_jdd,
+        skip_sites=skip_sites,
+        skip_nomenclatures=skip_nomenclatures,
+    )
+    log.info(files)
+    # Update form
+    update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")

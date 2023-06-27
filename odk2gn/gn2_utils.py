@@ -8,7 +8,7 @@ from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
-from gn_module_monitoring.monitoring.models import TMonitoringModules
+from gn_module_monitoring.monitoring.models import TMonitoringModules, TMonitoringSites
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 
@@ -41,14 +41,17 @@ def get_gn2_attachments_data(
     # Taxon
     if not skip_taxons:
         data = get_taxon_list(module.id_list_taxonomy)
+
         files["gn_taxons.csv"] = to_csv(header=("cd_nom", "nom_complet", "nom_vern"), data=data)
     # Observers
     if not skip_observers:
         data = get_observer_list(module.id_list_observer)
+        print(data)
         files["gn_observateurs.csv"] = to_csv(header=("id_role", "nom_complet"), data=data)
     # JDD
     if not skip_jdd:
         data = format_jdd_list(module.datasets)
+
         files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
     # Sites
     if not skip_sites:
@@ -66,6 +69,7 @@ def get_gn2_attachments_data(
             )
 
         nomenclatures = get_nomenclature_data(n_fields)
+        print(nomenclatures)
         files["gn_nomenclatures.csv"] = to_csv(
             header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
             data=nomenclatures,
@@ -81,12 +85,18 @@ def get_taxon_list(id_liste: int):
     """
     data = (
         DB.session.query(Taxref)
+        .order_by(Taxref.nom_complet)
         .filter(BibNoms.cd_nom == Taxref.cd_nom)
         .filter(BibNoms.id_nom == CorNomListe.id_nom)
         .filter(CorNomListe.id_liste == id_liste)
-        .all()
+        .limit(3000)
     )
-    return [tax.as_dict() for tax in data]
+    taxons = []
+    for tax in data:
+        tax = tax.as_dict()
+        tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
+        taxons.append(tax)
+    return taxons
 
 
 def get_site_list(id_module: int):
@@ -105,7 +115,9 @@ def get_site_list(id_module: int):
                 func.st_x(func.st_centroid(TBaseSites.geom)),
             ),
         )
-        .filter(TBaseSites.modules.any(id_module=id_module))
+        .order_by(TBaseSites.base_site_name)
+        .filter(TMonitoringSites.id_base_site == TBaseSites.id_base_site)
+        .filter(TMonitoringSites.id_module == id_module)
         .all()
     )
     res = []
@@ -120,7 +132,12 @@ def get_observer_list(id_liste: int):
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
-    data = DB.session.query(VUserslistForallMenu).filter_by(id_menu=id_liste).all()
+    data = (
+        DB.session.query(VUserslistForallMenu)
+        .order_by(VUserslistForallMenu.nom_complet)
+        .filter_by(id_menu=id_liste)
+        .all()
+    )
     return [obs.as_dict() for obs in data]
 
 
