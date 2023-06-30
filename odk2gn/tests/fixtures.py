@@ -437,7 +437,7 @@ def pf_sub(plant, observers_and_list, nomenclature):
                     "ap_geom_shape": None,
                     "ap_geom_point": {
                         "type": "Point",
-                        "coordinates": [6.355671, 44.655574, 0, 0],
+                        "coordinates": [6.355671, 44.655574, 0],
                     },
                     "situation": {
                         "id_nomenclature_incline": nomenclature.id_nomenclature,
@@ -465,23 +465,23 @@ def pf_sub(plant, observers_and_list, nomenclature):
                     "comment": None,
                 },
                 {
-                    "type_geom": "point",
-                    "ap_geom_shape": None,
-                    "ap_geom_point": {
+                    "type_geom": "shape",
+                    "ap_geom_point": None,
+                    "ap_geom_shape": {
                         "type": "Polygon",
                         "coordinates": [
                             [
-                                [6.352753, 44.670053, 0, 0],
-                                [6.354138, 44.647097, 0, 0],
-                                [6.370172, 44.669491, 0, 0],
-                                [6.352753, 44.670053, 0, 0],
+                                [6.352753, 44.670053, 0],
+                                [6.354138, 44.647097, 0],
+                                [6.370172, 44.669491, 0],
+                                [6.352753, 44.670053, 0],
                             ]
                         ],
                     },
                     "situation": {
                         "id_nomenclature_incline": nomenclature.id_nomenclature,
-                        "ap_area_shape": None,
-                        "ap_area_point": "0",
+                        "ap_area_shape": "1758888.79",
+                        "ap_area_point": None,
                         "physiognomies": str(nomenclature.id_nomenclature),
                     },
                     "habitat": {
@@ -492,7 +492,7 @@ def pf_sub(plant, observers_and_list, nomenclature):
                     },
                     "id_nomenclature_phenology": nomenclature.id_nomenclature,
                     "frequency_est": {
-                        "id_nomenclature_frequency_method": nomenclature.id_nomenclature,
+                        "id_nomenclature_frequency_method": "mille",
                         "frequency": 0,
                     },
                     "count": {
