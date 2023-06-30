@@ -19,11 +19,8 @@ def synchronize(project_id, form_id):
     form_id -- string, the form_id defined on the form
 
     """
-
-    app = create_app()
-    with app.app_context() as app_ctx:
-        log.info(f"--- Start synchro for priority flora ---")
-        update_priority_flora_db(project_id=project_id, form_id=form_id)
+    log.info(f"--- Start synchro for priority flora ---")
+    update_priority_flora_db(project_id=project_id, form_id=form_id)
     log.info("--- Done ---")
 
 

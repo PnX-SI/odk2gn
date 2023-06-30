@@ -3,7 +3,8 @@ import os
 import csv
 import tempfile
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func, select, join
 from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
@@ -46,7 +47,6 @@ def get_gn2_attachments_data(
     # Observers
     if not skip_observers:
         data = get_observer_list(module.id_list_observer)
-        print(data)
         files["gn_observateurs.csv"] = to_csv(header=("id_role", "nom_complet"), data=data)
     # JDD
     if not skip_jdd:
@@ -69,7 +69,6 @@ def get_gn2_attachments_data(
             )
 
         nomenclatures = get_nomenclature_data(n_fields)
-        print(nomenclatures)
         files["gn_nomenclatures.csv"] = to_csv(
             header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
             data=nomenclatures,
@@ -154,12 +153,8 @@ def format_jdd_list(datasets: list):
 
 
 def get_nomenclatures_to_filter():
-    q = DB.session.query(
-        BibNomenclaturesTypes.mnemonique,
-        TNomenclatures.id_nomenclature,
-        TNomenclatures.cd_nomenclature,
-        TNomenclatures.label_default,
-    ).filter(BibNomenclaturesTypes.id_type == TNomenclatures.id_type)
+    q = TNomenclatures.query
+
     return q
 
 
@@ -169,8 +164,8 @@ def get_ref_nomenclature_list(
     regne: str = None,
     group2_inpn: str = None,
 ):
-    q = get_nomenclatures_to_filter().filter(
-        BibNomenclaturesTypes.mnemonique == code_nomenclature_type
+    q = TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True).filter_by(
+        mnemonique=code_nomenclature_type
     )
     if cd_nomenclatures:
         q = q.filter(TNomenclatures.cd_nomenclature.in_(cd_nomenclatures))
@@ -181,23 +176,25 @@ def get_ref_nomenclature_list(
         ).filter(CorTaxrefNomenclature.regne == regne)
         if group2_inpn:
             q = q.filter(CorTaxrefNomenclature.group2_inpn == group2_inpn)
-    res = []
-    for d in q.all():
-        res.append(
-            {
-                "code_nomenclature_type": d[0],
-                "id_nomenclature": d[1],
-                "cd_nomenclature": d[2],
-                "label_default": d[3],
-            }
-        )
-        return res
+    tab = []
+    data = q.all()
+    for d in data:
+        dict = d.as_dict(relationships=["nomenclature_type"])
+        res = {
+            "mnemonique": dict["nomenclature_type"]["mnemonique"],
+            "id_nomenclature": dict["id_nomenclature"],
+            "cd_nomenclature": dict["cd_nomenclature"],
+            "label_default": dict["label_default"],
+        }
+        tab.append(res)
+    return tab
 
 
 def get_nomenclature_data(nomenclatures_fields):
     data = []
     for f in nomenclatures_fields:
         data = data + get_ref_nomenclature_list(**f)
+
     return data
 
 

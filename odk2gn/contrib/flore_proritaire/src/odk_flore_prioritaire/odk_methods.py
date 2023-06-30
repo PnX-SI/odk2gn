@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import sqlalchemy
 
 from odk2gn.odk_api import ODKSchema, get_submissions, update_review_state, client
-from odk2gn.gn2_utils import to_csv, get_taxon_list, get_observer_list, get_nomenclatures_to_filter
+from odk2gn.gn2_utils import to_csv, get_taxon_list, get_observer_list
 from pyodk.client import Client
 from datetime import datetime
 from geonature.utils.env import DB
@@ -69,19 +69,21 @@ def get_nomenclatures():
         "COUNTING_TYPE",
     ]
     res = []
-    data = get_nomenclatures_to_filter().filter(
+    q = TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True).filter(
         BibNomenclaturesTypes.mnemonique.in_(nomenclatures)
     )
+    tab = []
+    data = q.all()
     for d in data:
-        res.append(
-            {
-                "mnemonique": d[0],
-                "id_nomenclature": d[1],
-                "cd_nomenclature": d[2],
-                "label_default": d[3],
-            }
-        )
-    return res
+        dict = d.as_dict(relationships=["nomenclature_type"])
+        res = {
+            "mnemonique": dict["nomenclature_type"]["mnemonique"],
+            "id_nomenclature": dict["id_nomenclature"],
+            "cd_nomenclature": dict["cd_nomenclature"],
+            "label_default": dict["label_default"],
+        }
+        tab.append(res)
+    return tab
 
 
 def write_files():
@@ -100,6 +102,7 @@ def write_files():
     )
     obs_header = ["id_role", "nom_complet"]
     files["pf_observers.csv"] = to_csv(obs_header, observers)
+    print(files)
     return files
 
 
@@ -140,6 +143,7 @@ def format_coords(geom):
     geom -- geoJSON geography
     Return: the argument as just x and y coordinates
     """
+
     if geom["type"] == "Polygon":
         for coords in geom["coordinates"]:
             for point in coords:
@@ -148,6 +152,7 @@ def format_coords(geom):
                 if len(point) == 4:
                     point.pop(-1)
                     point.pop(-1)
+
     if geom["type"] == "Point":
         p = geom["coordinates"]
         if len(p) == 3:
@@ -219,7 +224,7 @@ def update_priority_flora_db(project_id, form_id):
         zp = TZprospect()
         zp.id_dataset = id_dataset
         # format the geographical coordinates in WKT with no z coordinate
-        c = format_coords(sub["zp_geom_4326"])
+        format_coords(sub["zp_geom_4326"])
         zp.geom_4326 = to_wkt(sub["zp_geom_4326"])
         zp.cd_nom = sub["cd_nom"]
         zp.date_min = sub["date_min"]
@@ -234,7 +239,6 @@ def update_priority_flora_db(project_id, form_id):
             obs = get_user(id_role)
             zp.observers.append(obs)
         DB.session.add(zp)
-        DB.session.flush()
         # flush to be able to use id_zp as we need it for the ap
         for ap in sub["aps"]:
             # create and seed the presence area object
@@ -314,12 +318,14 @@ def update_priority_flora_db(project_id, form_id):
                     if habitat['threat_level']=='3':
                         c_ap_perturb.effective_presence = True
                     DB.session.add(c_ap_perturb) """
+            zp.ap.append(t_ap)
             DB.session.add(t_ap)
+
         try:
             DB.session.commit()
             update_review_state(project_id, form_id, sub["__id"], "approved")
         except SQLAlchemyError as e:
             log.error("Error while posting data")
             log.error(str(e))
-            # update_review_state(project_id, form_id, sub["__id"], "hasIssues")
+            update_review_state(project_id, form_id, sub["__id"], "hasIssues")
             DB.session.rollback()

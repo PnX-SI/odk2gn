@@ -72,10 +72,6 @@ def test():
     click.echo("Beau test")
 
 
-def dummy():
-    return get_submissions(1, "deux")
-
-
 @click.command()
 @click.option("--project_id", required=True, type=int)
 @click.option("--form_id", required=True, type=str)
@@ -240,9 +236,8 @@ def upgrade_monitoring(
     skip_nomenclatures,
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
-    log.info("on passe ici")
     module = get_modules_info(module_code=module_code)
-    log.info(module)
+
     # Get gn2 attachments data
     files = get_gn2_attachments_data(
         module=module,
@@ -252,7 +247,6 @@ def upgrade_monitoring(
         skip_sites=skip_sites,
         skip_nomenclatures=skip_nomenclatures,
     )
-    log.info(files)
     # Update form
     update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")

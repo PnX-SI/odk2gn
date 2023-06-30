@@ -21,7 +21,27 @@ from utils_flask_sqla.tests.utils import JSONClient
 
 point = {"geometry": {"type": "Point", "coordinates": [6.0535113, 44.5754145]}}
 
-type_nom = BibNomenclaturesTypes(mnemonique="TEST", label_default="test", label_fr="Test")
+
+@pytest.fixture(scope="function")
+def type_nomenclature():
+    with db.session.begin_nested():
+        type_nom = BibNomenclaturesTypes(mnemonique="TEST", label_default="test", label_fr="Test")
+        db.session.add(type_nom)
+    return type_nom
+
+
+@pytest.fixture(scope="function")
+def plant():
+    with db.session.begin_nested():
+        plant = Taxref(
+            cd_nom=9999999,
+            regne="Plantae",
+            nom_complet="Plant Test",
+            nom_vern="Plante test",
+            nom_valide="Plante test",
+        )
+        db.session.add(plant)
+    return plant
 
 
 @pytest.fixture(scope="function")
@@ -52,9 +72,9 @@ def create_nomenclature(nomenclature_type, cd_nomenclature, label_default, label
 
 
 @pytest.fixture(scope="function")
-def taxon_and_list():
-    picto = db.session.query(BibListes.picto).filter(BibListes.code_liste == "100").first()
-    taxon = db.session.query(Taxref).filter_by(nom_complet="Homo sapiens Linnaeus, 1758").first()
+def taxon_and_list(plant):
+    picto = "images/pictos/nopicto.gif"
+    taxon = plant
     with db.session.begin_nested():
         tax_nom = BibNoms(cd_nom=taxon.cd_nom, cd_ref=taxon.cd_nom, nom_francais=taxon.nom_vern)
         taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test", picto=picto)
@@ -128,12 +148,11 @@ def the_csv(header, data):
 
 
 @pytest.fixture(scope="function")
-def nomenclature():
+def nomenclature(type_nomenclature):
     with db.session.begin_nested():
-        db.session.add(type_nom)
-        db.session.flush()
-        nomenclature = create_nomenclature(type_nom, "test", "test", "test")
+        nomenclature = create_nomenclature(type_nomenclature, "test", "test", "test")
         nomenclature.active = True
+        nomenclature.nomenclature_type = type_nomenclature
         db.session.add(nomenclature)
     return nomenclature
 
@@ -161,12 +180,13 @@ def site_type():
 @pytest.fixture(scope="function")
 def site(module, site_type):
     with db.session.begin_nested():
-        b_site = TBaseSites(
+        b_site = TMonitoringSites(
             base_site_name="test_site",
             geom=to_wkt(point["geometry"]),
+            id_module=module.id_module,
             id_nomenclature_type_site=site_type.id_nomenclature,
         )
-
+        module.sites.append(b_site)
         b_site.modules.append(module)
         db.session.add(b_site)
     return b_site
@@ -357,3 +377,133 @@ def my_config():
 @pytest.fixture(scope="function")
 def attachment():
     return ""
+
+
+@pytest.fixture(scope="function")
+def pf_sub(plant, observers_and_list, nomenclature):
+    pf_sub = [
+        {
+            "__id": uuid.uuid4(),
+            "zp_geom_4326": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [6.352753, 44.670053, 0, 0],
+                        [6.354138, 44.647097, 0, 0],
+                        [6.370172, 44.669491, 0, 0],
+                        [6.352753, 44.670053, 0, 0],
+                    ]
+                ],
+            },
+            "cd_nom": plant.cd_nom,
+            "date_min": datetime.date.today(),
+            "zp_area": "1758888.79",
+            "observers": "" + str(observers_and_list["user_list"][0].id_role),
+            "aps": [
+                {
+                    "type_geom": "point",
+                    "ap_geom_shape": None,
+                    "ap_geom_point": {
+                        "type": "Point",
+                        "coordinates": [6.355671, 44.655574, 0, 0],
+                    },
+                    "situation": {
+                        "id_nomenclature_incline": nomenclature.id_nomenclature,
+                        "ap_area_shape": None,
+                        "ap_area_point": "0",
+                        "physiognomies": str(nomenclature.id_nomenclature),
+                    },
+                    "habitat": {
+                        "id_nomenclature_habitat": nomenclature.id_nomenclature,
+                        "threat_level": "0",
+                        "favorable_status_percent": 0,
+                        "perturbations": str(nomenclature.id_nomenclature),
+                    },
+                    "id_nomenclature_phenology": nomenclature.id_nomenclature,
+                    "frequency_est": {
+                        "id_nomenclature_frequency_method": nomenclature.id_nomenclature,
+                        "frequency": 0,
+                    },
+                    "count": {
+                        "counting_method": "1",
+                        "total_min": None,
+                        "total_max": None,
+                        "num": 1,
+                    },
+                    "comment": None,
+                },
+                {
+                    "type_geom": "point",
+                    "ap_geom_shape": None,
+                    "ap_geom_point": {
+                        "type": "Point",
+                        "coordinates": [6.355671, 44.655574, 0, 0],
+                    },
+                    "situation": {
+                        "id_nomenclature_incline": nomenclature.id_nomenclature,
+                        "ap_area_shape": None,
+                        "ap_area_point": "0",
+                        "physiognomies": str(nomenclature.id_nomenclature),
+                    },
+                    "habitat": {
+                        "id_nomenclature_habitat": nomenclature.id_nomenclature,
+                        "threat_level": "0",
+                        "favorable_status_percent": 0,
+                        "perturbations": str(nomenclature.id_nomenclature),
+                    },
+                    "id_nomenclature_phenology": nomenclature.id_nomenclature,
+                    "frequency_est": {
+                        "id_nomenclature_frequency_method": nomenclature.id_nomenclature,
+                        "frequency": 0,
+                    },
+                    "count": {
+                        "counting_method": "2",
+                        "total_min": 1,
+                        "total_max": 1,
+                        "num": None,
+                    },
+                    "comment": None,
+                },
+                {
+                    "type_geom": "point",
+                    "ap_geom_shape": None,
+                    "ap_geom_point": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [
+                                [6.352753, 44.670053, 0, 0],
+                                [6.354138, 44.647097, 0, 0],
+                                [6.370172, 44.669491, 0, 0],
+                                [6.352753, 44.670053, 0, 0],
+                            ]
+                        ],
+                    },
+                    "situation": {
+                        "id_nomenclature_incline": nomenclature.id_nomenclature,
+                        "ap_area_shape": None,
+                        "ap_area_point": "0",
+                        "physiognomies": str(nomenclature.id_nomenclature),
+                    },
+                    "habitat": {
+                        "id_nomenclature_habitat": nomenclature.id_nomenclature,
+                        "threat_level": "0",
+                        "favorable_status_percent": 0,
+                        "perturbations": str(nomenclature.id_nomenclature),
+                    },
+                    "id_nomenclature_phenology": nomenclature.id_nomenclature,
+                    "frequency_est": {
+                        "id_nomenclature_frequency_method": nomenclature.id_nomenclature,
+                        "frequency": 0,
+                    },
+                    "count": {
+                        "counting_method": "0",
+                        "total_min": None,
+                        "total_max": None,
+                        "num": None,
+                    },
+                    "comment": None,
+                },
+            ],
+        },
+    ]
+    return pf_sub

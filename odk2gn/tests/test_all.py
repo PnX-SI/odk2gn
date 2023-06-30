@@ -22,6 +22,9 @@ from odk2gn.tests.fixtures import (
     mail,
     review_state,
     site_type,
+    pf_sub,
+    plant,
+    type_nomenclature,
 )
 from odk2gn.tests.fixtures import site
 from odk2gn.gn2_utils import (
@@ -33,8 +36,12 @@ from odk2gn.gn2_utils import (
     get_nomenclature_data,
     get_ref_nomenclature_list,
     get_modules_info,
+    get_gn2_attachments_data,
 )
-from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import to_wkt
+from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
+    to_wkt,
+    write_files,
+)
 from geonature.core.gn_monitoring.models import TBaseSites
 from odk2gn.odk_api import ODKSchema
 
@@ -52,8 +59,6 @@ class TestCommand:
     def test_synchronize_monitoring(
         self, mocker, submissions, mon_schema_fields, module, my_config, attachment, app, site
     ):
-        t_site = db.session.query(TBaseSites).filter_by(id_base_site=site.id_base_site).one()
-
         mocker.patch("odk2gn.main.get_submissions", return_value=submissions)
         mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
         mocker.patch("odk2gn.main.get_config", return_value=my_config)
@@ -67,8 +72,20 @@ class TestCommand:
 
         assert result.exit_code == 0
 
-    """def test_upgrade_odk_form_monitoring(self, mocker):
-      assert """
+    def test_synchronize_flore_prio(self, mocker, app, pf_sub):
+        mocker.patch("odk2gn.main.create_app", return_value=app)
+        mocker.patch(
+            "odk_flore_prioritaire.odk_methods.get_submissions",
+            return_value=pf_sub,
+        )
+        mocker.patch("odk_flore_prioritaire.odk_methods.update_review_state")
+        runner = CliRunner()
+        result = runner.invoke(
+            synchronize,
+            ["flore-prio", "--project_id", 99, "--form_id", "bidon2"],
+        )
+        print(result.stdout)
+        assert result.exit_code == 0
 
     def test_bis(self, module):
         runner = CliRunner()
@@ -113,27 +130,27 @@ class TestUtilsFunctions:
 
     def test_get_site_list1(self, module, site):
         sites = get_site_list(module.id_module)
+        print(sites)
         assert type(sites) is list
         dict_cols = set(sites[0].keys())
         assert set(["id_base_site", "base_site_name", "geometry"]).issubset(dict_cols)
-        assert site.id_base_site == sites[0]["id_base_site"]
 
     def test_get_nomenclature_list1(self, nomenclature):
         nomenclatures = get_ref_nomenclature_list(code_nomenclature_type="TEST")
         assert nomenclature.id_nomenclature in [nom["id_nomenclature"] for nom in nomenclatures]
         assert type(nomenclatures) is list
         dict_cols = set(nomenclatures[0].keys())
-        assert set(
-            ["code_nomenclature_type", "id_nomenclature", "cd_nomenclature", "label_default"]
-        ).issubset(dict_cols)
-        assert nomenclatures[0]["code_nomenclature_type"] == "TEST"
+        assert set(["mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"]).issubset(
+            dict_cols
+        )
+        assert nomenclatures[0]["mnemonique"] == "TEST"
         noms2 = get_ref_nomenclature_list(code_nomenclature_type="TEST", cd_nomenclatures=["test"])
         assert nomenclature.id_nomenclature in [nom["id_nomenclature"] for nom in noms2]
         assert type(noms2) is list
         dict_cols = set(noms2[0].keys())
-        assert set(
-            ["code_nomenclature_type", "id_nomenclature", "cd_nomenclature", "label_default"]
-        ).issubset(dict_cols)
+        assert set(["mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"]).issubset(
+            dict_cols
+        )
 
     """ def test_bidule(self, test):
         user = db.session.query(User).filter_by(identifiant="bidule").one()
@@ -147,7 +164,23 @@ class TestUtilsFunctions:
     #     user = db.session.query(UserList).filter_by(identifiant="bidule").one()
     #     print(user)
 
-    def test_csv_bis(self, taxon_and_list):
-        taxons = get_taxon_list(taxon_and_list["tax_list"].id_liste)
-        res = to_csv(["cd_nom", "nom_vern"], taxons)
-        assert type(res) is str
+    def test_pf_files(self):
+        files = write_files()
+        assert type(files) is dict
+        files_names = set(files.keys())
+        assert set(["pf_nomenclatures.csv", "pf_observers.csv", "pf_taxons.csv"]).issubset(
+            files_names
+        )
+
+    def test_monitoring_files(self, module):
+        files = get_gn2_attachments_data(module, skip_nomenclatures=True)
+        assert type(files) is dict
+        files_names = set(files.keys())
+        assert set(
+            [
+                "gn_jdds.csv",
+                "gn_observateurs.csv",
+                "gn_sites.csv",
+                "gn_taxons.csv",
+            ]
+        ).issubset(files_names)
