@@ -19,6 +19,50 @@ from gn_module_monitoring.monitoring.models import TMonitoringModules
 
 log = logging.getLogger("app")
 
+from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
+from odk2gn.gn2_utils import format_jdd_list
+from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
+    format_coords,
+    to_wkt,
+)
+
+
+def parse_and_create_site(sub, module):
+    # a ne pas être hard codé dans le futur
+    if module.module_code == "STOM":
+        cd_nom = "STOM"
+    if module.module_code == "suivi_nardaie":
+        cd_nom = "SUIVI_NARDAIE"
+    if module.module_code == "chiro":
+        cd_nom = "CHI"
+    site = TMonitoringSites(
+        base_site_name=sub["site_creation"]["site_name"],
+        base_site_description=sub["site_creation"]["base_site_description"],
+        id_inventor=int(sub["visit_1"]["observers"][0]["id_role"]),
+        first_use_date=sub["visit_1"]["visit_date_min"],
+    )
+    if sub["site_creation"]["type_geom"] == "polygon":
+        geom = sub["site_creation"]["geom_shape"]
+    else:
+        geom = sub["site_creation"]["geom_point"]
+    format_coords(geom)
+    geom = to_wkt(geom)
+    site.id_digitiser = site.id_inventor
+    site.geom = geom
+    site.id_module = module.id_module
+    id_type = (
+        TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
+        .filter_by(mnemonique="TYPE_SITE")
+        .filter(TNomenclatures.cd_nomenclature == cd_nom)
+        .one()
+    ).id_nomenclature
+    site.modules.append(module)
+    site.id_nomenclature_type_site = id_type
+    module.sites.append(site)
+    data = sub["site_data"]
+    site.data = data
+    return site
+
 
 def parse_and_create_visit(
     flatten_sub, module_parser_config, monitoring_config, gn_module, odk_form_schema

@@ -38,6 +38,7 @@ from odk2gn.gn2_utils import (
     get_modules_info,
     get_gn2_attachments_data,
 )
+from odk2gn.monitoring_config import get_nomenclatures_fields
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
     to_wkt,
     write_files,
@@ -50,7 +51,14 @@ from pypnusershub.db.models import UserList, User
 from geonature.utils.env import db
 
 
-from odk2gn.main import synchronize, synchronize_monitoring, get_submissions, test
+from odk2gn.main import (
+    synchronize,
+    synchronize_monitoring,
+    get_submissions,
+    test,
+    upgrade_odk_form,
+    upgrade_monitoring,
+)
 from odk2gn.main import get_modules_info
 
 
@@ -87,10 +95,24 @@ class TestCommand:
         print(result.stdout)
         assert result.exit_code == 0
 
-    def test_bis(self, module):
+    def test_upgrade_monitoring(self, mocker, app, module):
+        mocker.patch("odk2gn.main.update_form_attachment")
+        mocker.patch("odk2gn.main.create_app", return_value=app)
         runner = CliRunner()
+        result = runner.invoke(
+            upgrade_odk_form,
+            ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
+        )
+        assert result.exit_code == 0
 
-        result = runner.invoke(test)
+    def test_upgrade_priority_flora(self, mocker, app):
+        mocker.patch("odk2gn.main.update_form_attachment")
+        mocker.patch("odk2gn.main.create_app", return_value=app)
+        runner = CliRunner()
+        result = runner.invoke(
+            upgrade_odk_form,
+            ["flore-prio", "--project_id", 99, "--form_id", "bidon"],
+        )
         assert result.exit_code == 0
 
 
@@ -173,14 +195,23 @@ class TestUtilsFunctions:
         )
 
     def test_monitoring_files(self, module):
-        files = get_gn2_attachments_data(module, skip_nomenclatures=True)
+        files = get_gn2_attachments_data(module)
         assert type(files) is dict
         files_names = set(files.keys())
         assert set(
             [
                 "gn_jdds.csv",
+                "gn_nomenclatures.csv",
                 "gn_observateurs.csv",
                 "gn_sites.csv",
                 "gn_taxons.csv",
             ]
         ).issubset(files_names)
+
+    def test_get_nomenclature_fields(self, module, my_config):
+        fields = []
+        for niveau in ["site", "visit", "observation"]:
+            fields.append(get_nomenclatures_fields(module_code=module.module_code, niveau=niveau))
+            print(niveau, ": ", fields)
+        for f in fields:
+            assert type(f) is list

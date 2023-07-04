@@ -102,7 +102,6 @@ def write_files():
     )
     obs_header = ["id_role", "nom_complet"]
     files["pf_observers.csv"] = to_csv(obs_header, observers)
-    print(files)
     return files
 
 

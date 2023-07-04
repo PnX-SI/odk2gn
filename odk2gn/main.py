@@ -29,7 +29,11 @@ from odk2gn.odk_api import (
     ODKSchema,
     update_review_state,
 )
-from odk2gn.monitoring_utils import parse_and_create_visit, parse_and_create_obs
+from odk2gn.monitoring_utils import (
+    parse_and_create_visit,
+    parse_and_create_obs,
+    parse_and_create_site,
+)
 from odk2gn.config_schema import ProcoleSchema
 
 from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data
@@ -68,8 +72,8 @@ def upgrade_odk_form():
 
 @click.command("test")
 def test():
-    fetched_module = get_modules_info("MODULE_1")
-    click.echo("Beau test")
+    subs = get_submissions(project_id=6, form_id="test_creatiion_sites")
+    print(subs)
 
 
 @click.command()
@@ -143,6 +147,9 @@ def synchronize_monitoring(module_code, project_id, form_id):
     monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
     for sub in form_data:
+        if sub.get("create_site") == "true":
+            site = parse_and_create_site(sub=sub, module=gn_module)
+            DB.session.add(site)
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
         observations_list = []
 
@@ -198,6 +205,8 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 uuid_gn_object=gn_uuid_obs,
             )
             visit.observations.append(observation)
+            if sub.get("create_site") == "true":
+                site.visits.append(visit)
         DB.session.add(visit)
         try:
             DB.session.commit()

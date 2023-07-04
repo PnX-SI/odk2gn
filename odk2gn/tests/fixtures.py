@@ -95,11 +95,19 @@ def submissions(site, observers_and_list, module, taxon_and_list):
             "visit": {
                 "visit_date_min": datetime.date.today(),
                 "id_module": module.id_module,
+                "media": "images/pictos/nopicto.gif",
+                "comments": "test",
                 "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
                 "hauteur_moy_vegetation": 12,
             },
             "dataset": {"id_dataset": 1},
-            "observations": [{"cd_nom": taxon_and_list["taxon"].cd_nom, "comptage": 1}],
+            "observations": [
+                {
+                    "cd_nom": taxon_and_list["taxon"].cd_nom,
+                    "comptage": 1,
+                    "comments": "test",
+                }
+            ],
         },
     ]
     return sub
