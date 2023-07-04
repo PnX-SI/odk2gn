@@ -9,7 +9,11 @@ from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
-from gn_module_monitoring.monitoring.models import TMonitoringModules, TMonitoringSites
+from gn_module_monitoring.monitoring.models import (
+    TMonitoringModules,
+    TMonitoringSites,
+    TMonitoringSitesGroups,
+)
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 
@@ -37,6 +41,7 @@ def get_gn2_attachments_data(
     skip_jdd: bool = False,
     skip_sites: bool = False,
     skip_nomenclatures: bool = False,
+    skip_sites_groups: bool = False,
 ):
     files = {}
     # Taxon
@@ -60,6 +65,10 @@ def get_gn2_attachments_data(
             header=("id_base_site", "base_site_name", "geometry"), data=data
         )
 
+    if not skip_sites_groups:
+        data = get_site_groups_list(module.id_module)
+        files["gn_groupes.csv"] = to_csv(header=("id_sites_group", "sites_group_name"), data=data)
+
     # Nomenclature
     if not skip_nomenclatures:
         n_fields = []
@@ -74,6 +83,22 @@ def get_gn2_attachments_data(
             data=nomenclatures,
         )
     return files
+
+
+def get_site_groups_list(id_module: int):
+    """Return dict of TMonitoringSitesGroups
+
+    :param id_module: Identifier of the module
+    :type id_module : int"""
+
+    data = (
+        DB.session.query(TMonitoringSitesGroups)
+        .order_by(TMonitoringSitesGroups.sites_group_name)
+        .filter_by(id_module=id_module)
+        .all()
+    )
+
+    return [group.as_dict() for group in data]
 
 
 def get_taxon_list(id_liste: int):

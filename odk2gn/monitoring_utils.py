@@ -8,6 +8,7 @@ from gn_module_monitoring.monitoring.models import (
     TMonitoringSites,
     TMonitoringVisits,
     TMonitoringObservations,
+    TMonitoringSitesGroups,
 )
 from pypnusershub.db.models import User
 
@@ -41,10 +42,7 @@ def parse_and_create_site(sub, module):
         id_inventor=int(sub["visit_1"]["observers"][0]["id_role"]),
         first_use_date=sub["visit_1"]["visit_date_min"],
     )
-    if sub["site_creation"]["type_geom"] == "polygon":
-        geom = sub["site_creation"]["geom_shape"]
-    else:
-        geom = sub["site_creation"]["geom_point"]
+    geom = sub["site_creation"]["geom"]
     format_coords(geom)
     geom = to_wkt(geom)
     site.id_digitiser = site.id_inventor
@@ -61,6 +59,14 @@ def parse_and_create_site(sub, module):
     module.sites.append(site)
     data = sub["site_data"]
     site.data = data
+    try:
+        if sub["site_creation"]["site_group"]:
+            id_groupe = sub["site_creation"]["site_group"]
+            site.id_sites_group = id_groupe
+            groupe = TMonitoringSitesGroups.query.filter_by(id_groupe=id_groupe).one()
+            groupe.sites.append(site)
+    except:
+        pass
     return site
 
 

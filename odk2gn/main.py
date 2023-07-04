@@ -233,6 +233,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
 @click.option("--skip_observers", is_flag=True, help="Skip observers sync.")
 @click.option("--skip_jdd", is_flag=True, help="Skip jdd sync.")
 @click.option("--skip_sites", is_flag=True, help="Skip sites sync.")
+@click.option("--skip_sites_groups", is_flag=True, help="Skip site groups sync.")
 @click.option("--skip_nomenclatures", is_flag=True, help="Skip nomenclatures sync.")
 def upgrade_monitoring(
     module_code,
@@ -242,6 +243,7 @@ def upgrade_monitoring(
     skip_observers,
     skip_jdd,
     skip_sites,
+    skip_sites_groups,
     skip_nomenclatures,
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
@@ -254,6 +256,7 @@ def upgrade_monitoring(
         skip_observers=skip_observers,
         skip_jdd=skip_jdd,
         skip_sites=skip_sites,
+        skip_sites_groups=skip_sites_groups,
         skip_nomenclatures=skip_nomenclatures,
     )
     # Update form
