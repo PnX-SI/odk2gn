@@ -2,6 +2,7 @@ import logging
 import uuid
 import flatdict
 import csv
+from shapely.geometry import Polygon, Point, LineString
 
 
 from gn_module_monitoring.monitoring.models import (
@@ -23,12 +24,12 @@ log = logging.getLogger("app")
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
 from odk2gn.gn2_utils import format_jdd_list
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
-    format_coords,
     to_wkt,
+    format_coords,
 )
 
 
-def parse_and_create_site(sub, module):
+def parse_and_create_site(flatten_sub, module_parser_config, module):
     # a ne pas être hard codé dans le futur
     if module.module_code == "STOM":
         cd_nom = "STOM"
@@ -36,41 +37,54 @@ def parse_and_create_site(sub, module):
         cd_nom = "SUIVI_NARDAIE"
     if module.module_code == "chiro":
         cd_nom = "CHI"
-    site = TMonitoringSites(
-        base_site_name=sub["site_creation"]["site_name"],
-        base_site_description=sub["site_creation"]["base_site_description"],
-        id_inventor=int(sub["visit_1"]["observers"][0]["id_role"]),
-        first_use_date=sub["visit_1"]["visit_date_min"],
-    )
-    geom = sub["site_creation"]["geom"]
-    format_coords(geom)
-    geom = to_wkt(geom)
-    site.id_digitiser = site.id_inventor
-    site.geom = geom
-    site.id_module = module.id_module
+
     id_type = (
         TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
         .filter_by(mnemonique="TYPE_SITE")
         .filter(TNomenclatures.cd_nomenclature == cd_nom)
         .one()
     ).id_nomenclature
+
+    site_dict_to_post = {
+        "id_module": module.id_module,
+        "id_nomenclature_type_site": id_type,
+        "data": {},
+    }
+    for key, val in flatten_sub.items():
+        odk_column_name = key.split("/")[-1]
+        id_groupe = None  # pour éviter un try except plus bas
+        if odk_column_name == module_parser_config["SITE"].get("base_site_name"):
+            site_dict_to_post["base_site_name"] = val
+        elif odk_column_name == module_parser_config["SITE"].get("base_site_description"):
+            site_dict_to_post["base_site_description"] = val
+        elif odk_column_name == "visit_date_min":
+            site_dict_to_post["first_use_date"] = val
+        elif odk_column_name == "observers":
+            site_dict_to_post["id_inventor"] = val[0]["id_role"]
+        elif odk_column_name == "site_group":
+            id_groupe = int(val)
+            site_dict_to_post["id_sites_group"] = int(val)
+        elif odk_column_name == "type" and "geom" in key:
+            geom_type = val
+        elif odk_column_name == "coordinates" and "geom" in key:
+            coords = val
+        elif odk_column_name == "accuracy":
+            pass  # ceci ne doit pas figurer dans le site
+        elif "site_creation" in key:
+            site_dict_to_post["data"][odk_column_name] = val
+    site = TMonitoringSites(**site_dict_to_post)
+    geom = {"type": geom_type, "coordinates": coords}
+    format_coords(geom)
+    geom = to_wkt(geom)
+    site.geom = geom
     site.modules.append(module)
-    site.id_nomenclature_type_site = id_type
-    module.sites.append(site)
-    try:
-        if sub["site_data"]:
-            data = sub["site_data"]
-            site.data = data
-    except:
-        pass
-    try:
-        if sub["site_creation"]["site_group"]:
-            id_groupe = sub["site_creation"]["site_group"]
-            site.id_sites_group = id_groupe
-            groupe = TMonitoringSitesGroups.query.filter_by(id_groupe=id_groupe).one()
-            groupe.sites.append(site)
-    except:
-        pass
+    module.sites.append(site)  # redondance?
+    if site.data == {}:
+        site.data = None
+
+    if id_groupe is not None:
+        groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
+        groupe.sites.append(site)
     return site
 
 
@@ -221,3 +235,84 @@ def parse_and_create_obs(
             ].get("value")
     obs = TMonitoringObservations(**observation_dict_to_post)
     return obs
+
+
+{
+    "__id": "uuid:8fd82b0f-bde1-4a00-a71f-13aafa6d245c",
+    "date_time": "2023-07-05T14:19:38.437+02:00",
+    "presentation/presentation": None,
+    "create_site": "true",
+    "site_creation/site_group": "1",
+    "site_creation/site_name": "site_0",
+    "site_creation/base_site_description": None,
+    "site_creation/geom/type": "Point",
+    "site_creation/geom/coordinates": [6.053762, 44.578176, 0],
+    "site_creation/geom/properties/accuracy": 0,
+    "sites/id_base_site": None,
+    "visit_1/visit_date_min": "2023-07-05T14:19:38.426+02:00",
+    "visit_1/observers@odata.navigationLink": "Submissions('uuid%3A8fd82b0f-bde1-4a00-a71f-13aafa6d245c')/visit_1/observers",
+    "visit_1/observers": [
+        {"id_role": "3", "__id": "b7caf4fe58522b2ee8d9774c70a17bfaf316744b"},
+        {"id_role": "4", "__id": "8b3455d193e0d481761598ecdcb40c79e352bb05"},
+    ],
+    "visit_2/id_dataset": None,
+    "visit_2/debutant": "false",
+    "visit_2/heure": "14:19:38.433+02:00",
+    "visit_2/nuages": None,
+    "visit_2/pluie": None,
+    "visit_2/vent": None,
+    "visit_2/visi": None,
+    "visit_2/deneigement": None,
+    "visit_2/paturage": None,
+    "visit_2/comments_visit": None,
+    "visit_habitat/habitat_desc": "false",
+    "habitat/elem_paysager": None,
+    "habitat/comment_paysage": None,
+    "Habitat2/elem_habitat": None,
+    "habitat_percent/roche": None,
+    "habitat_percent/sol_nu": None,
+    "habitat_percent/herb": None,
+    "habitat_percent/arb_inf_30cm": None,
+    "habitat_percent/arb_inf_1m": None,
+    "habitat_percent/arb_1_4m": None,
+    "habitat_percent/arb_sup_4m": None,
+    "habitat_percent/habitat_roche": None,
+    "habitat_percent/habitat_sol_nu": None,
+    "habitat_percent/habitat_herb": None,
+    "habitat_percent/habitat_arb_inf_30cm": None,
+    "habitat_percent/habitat_arb_inf_1m": None,
+    "habitat_percent/habitat_arb_1_4m": None,
+    "habitat_percent/habitat_arb_sup_4m": None,
+    "habitat_percent/habitat_couverture": None,
+    "habitat_percent/habitat_recap": None,
+    "habitat_percent/habitat_percent_trigger": None,
+    "meta/instanceID": "uuid:8fd82b0f-bde1-4a00-a71f-13aafa6d245c",
+    "__system/submissionDate": "2023-07-05T12:18:39.424Z",
+    "__system/updatedAt": None,
+    "__system/submitterId": "98",
+    "__system/submitterName": "Xavier Davis",
+    "__system/attachmentsPresent": 0,
+    "__system/attachmentsExpected": 0,
+    "__system/status": None,
+    "__system/reviewState": None,
+    "__system/deviceId": None,
+    "__system/edits": 0,
+    "__system/formVersion": "7",
+    "observations@odata.navigationLink": "Submissions('uuid%3A8fd82b0f-bde1-4a00-a71f-13aafa6d245c')/observations",
+    "observations": [
+        {
+            "sp_choice": {"cd_nom": None},
+            "sp_label": None,
+            "sp_nbre": {
+                "sp_note": None,
+                "nb_0_5": None,
+                "nb_5_10": None,
+                "nb_10_15": None,
+                "nb_hors_proto": None,
+                "presence_juvenile": "false",
+                "comments_observation": None,
+            },
+            "__id": "9eee80c31dc0d1d61c4818da4621d9d0bb0988b4",
+        }
+    ],
+}

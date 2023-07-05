@@ -13,8 +13,12 @@ class GnODK(Schema):
     email_for_error = fields.Email()
 
 
+class SiteSchema(Schema):
+    base_site_name = fields.Str(load_default="site_name")
+    base_site_description = fields.Str(load_default="base_site_description")
+
+
 class VisitSchema(Schema):
-    
     observers_repeat = fields.Str(load_default="observers")
     id_observer = fields.Str(load_default="id_role")
     media = fields.Str(load_default="medias_visit")
@@ -37,7 +41,6 @@ class ObservationSchema(Schema):
 
 
 class ProcoleSchema(Schema):
+    SITE = fields.Nested(SiteSchema, load_default=SiteSchema().load({}))
     VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
-    OBSERVATION = fields.Nested(
-        ObservationSchema, load_default=ObservationSchema().load({})
-    )
+    OBSERVATION = fields.Nested(ObservationSchema, load_default=ObservationSchema().load({}))

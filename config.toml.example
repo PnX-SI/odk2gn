@@ -9,6 +9,7 @@ email_for_error = "hot-limit@gmail.com"
 
 [STOM]
     [STOM.SITE]
+    
     [STOM.VISIT]
         # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
         comments = "comments_visit"
