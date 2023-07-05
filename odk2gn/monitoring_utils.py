@@ -57,8 +57,12 @@ def parse_and_create_site(sub, module):
     site.modules.append(module)
     site.id_nomenclature_type_site = id_type
     module.sites.append(site)
-    data = sub["site_data"]
-    site.data = data
+    try:
+        if sub["site_data"]:
+            data = sub["site_data"]
+            site.data = data
+    except:
+        pass
     try:
         if sub["site_creation"]["site_group"]:
             id_groupe = sub["site_creation"]["site_group"]
