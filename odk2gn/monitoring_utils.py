@@ -2,6 +2,7 @@ import logging
 import uuid
 import flatdict
 import csv
+import datetime
 from shapely.geometry import Polygon, Point, LineString
 
 
@@ -37,7 +38,6 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
         cd_nom = "SUIVI_NARDAIE"
     if module.module_code == "chiro":
         cd_nom = "CHI"
-
     id_type = (
         TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
         .filter_by(mnemonique="TYPE_SITE")
@@ -50,6 +50,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
         "id_nomenclature_type_site": id_type,
         "data": {},
     }
+    #
     for key, val in flatten_sub.items():
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
@@ -57,31 +58,45 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
             site_dict_to_post["base_site_name"] = val
         elif odk_column_name == module_parser_config["SITE"].get("base_site_description"):
             site_dict_to_post["base_site_description"] = val
-        elif odk_column_name == "visit_date_min":
-            site_dict_to_post["first_use_date"] = val
-        elif odk_column_name == "observers":
-            site_dict_to_post["id_inventor"] = val[0]["id_role"]
+        elif odk_column_name == module_parser_config["SITE"].get("first_use_date"):
+            # on utilise la valeur de la visite pour éviter d'entrer deux fois la même valeur
+            site_dict_to_post["first_use_date"] = datetime.datetime.fromisoformat(val)
+        elif odk_column_name == module_parser_config["SITE"].get("id_inventor"):
+            # là encore on utilise la valeur de la visite pour éviter la double entrée
+            site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
         elif odk_column_name == "site_group":
+            # transtypage pour la solidité des données
             id_groupe = int(val)
-            site_dict_to_post["id_sites_group"] = int(val)
-        elif odk_column_name == "type" and "geom" in key:
+            site_dict_to_post["id_sites_group"] = id_groupe
+
+        # données géométriques
+        # type, coordinates et accuracy sont des noms de variables qui seront toujours présents dans une donnée géométrique d'ODK, ils sont déjà génériques
+        elif odk_column_name == "type" and module_parser_config["SITE"].get("geom") in key:
             geom_type = val
-        elif odk_column_name == "coordinates" and "geom" in key:
+        elif odk_column_name == "coordinates" and module_parser_config["SITE"].get("geom") in key:
             coords = val
-        elif odk_column_name == "accuracy":
-            pass  # ceci ne doit pas figurer dans le site
-        elif "site_creation" in key:
+        # la précision n'est pas relevée en BDD, donc on sépare son cas pour ne rien faire avec
+        elif odk_column_name == "accuracy" and module_parser_config["SITE"].get("geom") in key:
+            pass
+        # tous les spécificités d'un site d'un module
+        # changer site_creation pour le nom du group du XLSFORM où ces données figurent
+        # elif "site_creation" in key:
+        elif module_parser_config["SITE"].get("data") in key:
             site_dict_to_post["data"][odk_column_name] = val
     site = TMonitoringSites(**site_dict_to_post)
+    # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
     format_coords(geom)
     geom = to_wkt(geom)
     site.geom = geom
+
+    # traitements des relations BDD
     site.modules.append(module)
     module.sites.append(site)  # redondance?
+
+    # traitement de ce qui peut éventuellement être de valeur nulle
     if site.data == {}:
         site.data = None
-
     if id_groupe is not None:
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
         groupe.sites.append(site)
