@@ -7,11 +7,9 @@ default_project_id = 1
 [gn_odk]
 email_for_error = "hot-limit@gmail.com"
 
-[ALL]
+[STOM]
     # booléen indiquant la création de sites
     create_site="create_site"
-
-[STOM]
     [STOM.SITE]
         # nom du champ nom du site
         base_site_name = "site_name"
