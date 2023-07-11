@@ -148,12 +148,15 @@ def synchronize_monitoring(module_code, project_id, form_id):
     form_data = get_submissions(project_id, form_id)
     for sub in form_data:
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
-        print(flatten_data)
-        if sub.get("create_site") == "true":
-            site = parse_and_create_site(flatten_data, module_parser_config, module=gn_module)
-            DB.session.add(site)
-        observations_list = []
 
+        try:
+            if sub[module_parser_config.get("create_site")] == "true":
+                site = parse_and_create_site(flatten_data, module_parser_config, module=gn_module)
+                DB.session.add(site)
+        except:
+            pass
+
+        observations_list = []
         try:
             observations_list = flatten_data.pop(
                 module_parser_config["OBSERVATION"]["observations_repeat"]
