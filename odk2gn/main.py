@@ -36,7 +36,7 @@ from odk2gn.monitoring_utils import (
 )
 from odk2gn.config_schema import ProcoleSchema
 
-from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data
+from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data, write_real_csvs
 
 # TODO : post visite
 
@@ -55,6 +55,11 @@ pp = pprint.PrettyPrinter(width=41, compact=True)
 
 
 @click.group()
+def odk2gn():
+    pass
+
+
+@odk2gn.group(name="synchronize")
 def synchronize():
     # For testing we mock an app with an already context pushed
     # we push app context only if it's not done
@@ -63,7 +68,7 @@ def synchronize():
         app.app_context().push()
 
 
-@click.group()
+@odk2gn.group(name="upgrade-odk-form")
 def upgrade_odk_form():
     app = create_app()
     if not has_app_context():
@@ -263,6 +268,7 @@ def upgrade_monitoring(
         skip_sites_groups=skip_sites_groups,
         skip_nomenclatures=skip_nomenclatures,
     )
+    f = write_real_csvs(module=module)
     # Update form
     update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")
