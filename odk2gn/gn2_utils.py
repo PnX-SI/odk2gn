@@ -223,7 +223,26 @@ def get_nomenclature_data(nomenclatures_fields):
     return data
 
 
+def get_id_nomenclature_type_site(cd_nomenclature):
+    id_nomenclature_type_site = (
+        TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
+        .filter_by(mnemonique="TYPE_SITE")
+        .filter(TNomenclatures.cd_nomenclature == cd_nomenclature)
+        .one()
+    ).id_nomenclature
+    return id_nomenclature_type_site
+
+
 def to_csv(header: list[str], data: list[dict]):
+    """Permet de créer des objets texte formattés pour être postés sur ODK Collect
+
+
+    :param header: liste de noms de colonne pour le fichier csv
+    :type header: list
+    :param data: données à poster formattés en dictionnaires
+    :type data: list[dict]
+    """
+
     temp_csv = tempfile.NamedTemporaryFile(delete=False)
     with open(temp_csv.name, "w") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=header, extrasaction="ignore")
@@ -236,3 +255,81 @@ def to_csv(header: list[str], data: list[dict]):
         res = csvfile.read()
     os.unlink(temp_csv.name)
     return res
+
+
+def to_real_csv(file_name, header: list[str], data: list[dict]):
+    """Permet de créer des fichiers csv formattés pour être postés sur ODK Collect
+
+
+    :param header: liste de noms de colonne pour le fichier csv
+    :type header: list
+    :param data: données à poster formattés en dictionnaires
+    :type data: list[dict]
+    """
+    with open(file_name, "w") as file:
+        writer = csv.DictWriter(file, fieldnames=header, extrasaction="ignore")
+        writer.writeheader()
+        for row in data:
+            writer.writerow(row)
+
+
+def write_real_csvs(
+    module: TMonitoringModules,
+    skip_taxons: bool = False,
+    skip_observers: bool = False,
+    skip_jdd: bool = False,
+    skip_sites: bool = False,
+    skip_nomenclatures: bool = False,
+    skip_sites_groups: bool = False,
+):
+    files = {}
+    # Taxon
+    if not skip_taxons:
+        data = get_taxon_list(module.id_list_taxonomy)
+
+        files["gn_taxons.csv"] = to_real_csv(
+            file_name="gn_taxons.csv", header=("cd_nom", "nom_complet", "nom_vern"), data=data
+        )
+    # Observers
+    if not skip_observers:
+        data = get_observer_list(module.id_list_observer)
+        files["gn_observateurs.csv"] = to_real_csv(
+            file_name="gn_observateurs.csv", header=("id_role", "nom_complet"), data=data
+        )
+    # JDD
+    if not skip_jdd:
+        data = format_jdd_list(module.datasets)
+
+        files["gn_jdds.csv"] = to_real_csv(
+            file_name="gn_jdds.csv", header=("id_dataset", "dataset_name"), data=data
+        )
+    # Sites
+    if not skip_sites:
+        data = get_site_list(module.id_module)
+        files["gn_sites.csv"] = to_real_csv(
+            file_name="gn_sites.csv",
+            header=("id_base_site", "base_site_name", "geometry"),
+            data=data,
+        )
+
+    if not skip_sites_groups:
+        data = get_site_groups_list(module.id_module)
+        files["gn_groupes.csv"] = to_real_csv(
+            file_name="gn_groupes.csv", header=("id_sites_group", "sites_group_name"), data=data
+        )
+
+    # Nomenclature
+    if not skip_nomenclatures:
+        n_fields = []
+        for niveau in ["site", "visit", "observation"]:
+            n_fields = n_fields + get_nomenclatures_fields(
+                module_code=module.module_code, niveau=niveau
+            )
+
+        nomenclatures = get_nomenclature_data(n_fields)
+        files["gn_nomenclatures.csv"] = to_real_csv(
+            file_name="gn_nomenclatures.csv",
+            header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
+            data=nomenclatures,
+        )
+    return files
