@@ -17,13 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages("./"),
     package_dir={"": "."},
     install_requires=requirements,
-    entry_points={
-        "console_scripts": [
-            "synchronize=odk2gn.main:synchronize",
-            "upgrade-odk-form=odk2gn.main:upgrade_odk_form",
-            "odk_schema=odk2gn.main:get_schema",
-        ]
-    },
+    entry_points={"console_scripts": ["odk2gn=odk2gn.main:odk2gn"]},
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
