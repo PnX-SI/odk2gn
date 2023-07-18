@@ -1,26 +1,27 @@
 import logging
+import os
+import csv
+import tempfile
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func, select, join
 from geonature.utils.env import DB
-from geonature.core.users.models import (
-    VUserslistForallMenu
-)
+from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
 from gn_module_monitoring.monitoring.models import (
-    TMonitoringModules
+    TMonitoringModules,
+    TMonitoringSites,
+    TMonitoringSitesGroups,
 )
 
-from pypnnomenclature.models import (
-    TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
-)
+from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 
-from odk2gn.monitoring_config import (
-    get_nomenclatures_fields
-)
+from odk2gn.monitoring_config import get_nomenclatures_fields
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 
 log = logging.getLogger("app")
+
 
 def get_modules_info(module_code: str):
     try:
@@ -29,78 +30,97 @@ def get_modules_info(module_code: str):
         ).one()
         return module
     except NoResultFound:
-        log.error(f"No GeoNature module found for {module_code.lower()}")
+        log.error(f"No GeoNature module found for {module_code}")
         raise
 
+
 def get_gn2_attachments_data(
-        module:TMonitoringModules,
-        skip_taxons: bool = False,
-        skip_observers: bool = False,
-        skip_jdd: bool = False,
-        skip_sites: bool = False,
-        skip_nomenclatures: bool = False,
-    ):
-        files = {}
-        # Taxon
-        if not skip_taxons:
-            data = get_taxon_list(module.id_list_taxonomy)
-            files['gn_taxons.csv'] = to_csv(
-                header=("cd_nom", "nom_complet", "nom_vern"),
-                data=data
-            )
-        # Observers
-        if not skip_observers:
-            data = get_observer_list(module.id_list_observer)
-            files['gn_observateurs.csv'] = to_csv(
-                header=("id_role", "nom_complet"),
-                data=data
-            )
-        # JDD
-        if not skip_jdd:
-            data = get_jdd_list(module.datasets)
-            files['gn_jdds.csv'] = to_csv(
-                header=("id_dataset", "dataset_name"),
-                data=data
-            )
-        # Sites
-        if not skip_sites:
-            data = get_site_list(module.id_module)
-            files['gn_sites.csv'] = to_csv(
-                header=("id_base_site", "base_site_name", "geometry"),
-                data=data
+    module: TMonitoringModules,
+    skip_taxons: bool = False,
+    skip_observers: bool = False,
+    skip_jdd: bool = False,
+    skip_sites: bool = False,
+    skip_nomenclatures: bool = False,
+    skip_sites_groups: bool = False,
+):
+    files = {}
+    # Taxon
+    if not skip_taxons:
+        data = get_taxon_list(module.id_list_taxonomy)
+
+        files["gn_taxons.csv"] = to_csv(header=("cd_nom", "nom_complet", "nom_vern"), data=data)
+    # Observers
+    if not skip_observers:
+        data = get_observer_list(module.id_list_observer)
+        files["gn_observateurs.csv"] = to_csv(header=("id_role", "nom_complet"), data=data)
+    # JDD
+    if not skip_jdd:
+        data = format_jdd_list(module.datasets)
+
+        files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
+    # Sites
+    if not skip_sites:
+        data = get_site_list(module.id_module)
+        files["gn_sites.csv"] = to_csv(
+            header=("id_base_site", "base_site_name", "geometry"), data=data
+        )
+
+    if not skip_sites_groups:
+        data = get_site_groups_list(module.id_module)
+        files["gn_groupes.csv"] = to_csv(header=("id_sites_group", "sites_group_name"), data=data)
+
+    # Nomenclature
+    if not skip_nomenclatures:
+        n_fields = []
+        for niveau in ["site", "visit", "observation"]:
+            n_fields = n_fields + get_nomenclatures_fields(
+                module_code=module.module_code, niveau=niveau
             )
 
-        # Nomenclature
-        if not skip_nomenclatures:
-            n_fields = []
-            for niveau in ["site", "visit", "observation"]:
-                n_fields = n_fields + get_nomenclatures_fields(
-                    module_code=module.module_code,
-                    niveau=niveau
-                )
+        nomenclatures = get_nomenclature_data(n_fields)
+        files["gn_nomenclatures.csv"] = to_csv(
+            header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
+            data=nomenclatures,
+        )
+    return files
 
-            nomenclatures = get_nomenclature_data(n_fields)
-            files['gn_nomenclature.csv'] = to_csv(
-                header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
-                data=nomenclatures
-            )
-        return files
+
+def get_site_groups_list(id_module: int):
+    """Return dict of TMonitoringSitesGroups
+
+    :param id_module: Identifier of the module
+    :type id_module : int"""
+
+    data = (
+        DB.session.query(TMonitoringSitesGroups)
+        .order_by(TMonitoringSitesGroups.sites_group_name)
+        .filter_by(id_module=id_module)
+        .all()
+    )
+
+    return [group.as_dict() for group in data]
 
 
 def get_taxon_list(id_liste: int):
-    """Return tuple of Taxref for id_liste
+    """Return dict of Taxref
 
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
     data = (
-        DB.session.query(Taxref.cd_nom, Taxref.nom_complet, Taxref.nom_vern)
+        DB.session.query(Taxref)
+        .order_by(Taxref.nom_complet)
         .filter(BibNoms.cd_nom == Taxref.cd_nom)
         .filter(BibNoms.id_nom == CorNomListe.id_nom)
         .filter(CorNomListe.id_liste == id_liste)
-        .all()
+        .limit(3000)
     )
-    return data
+    taxons = []
+    for tax in data:
+        tax = tax.as_dict()
+        tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
+        taxons.append(tax)
+    return taxons
 
 
 def get_site_list(id_module: int):
@@ -109,18 +129,25 @@ def get_site_list(id_module: int):
     :param id_module: Identifiant du module
     :type id_module: int
     """
-    data = DB.session.query(
-        TBaseSites.id_base_site,
-        TBaseSites.base_site_name,
-        func.concat(func.st_y(
-            func.st_centroid(TBaseSites.geom)),
-            " ",
-            func.st_x(func.st_centroid(TBaseSites.geom))
+    data = (
+        DB.session.query(
+            TBaseSites.id_base_site,
+            TBaseSites.base_site_name,
+            func.concat(
+                func.st_y(func.st_centroid(TBaseSites.geom)),
+                " ",
+                func.st_x(func.st_centroid(TBaseSites.geom)),
+            ),
         )
-    ).filter(
-        TBaseSites.modules.any(id_module=id_module)
-    ).all()
-    return data
+        .order_by(TBaseSites.base_site_name)
+        .filter(TMonitoringSites.id_base_site == TBaseSites.id_base_site)
+        .filter(TMonitoringSites.id_module == id_module)
+        .all()
+    )
+    res = []
+    for d in data:
+        res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
+    return res
 
 
 def get_observer_list(id_liste: int):
@@ -129,73 +156,180 @@ def get_observer_list(id_liste: int):
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
-    data = DB.session.query(VUserslistForallMenu.id_role, VUserslistForallMenu.nom_complet).filter_by(id_menu=id_liste)
-    return data
+    data = (
+        DB.session.query(VUserslistForallMenu)
+        .order_by(VUserslistForallMenu.nom_complet)
+        .filter_by(id_menu=id_liste)
+        .all()
+    )
+    return [obs.as_dict() for obs in data]
 
-def get_jdd_list(datasets: []):
+
+def format_jdd_list(datasets: list):
     """Return tuple of Dataset
 
     :param datasets: List of associated dataset
     :type datasets: []
     """
-    ids = [jdd.id_dataset for jdd in datasets]
-    data = DB.session.query(
-        TDatasets.id_dataset, TDatasets.dataset_name
-    ).filter(TDatasets.id_dataset.in_(ids))
+    data = []
+    for jdd in datasets:
+        data.append({"id_dataset": jdd.id_dataset, "dataset_name": jdd.dataset_name})
     return data
 
+
+def get_nomenclatures_to_filter():
+    q = TNomenclatures.query
+
+    return q
+
+
 def get_ref_nomenclature_list(
-        code_nomenclature_type: str,
-        cd_nomenclatures: [] = None,
-        regne: str = None,
-        group2_inpn: str = None,
-    ):
-    q = DB.session.query(
-        BibNomenclaturesTypes.mnemonique,
-        TNomenclatures.id_nomenclature,
-        TNomenclatures.cd_nomenclature,
-        TNomenclatures.label_default
-    ).filter(
-        BibNomenclaturesTypes.id_type == TNomenclatures.id_type
-    ).filter(
-        BibNomenclaturesTypes.mnemonique == code_nomenclature_type
+    code_nomenclature_type: str,
+    cd_nomenclatures: list = None,
+    regne: str = None,
+    group2_inpn: str = None,
+):
+    q = TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True).filter_by(
+        mnemonique=code_nomenclature_type
     )
     if cd_nomenclatures:
-        q = q.filter(
-            TNomenclatures.cd_nomenclature.in_(cd_nomenclatures)
-        )
+        q = q.filter(TNomenclatures.cd_nomenclature.in_(cd_nomenclatures))
 
     if regne:
         q = q.filter(
             CorTaxrefNomenclature.id_nomenclature == TNomenclatures.id_nomenclature
-        ).filter(
-            CorTaxrefNomenclature.regne == regne
-        )
+        ).filter(CorTaxrefNomenclature.regne == regne)
         if group2_inpn:
-            q = q.filter(
-                CorTaxrefNomenclature.group2_inpn == group2_inpn
-            )
+            q = q.filter(CorTaxrefNomenclature.group2_inpn == group2_inpn)
+    tab = []
+    data = q.all()
+    for d in data:
+        dict = d.as_dict(relationships=["nomenclature_type"])
+        res = {
+            "mnemonique": dict["nomenclature_type"]["mnemonique"],
+            "id_nomenclature": dict["id_nomenclature"],
+            "cd_nomenclature": dict["cd_nomenclature"],
+            "label_default": dict["label_default"],
+        }
+        tab.append(res)
+    return tab
 
-    return q.all()
 
 def get_nomenclature_data(nomenclatures_fields):
     data = []
     for f in nomenclatures_fields:
         data = data + get_ref_nomenclature_list(**f)
+
     return data
 
-def to_csv(header, data):
-    """Return tuple in csv format
 
-    :param header: _description_
-    :type header: _type_
-    :param data: _description_
-    :type data: _type_
-    :return: _description_
-    :rtype: _type_
+def get_id_nomenclature_type_site(cd_nomenclature):
+    id_nomenclature_type_site = (
+        TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
+        .filter_by(mnemonique="TYPE_SITE")
+        .filter(TNomenclatures.cd_nomenclature == cd_nomenclature)
+        .one()
+    ).id_nomenclature
+    return id_nomenclature_type_site
+
+
+def to_csv(header: list[str], data: list[dict]):
+    """Permet de créer des objets texte formattés pour être postés sur ODK Collect
+
+
+    :param header: liste de noms de colonne pour le fichier csv
+    :type header: list
+    :param data: données à poster formattés en dictionnaires
+    :type data: list[dict]
     """
-    out = []
-    out.append(",".join(header))
-    for d in data:
-        out.append(",".join(map(str, d)))
-    return "\n".join(out)
+
+    temp_csv = tempfile.NamedTemporaryFile(delete=False)
+    with open(temp_csv.name, "w") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=header, extrasaction="ignore")
+        writer.writeheader()
+        for row in data:
+            writer.writerow(row)
+
+    res = None
+    with open(temp_csv.name, "r") as csvfile:
+        res = csvfile.read()
+    os.unlink(temp_csv.name)
+    return res
+
+
+def to_real_csv(file_name, header: list[str], data: list[dict]):
+    """Permet de créer des fichiers csv formattés pour être postés sur ODK Collect
+
+
+    :param header: liste de noms de colonne pour le fichier csv
+    :type header: list
+    :param data: données à poster formattés en dictionnaires
+    :type data: list[dict]
+    """
+    with open(file_name, "w") as file:
+        writer = csv.DictWriter(file, fieldnames=header, extrasaction="ignore")
+        writer.writeheader()
+        for row in data:
+            writer.writerow(row)
+
+
+def write_real_csvs(
+    module: TMonitoringModules,
+    skip_taxons: bool = False,
+    skip_observers: bool = False,
+    skip_jdd: bool = False,
+    skip_sites: bool = False,
+    skip_nomenclatures: bool = False,
+    skip_sites_groups: bool = False,
+):
+    files = {}
+    # Taxon
+    if not skip_taxons:
+        data = get_taxon_list(module.id_list_taxonomy)
+
+        files["gn_taxons.csv"] = to_real_csv(
+            file_name="gn_taxons.csv", header=("cd_nom", "nom_complet", "nom_vern"), data=data
+        )
+    # Observers
+    if not skip_observers:
+        data = get_observer_list(module.id_list_observer)
+        files["gn_observateurs.csv"] = to_real_csv(
+            file_name="gn_observateurs.csv", header=("id_role", "nom_complet"), data=data
+        )
+    # JDD
+    if not skip_jdd:
+        data = format_jdd_list(module.datasets)
+
+        files["gn_jdds.csv"] = to_real_csv(
+            file_name="gn_jdds.csv", header=("id_dataset", "dataset_name"), data=data
+        )
+    # Sites
+    if not skip_sites:
+        data = get_site_list(module.id_module)
+        files["gn_sites.csv"] = to_real_csv(
+            file_name="gn_sites.csv",
+            header=("id_base_site", "base_site_name", "geometry"),
+            data=data,
+        )
+
+    if not skip_sites_groups:
+        data = get_site_groups_list(module.id_module)
+        files["gn_groupes.csv"] = to_real_csv(
+            file_name="gn_groupes.csv", header=("id_sites_group", "sites_group_name"), data=data
+        )
+
+    # Nomenclature
+    if not skip_nomenclatures:
+        n_fields = []
+        for niveau in ["site", "visit", "observation"]:
+            n_fields = n_fields + get_nomenclatures_fields(
+                module_code=module.module_code, niveau=niveau
+            )
+
+        nomenclatures = get_nomenclature_data(n_fields)
+        files["gn_nomenclatures.csv"] = to_real_csv(
+            file_name="gn_nomenclatures.csv",
+            header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
+            data=nomenclatures,
+        )
+    return files

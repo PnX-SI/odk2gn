@@ -8,7 +8,23 @@ default_project_id = 1
 email_for_error = "hot-limit@gmail.com"
 
 [STOM]
+    # booléen indiquant la création de sites
+    create_site="create_site"
     [STOM.SITE]
+        # nom du champ nom du site
+        base_site_name = "site_name"
+        # nom du champ description du site
+        base_site_description = "base_site_description"
+        # nom du champ definissant l'inventeur du site
+        id_inventor = "observers"
+        # nom du groupe contenant les champs additionnels
+        data = "site_creation"
+        # nom du champ de date de première utilisation du site
+        first_use_date = "visit_date_min"
+        # nom du champ de geométrie
+        geom = "geom"
+
+    
     [STOM.VISIT]
         # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
         comments = "comments_visit"
