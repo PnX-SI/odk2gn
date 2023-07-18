@@ -1,6 +1,7 @@
 import pytest, csv, sys
 from click.testing import CliRunner
 import uuid
+import flatdict
 
 
 from odk2gn.tests.fixtures import (
@@ -25,6 +26,8 @@ from odk2gn.tests.fixtures import (
     pf_sub,
     plant,
     type_nomenclature,
+    sub_with_site_creation,
+    site_group,
 )
 from odk2gn.tests.fixtures import site
 from odk2gn.gn2_utils import (
@@ -42,6 +45,11 @@ from odk2gn.monitoring_config import get_nomenclatures_fields
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
     to_wkt,
     write_files,
+)
+from odk2gn.monitoring_utils import (
+    parse_and_create_obs,
+    parse_and_create_site,
+    parse_and_create_visit,
 )
 from geonature.core.gn_monitoring.models import TBaseSites
 from odk2gn.odk_api import ODKSchema
@@ -80,6 +88,39 @@ class TestCommand:
 
         assert result.exit_code == 0
 
+    def test_synchronize_monitoring_site_creation(
+        self,
+        mocker,
+        sub_with_site_creation,
+        mon_schema_fields,
+        module,
+        my_config,
+        attachment,
+        app,
+        site_type,
+        observers_and_list,
+    ):
+        mocker.patch("odk2gn.main.get_submissions", return_value=sub_with_site_creation)
+        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
+        mocker.patch("odk2gn.main.get_config", return_value=my_config)
+        mocker.patch("odk2gn.main.get_attachment", return_value=attachment)
+        mocker.patch("odk2gn.main.create_app", return_value=app)
+        mocker.patch(
+            "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
+            return_value=site_type.id_nomenclature,
+        )
+        mocker.patch(
+            "odk2gn.monitoring_utils.get_observers",
+            return_value=observers_and_list["user_list"],
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            synchronize,
+            ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
+        )
+
+        assert result.exit_code == 0
+
     def test_synchronize_flore_prio(self, mocker, app, pf_sub):
         mocker.patch("odk2gn.main.create_app", return_value=app)
         mocker.patch(
@@ -92,7 +133,7 @@ class TestCommand:
             synchronize,
             ["flore-prio", "--project_id", 99, "--form_id", "bidon2"],
         )
-        print(result.stdout)
+
         assert result.exit_code == 0
 
     def test_upgrade_monitoring(self, mocker, app, module):
@@ -127,13 +168,13 @@ class TestUtilsFunctions:
 
     def test_to_csv1(self, header, data):
         content = to_csv(header, data).split("\n")
-        print("content = ", content)
+
         reader = csv.reader(content)
         assert header == reader.__next__()
         r_data = []
         for row in reader:
             r_data.append(row)
-        print("r_data  = ", r_data)
+
         assert r_data == [["1", "2"], ["3", "4"], []]
 
     def test_get_taxon_list1(self, taxon_and_list):
@@ -152,7 +193,7 @@ class TestUtilsFunctions:
 
     def test_get_site_list1(self, module, site):
         sites = get_site_list(module.id_module)
-        print(sites)
+
         assert type(sites) is list
         dict_cols = set(sites[0].keys())
         assert set(["id_base_site", "base_site_name", "geometry"]).issubset(dict_cols)
@@ -212,6 +253,5 @@ class TestUtilsFunctions:
         fields = []
         for niveau in ["site", "visit", "observation"]:
             fields.append(get_nomenclatures_fields(module_code=module.module_code, niveau=niveau))
-            print(niveau, ": ", fields)
         for f in fields:
             assert type(f) is list

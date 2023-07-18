@@ -78,7 +78,6 @@ def upgrade_odk_form():
 @click.command("test")
 def test():
     subs = get_submissions(project_id=6, form_id="test_creatiion_sites")
-    print(subs)
 
 
 @click.command()
@@ -166,14 +165,12 @@ def synchronize_monitoring(module_code, project_id, form_id):
             observations_list = flatten_data.pop(
                 module_parser_config["OBSERVATION"]["observations_repeat"]
             )
-
             assert type(observations_list) is list
         except KeyError:
             log.warning("No observation for this visit")
         except AssertionError:
             log.error("Observation node is not a list")
             raise
-
         visit = parse_and_create_visit(
             flatten_data,
             module_parser_config,
@@ -182,7 +179,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
             odk_form_schema,
         )
 
-        get_and_post_medium(
+        """ get_and_post_medium(
             project_id=project_id,
             form_id=form_id,
             uuid_sub=flatten_data.get("meta/instanceID"),
@@ -190,7 +187,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
             monitoring_table="t_base_visits",
             media_type=module_parser_config["VISIT"]["media_type"],
             uuid_gn_object=visit.uuid_base_visit,
-        )
+        ) """
 
         for obs in observations_list:
             gn_uuid_obs = uuid.uuid4()
@@ -204,7 +201,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 gn_uuid_obs,
             )
 
-            get_and_post_medium(
+            """get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
                 uuid_sub=flatten_data.get("meta/instanceID"),
@@ -212,7 +209,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 monitoring_table="t_observations",
                 media_type=module_parser_config["OBSERVATION"]["media_type"],
                 uuid_gn_object=gn_uuid_obs,
-            )
+            )"""
             visit.observations.append(observation)
             if sub.get("create_site") == "true":
                 site.visits.append(visit)

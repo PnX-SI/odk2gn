@@ -23,7 +23,7 @@ from gn_module_monitoring.monitoring.models import TMonitoringModules
 log = logging.getLogger("app")
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
-from odk2gn.gn2_utils import format_jdd_list
+from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site
 from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
     to_wkt,
     format_coords,
@@ -33,24 +33,21 @@ from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods impor
 def parse_and_create_site(flatten_sub, module_parser_config, module):
     # a ne pas être hard codé dans le futur
     if module.module_code == "STOM":
-        cd_nom = "STOM"
-    if module.module_code == "suivi_nardaie":
-        cd_nom = "SUIVI_NARDAIE"
-    if module.module_code == "chiro":
-        cd_nom = "CHI"
-    id_type = (
-        TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
-        .filter_by(mnemonique="TYPE_SITE")
-        .filter(TNomenclatures.cd_nomenclature == cd_nom)
-        .one()
-    ).id_nomenclature
+        cd_nomenclature = "STOM"
+    elif module.module_code == "suivi_nardaie":
+        cd_nomenclature = "SUIVI_NARDAIE"
+    elif module.module_code == "chiro":
+        cd_nomenclature = "CHI"
+    else:
+        cd_nomenclature = module.module_code
+
+    id_type = get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
 
     site_dict_to_post = {
         "id_module": module.id_module,
         "id_nomenclature_type_site": id_type,
         "data": {},
     }
-    #
     for key, val in flatten_sub.items():
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
@@ -68,7 +65,6 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
             # transtypage pour la solidité des données
             id_groupe = int(val)
             site_dict_to_post["id_sites_group"] = id_groupe
-
         # données géométriques
         # type, coordinates et accuracy sont des noms de variables qui seront toujours présents dans une donnée géométrique d'ODK, ils sont déjà génériques
         elif odk_column_name == "type" and module_parser_config["SITE"].get("geom") in key:
@@ -101,6 +97,11 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
         groupe.sites.append(site)
     return site
+
+
+def get_observers(observers_list):
+    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
+    return obss
 
 
 def parse_and_create_visit(
@@ -140,7 +141,7 @@ def parse_and_create_visit(
     }
     observers_list = []
     for key, val in flatten_sub.items():
-        # print(str(key) + ' : ' + str(val) + ', ' )
+        # print(str(key) + " : " + str(val) + ", ")
         odk_column_name = key.split("/")[-1]
         # specifig comment column
         if odk_column_name == module_parser_config["VISIT"].get("comments"):
@@ -152,7 +153,6 @@ def parse_and_create_visit(
         if odk_column_name == module_parser_config["VISIT"].get("observers_repeat"):
             for role in val:
                 observers_list.append(int(role[module_parser_config["VISIT"].get("id_observer")]))
-        # print("generic", visit_generic_column)
         if odk_column_name in visit_generic_column.keys():
             # get val or the default value define in gn_monitoring json
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get(
@@ -176,7 +176,7 @@ def parse_and_create_visit(
         else:
             raise Exception("Only one dataset should be passed this way.")
     visit = TMonitoringVisits(**visit_dict_to_post)
-    visit.observers = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
+    visit.observers = get_observers(observers_list)
     specific_column_posted = visit_dict_to_post["data"].keys()
     missing_visit_cols_from_odk = list(set(visit_specific_column) - set(specific_column_posted))
     if len(missing_visit_cols_from_odk) > 0:
@@ -250,84 +250,3 @@ def parse_and_create_obs(
             ].get("value")
     obs = TMonitoringObservations(**observation_dict_to_post)
     return obs
-
-
-{
-    "__id": "uuid:8fd82b0f-bde1-4a00-a71f-13aafa6d245c",
-    "date_time": "2023-07-05T14:19:38.437+02:00",
-    "presentation/presentation": None,
-    "create_site": "true",
-    "site_creation/site_group": "1",
-    "site_creation/site_name": "site_0",
-    "site_creation/base_site_description": None,
-    "site_creation/geom/type": "Point",
-    "site_creation/geom/coordinates": [6.053762, 44.578176, 0],
-    "site_creation/geom/properties/accuracy": 0,
-    "sites/id_base_site": None,
-    "visit_1/visit_date_min": "2023-07-05T14:19:38.426+02:00",
-    "visit_1/observers@odata.navigationLink": "Submissions('uuid%3A8fd82b0f-bde1-4a00-a71f-13aafa6d245c')/visit_1/observers",
-    "visit_1/observers": [
-        {"id_role": "3", "__id": "b7caf4fe58522b2ee8d9774c70a17bfaf316744b"},
-        {"id_role": "4", "__id": "8b3455d193e0d481761598ecdcb40c79e352bb05"},
-    ],
-    "visit_2/id_dataset": None,
-    "visit_2/debutant": "false",
-    "visit_2/heure": "14:19:38.433+02:00",
-    "visit_2/nuages": None,
-    "visit_2/pluie": None,
-    "visit_2/vent": None,
-    "visit_2/visi": None,
-    "visit_2/deneigement": None,
-    "visit_2/paturage": None,
-    "visit_2/comments_visit": None,
-    "visit_habitat/habitat_desc": "false",
-    "habitat/elem_paysager": None,
-    "habitat/comment_paysage": None,
-    "Habitat2/elem_habitat": None,
-    "habitat_percent/roche": None,
-    "habitat_percent/sol_nu": None,
-    "habitat_percent/herb": None,
-    "habitat_percent/arb_inf_30cm": None,
-    "habitat_percent/arb_inf_1m": None,
-    "habitat_percent/arb_1_4m": None,
-    "habitat_percent/arb_sup_4m": None,
-    "habitat_percent/habitat_roche": None,
-    "habitat_percent/habitat_sol_nu": None,
-    "habitat_percent/habitat_herb": None,
-    "habitat_percent/habitat_arb_inf_30cm": None,
-    "habitat_percent/habitat_arb_inf_1m": None,
-    "habitat_percent/habitat_arb_1_4m": None,
-    "habitat_percent/habitat_arb_sup_4m": None,
-    "habitat_percent/habitat_couverture": None,
-    "habitat_percent/habitat_recap": None,
-    "habitat_percent/habitat_percent_trigger": None,
-    "meta/instanceID": "uuid:8fd82b0f-bde1-4a00-a71f-13aafa6d245c",
-    "__system/submissionDate": "2023-07-05T12:18:39.424Z",
-    "__system/updatedAt": None,
-    "__system/submitterId": "98",
-    "__system/submitterName": "Xavier Davis",
-    "__system/attachmentsPresent": 0,
-    "__system/attachmentsExpected": 0,
-    "__system/status": None,
-    "__system/reviewState": None,
-    "__system/deviceId": None,
-    "__system/edits": 0,
-    "__system/formVersion": "7",
-    "observations@odata.navigationLink": "Submissions('uuid%3A8fd82b0f-bde1-4a00-a71f-13aafa6d245c')/observations",
-    "observations": [
-        {
-            "sp_choice": {"cd_nom": None},
-            "sp_label": None,
-            "sp_nbre": {
-                "sp_note": None,
-                "nb_0_5": None,
-                "nb_5_10": None,
-                "nb_10_15": None,
-                "nb_hors_proto": None,
-                "presence_juvenile": "false",
-                "comments_observation": None,
-            },
-            "__id": "9eee80c31dc0d1d61c4818da4621d9d0bb0988b4",
-        }
-    ],
-}

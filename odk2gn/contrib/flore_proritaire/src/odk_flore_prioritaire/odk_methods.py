@@ -238,7 +238,6 @@ def update_priority_flora_db(project_id, form_id):
             obs = get_user(id_role)
             zp.observers.append(obs)
         DB.session.add(zp)
-        # flush to be able to use id_zp as we need it for the ap
         for ap in sub["aps"]:
             # create and seed the presence area object
             t_ap = TApresence()

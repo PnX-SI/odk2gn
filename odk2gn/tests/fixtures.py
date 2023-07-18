@@ -23,6 +23,19 @@ point = {"geometry": {"type": "Point", "coordinates": [6.0535113, 44.5754145]}}
 
 
 @pytest.fixture(scope="function")
+def site_group(module):
+    with db.session.begin_nested():
+        group = TMonitoringSitesGroups(
+            id_module=module.id_module,
+            uuid_sites_group=uuid.uuid4(),
+            sites_group_name="test_group",
+            sites_group_description="test",
+        )
+        db.session.add(group)
+    return group
+
+
+@pytest.fixture(scope="function")
 def type_nomenclature():
     with db.session.begin_nested():
         type_nom = BibNomenclaturesTypes(mnemonique="TEST", label_default="test", label_fr="Test")
@@ -114,6 +127,45 @@ def submissions(site, observers_and_list, module, taxon_and_list):
 
 
 @pytest.fixture(scope="function")
+def sub_with_site_creation(observers_and_list, module, taxon_and_list, site_group):
+    sub = [
+        {
+            "__id": str(uuid.uuid4()),
+            "create_site": "true",
+            "site_creation": {
+                "site_name": "test",
+                "base_site_description": "test",
+                "geom": point["geometry"],
+                "is_new": True,
+                "site_group": site_group.id_sites_group,
+            },
+            "visit": {
+                "visit_date_min": str(datetime.datetime.now()),
+                "id_module": module.id_module,
+                "medias_visit": "images/pictos/nopicto.gif",
+                "comments": "test",
+                "observers": [
+                    {
+                        "observer": observers_and_list["user_list"][0],
+                        "id_role": observers_and_list["user_list"][0].id_role,
+                    }
+                ],
+                "hauteur_moy_vegetation": 12,
+            },
+            "dataset": {"id_dataset": 1},
+            "observations": [
+                {
+                    "cd_nom": taxon_and_list["taxon"].cd_nom,
+                    "comptage": 1,
+                    "comments": "test",
+                }
+            ],
+        },
+    ]
+    return sub
+
+
+@pytest.fixture(scope="function")
 def datasets():
     return [
         TDatasets(id_dataset=1, dataset_name="ds1"),
@@ -176,7 +228,7 @@ def site_type():
     with db.session.begin_nested():
         site_type_nom = create_nomenclature(
             nomenclature_type=site_type,
-            cd_nomenclature="test_site",
+            cd_nomenclature="MODULE_1",
             label_default="test_site",
             label_fr="Site Test",
         )
@@ -194,7 +246,7 @@ def site(module, site_type):
             id_module=module.id_module,
             id_nomenclature_type_site=site_type.id_nomenclature,
         )
-        module.sites.append(b_site)
+        # module.sites.append(b_site)
         b_site.modules.append(module)
         db.session.add(b_site)
     return b_site
