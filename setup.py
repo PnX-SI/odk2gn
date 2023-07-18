@@ -17,7 +17,15 @@ setuptools.setup(
     packages=setuptools.find_packages("./"),
     package_dir={"": "."},
     install_requires=requirements,
-    entry_points={"console_scripts": ["odk2gn=odk2gn.main:odk2gn"]},
+    entry_points={
+        "console_scripts": ["odk2gn=odk2gn.main:odk2gn"],
+        "gn_module": [
+            "code = odk2gn:MODULE_CODE",
+            "picto = odk2gn:MODULE_PICTO",
+            "blueprint = odk2gn.blueprint:blueprint",
+            "config_schema = odk2gn.config:EmptySchema",
+        ],
+    },
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
