@@ -18,8 +18,10 @@ Bien qu'indépendant, l'installation de ce module se fait dans l'environnement d
 # Activation du virtual env de GeoNature
 source <path_vers_gn>/backend/venv/bin/activate
 
-# Installation du module
+# Installation des modules : 
+se mettre dans le dossier où figure le fichier setup.py du module, puis dans le terminal:
 pip install -e .
+Faire cette manipulation à chaque fois qu'on crée un nouveau module.
 ```
 
 ## Configuration
@@ -40,7 +42,7 @@ default_project_id = 1
 
 Actuellement seul les niveaux "visites" et "observations" sont implémentés. Il n'est pas possible de créer des sites à partir des formulaires ODK.
 
-Les formulaire monitoring ODK doivent respecter le template xlxs de monitoring fourni avec ce dépôt. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée destination de la base de données GeoNature (pour les champs générique des visites et observations). Tous les champs qui ne "match" pas ces correspondances seront poussés comme champ spécifique au format json.
+Les formulaire monitoring ODK doivent respecter le template xlsx de monitoring fourni avec ce dépôt. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée destination de la base de données GeoNature (pour les champs générique des visites et observations). Tous les champs qui ne "match" pas ces correspondances seront poussés comme champ spécifique au format json.
 
 Actuellement, seul les champs suivants sont configurables et peuvent être différents de la structure défini par le template xlsx:
 
@@ -103,7 +105,7 @@ De façon a distinguer les données intégrées en base, de celles non traitées
 Une fois une soumission intégrée en base son `reviewState` est modifiée en `approuved`. Si l'insertion dans GeoNature ne peut se faire la soumission est marquée en `hasIssue`. De cette façon l’administrateur de données peut traiter manuellement la données problèmatique via enketo.
 
 ```sh
-synchronize <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
+synchronize monitoring <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
 ```
 
 ### Mise à jour du formulaire ODK
@@ -117,7 +119,7 @@ Publie sur ODK central une nouvelle version du formulaire avec une mise à jour 
 - liste des nomenclatures
 
 ```sh
-upgrade_odk_form <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
+upgrade_odk_form monitoring <MON_CODE_MODULE> --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
 ```
 
 Des options permettent de ne pas synchroniser certains types de données :
@@ -127,3 +129,37 @@ Des options permettent de ne pas synchroniser certains types de données :
 - `--skip_jdd` : ne pas générer le fichier des jeux de données
 - `--skip_sites` : ne pas générer le fichier des sites
 - `--skip_nomenclatures` : ne pas générer le fichier des nomenclatures
+
+**Module flore prioritaire**
+
+Le formulaire flore prioritaire ODK doit respecter le template xlsx. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée destination de la base de données GeoNature, en créeant des objets zone de prospection et aire de présence, et en les poussant à la base. Tous les champs qui ne "match" pas ces correspondances seront poussés comme champ spécifique au format json.
+
+## Commandes
+
+Avant de lancer une commande, il faut s'assurer d'être dans le virtualenv de l'application GeoNature et dans le dossier de l'application :
+
+```sh
+cd  <path_vers_odk2gn>
+source <path_vers_gn>/backend/venv/bin/activate
+````
+
+### Synchronisation des données de ODK vers GeoNature
+
+Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés.
+
+De façon a distinguer les données intégrées en base, de celles non traitées le module opère une modification de la métadonnées `reviewState`
+Une fois une soumission intégrée en base son `reviewState` est modifiée en `approuved`. Si l'insertion dans GeoNature ne peut se faire la soumission est marquée en `hasIssue`. De cette façon l’administrateur de données peut traiter manuellement la données problèmatique via enketo.
+
+```sh
+synchronize flore-prio --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
+```
+
+### Mise à jour du formulaire ODK
+
+Publie sur ODK central une nouvelle version du formulaire avec une mise à jour des médias à partir des données de GeoNature. Les données envoyées sont :
+
+```sh
+upgrade-odk-form flore-prio --form_id=<ODK_FORM_ID> --project_id=<ODK_PROJECT_ID>
+````
+
+En effet, les commandes synchronize et update-odk-form sont utilisés pour pousser à la base les données ou mettre à jour la base pour tout module

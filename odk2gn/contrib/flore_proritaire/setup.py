@@ -5,19 +5,22 @@ from pathlib import Path
 root_dir = Path(__file__).absolute().parent
 with (root_dir / "VERSION").open() as f:
     version = f.read()
-with (root_dir / "requirements.in").open() as f:
-    requirements = f.read().splitlines()
 
 setuptools.setup(
-    name="odk2gn",
+    name="odk_flore_prioritaire",
     version=version,
-    description="GeoNature-monitoring ODK project",
-    maintainer="OFB and PNX",
+    description="Flore prioritaire ODK project",
+    maintainer="PNE",
     # url='https://github.com/PnX-SI/gn_module_monitoring',
-    packages=setuptools.find_packages("./"),
-    package_dir={"": "."},
-    install_requires=requirements,
-    entry_points={"console_scripts": ["odk2gn=odk2gn.main:odk2gn"]},
+    packages=setuptools.find_packages("src"),
+    package_dir={"": "src"},
+    tests_require=[],
+    entry_points={
+        "gn_odk_contrib": [
+            "synchronize=odk_flore_prioritaire.main:synchronize",
+            "upgrade-odk-form=odk_flore_prioritaire.main:upgrade_odk_form",
+        ]
+    },
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",

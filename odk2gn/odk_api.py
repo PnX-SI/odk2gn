@@ -4,10 +4,13 @@ import json
 
 from datetime import datetime
 from pyodk.client import Client
+from odk2gn.config import config_file
+
 
 log = logging.getLogger("app")
 
-client = Client(config_path="./config.toml")
+
+client = Client(config_path=config_file)
 
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):
@@ -80,7 +83,8 @@ def update_review_state(project_id, form_id, submission_id, review_state):
         username=client.config.central.username,
         password=client.config.central.password,
     )
-    review_submission_response = requests.patch(
+    # pourquoi classe requests ici et non la methode de la classe Client de pyODK?
+    review_submission_response = client.patch(
         f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/submissions/{submission_id}",
         data=json.dumps({"reviewState": review_state}),
         headers={
@@ -109,9 +113,7 @@ def update_form_attachment(project_id, xml_form_id, files):
     """
     form_draft(project_id, xml_form_id)
     for file_name in files:
-        upload_form_attachment(
-            project_id, xml_form_id, file_name=file_name, data=files[file_name]
-        )
+        upload_form_attachment(project_id, xml_form_id, file_name=file_name, data=files[file_name])
     publish_form(project_id, xml_form_id)
 
 
@@ -147,9 +149,7 @@ def upload_form_attachment(project_id, xml_form_id, file_name, data):
         data=data.encode("utf-8", "strict"),
     )
     if response.status_code == 404:
-        log.warning(
-            f"Le fichier {file_name} n'existe pas dans la définition du formulaire"
-        )
+        log.warning(f"Le fichier {file_name} n'existe pas dans la définition du formulaire")
     elif response.status_code == 200:
         log.info(f"fichier {file_name} téléversé")
     else:
