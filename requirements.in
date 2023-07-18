@@ -1,3 +1,4 @@
 pyodk
 colorlog
 flatdict
+importlib_metadata;python_version<"3.10"
