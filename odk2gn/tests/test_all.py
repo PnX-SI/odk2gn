@@ -3,7 +3,6 @@ from click.testing import CliRunner
 import uuid
 import flatdict
 
-
 from odk2gn.tests.fixtures import (
     submissions,
     datasets,
@@ -30,6 +29,7 @@ from odk2gn.tests.fixtures import (
     site_group,
 )
 from odk2gn.tests.fixtures import site
+
 from odk2gn.gn2_utils import (
     format_jdd_list,
     to_csv,
@@ -40,12 +40,10 @@ from odk2gn.gn2_utils import (
     get_ref_nomenclature_list,
     get_modules_info,
     get_gn2_attachments_data,
+    to_wkt,
 )
 from odk2gn.monitoring_config import get_nomenclatures_fields
-from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
-    to_wkt,
-    write_files,
-)
+
 from odk2gn.monitoring_utils import (
     parse_and_create_obs,
     parse_and_create_site,
@@ -121,21 +119,6 @@ class TestCommand:
 
         assert result.exit_code == 0
 
-    def test_synchronize_flore_prio(self, mocker, app, pf_sub):
-        mocker.patch("odk2gn.main.create_app", return_value=app)
-        mocker.patch(
-            "odk_flore_prioritaire.odk_methods.get_submissions",
-            return_value=pf_sub,
-        )
-        mocker.patch("odk_flore_prioritaire.odk_methods.update_review_state")
-        runner = CliRunner()
-        result = runner.invoke(
-            synchronize,
-            ["flore-prio", "--project_id", 99, "--form_id", "bidon2"],
-        )
-
-        assert result.exit_code == 0
-
     def test_upgrade_monitoring(self, mocker, app, module):
         mocker.patch("odk2gn.main.update_form_attachment")
         mocker.patch("odk2gn.main.create_app", return_value=app)
@@ -143,16 +126,6 @@ class TestCommand:
         result = runner.invoke(
             upgrade_odk_form,
             ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
-        )
-        assert result.exit_code == 0
-
-    def test_upgrade_priority_flora(self, mocker, app):
-        mocker.patch("odk2gn.main.update_form_attachment")
-        mocker.patch("odk2gn.main.create_app", return_value=app)
-        runner = CliRunner()
-        result = runner.invoke(
-            upgrade_odk_form,
-            ["flore-prio", "--project_id", 99, "--form_id", "bidon"],
         )
         assert result.exit_code == 0
 
@@ -226,14 +199,6 @@ class TestUtilsFunctions:
     # def test_bidule2(test):
     #     user = db.session.query(UserList).filter_by(identifiant="bidule").one()
     #     print(user)
-
-    def test_pf_files(self):
-        files = write_files()
-        assert type(files) is dict
-        files_names = set(files.keys())
-        assert set(["pf_nomenclatures.csv", "pf_observers.csv", "pf_taxons.csv"]).issubset(
-            files_names
-        )
 
     def test_monitoring_files(self, module):
         files = get_gn2_attachments_data(module)

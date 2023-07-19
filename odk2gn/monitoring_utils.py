@@ -26,19 +26,11 @@ from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
 from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, format_coords, to_wkt
 
 
-def parse_and_create_site(flatten_sub, module_parser_config, module):
-    print("PARSE AND CREATE SITE ???")
-    print(flatten_sub)
+def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, module):
     # a ne pas être hard codé dans le futur
-    if module.module_code == "STOM":
-        cd_nomenclature = "STOM"
-    elif module.module_code == "suivi_nardaie":
-        cd_nomenclature = "SUIVI_NARDAIE"
-    elif module.module_code == "chiro":
-        cd_nomenclature = "CHI"
-    else:
-        cd_nomenclature = module.module_code
-
+    cd_nomenclature = monitoring_config["site"]["generic"]["id_nomenclature_type_site"]["value"][
+        "cd_nomenclature"
+    ]
     id_type = get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
 
     site_dict_to_post = {
@@ -47,8 +39,6 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
         "data": {},
     }
     for key, val in flatten_sub.items():
-        print("LAAAA", key)
-        print("LAAAA", val)
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
         if odk_column_name == module_parser_config["SITE"].get("base_site_name"):

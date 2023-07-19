@@ -362,7 +362,7 @@ def format_coords(geom):
     Return: the argument as just x and y coordinates
     """
 
-    if geom["type"] == "Polygon":
+    if geom["type"] != "Point":
         for coords in geom["coordinates"]:
             for point in coords:
                 if len(point) == 3:

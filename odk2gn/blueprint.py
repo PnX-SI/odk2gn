@@ -103,7 +103,12 @@ def synchronize_monitoring(module_code, project_id, form_id):
 
         try:
             if sub[module_parser_config.get("create_site")] == "true":
-                site = parse_and_create_site(flatten_data, module_parser_config, module=gn_module)
+                site = parse_and_create_site(
+                    flatten_data,
+                    module_parser_config,
+                    monitoring_config=monitoring_config,
+                    module=gn_module,
+                )
                 DB.session.add(site)
         except:
             pass
@@ -159,8 +164,11 @@ def synchronize_monitoring(module_code, project_id, form_id):
                 uuid_gn_object=gn_uuid_obs,
             )"""
             visit.observations.append(observation)
-            if sub.get("create_site") == "true":
+        try:
+            if sub[module_parser_config.get("create_site")] == "true":
                 site.visits.append(visit)
+        except:
+            pass
         DB.session.add(visit)
         try:
             DB.session.commit()
