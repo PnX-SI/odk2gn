@@ -1,6 +1,11 @@
 import logging
 import os
 import csv
+import json
+import geojson
+from shapely.geometry import shape
+
+
 import tempfile
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm import relationship
@@ -333,3 +338,43 @@ def write_real_csvs(
             data=nomenclatures,
         )
     return files
+
+
+def to_wkt(geom):
+    """reformats the geographic data as a WKT
+
+    Keyword arguments:
+    argument -- geoJSON geography
+    Return: WKT geography
+    """
+
+    s = json.dumps(geom)
+    g1 = geojson.loads(s)
+    g2 = shape(g1)
+    return g2.wkt
+
+
+def format_coords(geom):
+    """removes the z coordinate of a geoJSON
+
+    Keyword arguments:
+    geom -- geoJSON geography
+    Return: the argument as just x and y coordinates
+    """
+
+    if geom["type"] == "Polygon":
+        for coords in geom["coordinates"]:
+            for point in coords:
+                if len(point) == 3:
+                    point.pop(-1)
+                if len(point) == 4:
+                    point.pop(-1)
+                    point.pop(-1)
+
+    if geom["type"] == "Point":
+        p = geom["coordinates"]
+        if len(p) == 3:
+            p.pop(-1)
+        if len(p) == 4:
+            p.pop(-1)
+            p.pop(-1)

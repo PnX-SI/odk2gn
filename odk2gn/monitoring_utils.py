@@ -23,14 +23,12 @@ from gn_module_monitoring.monitoring.models import TMonitoringModules
 log = logging.getLogger("app")
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
-from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site
-from odk2gn.contrib.flore_proritaire.src.odk_flore_prioritaire.odk_methods import (
-    to_wkt,
-    format_coords,
-)
+from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, format_coords, to_wkt
 
 
 def parse_and_create_site(flatten_sub, module_parser_config, module):
+    print("PARSE AND CREATE SITE ???")
+    print(flatten_sub)
     # a ne pas être hard codé dans le futur
     if module.module_code == "STOM":
         cd_nomenclature = "STOM"
@@ -49,6 +47,8 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
         "data": {},
     }
     for key, val in flatten_sub.items():
+        print("LAAAA", key)
+        print("LAAAA", val)
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
         if odk_column_name == module_parser_config["SITE"].get("base_site_name"):
