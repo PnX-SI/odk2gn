@@ -17,20 +17,23 @@ import flatdict
 
 from sqlalchemy.orm import exc
 from sqlalchemy.exc import SQLAlchemyError
-
 from geonature.utils.env import BACKEND_DIR
 from gn_module_monitoring.config.repositories import get_config
 from geonature.utils.utilsmails import send_mail
 from pypnusershub.db.models import User
-
+from geonature.core.gn_commons.models import BibTablesLocation
+from pypnnomenclature.models import TNomenclatures
+from gn_module_monitoring.monitoring.models import TMonitoringSites
+from geonature.core.gn_monitoring.models import TBaseSites
+from geonature.core.gn_commons.models import TMedias
 from geonature.utils.env import DB
-
 from odk2gn.config import config
 from odk2gn.odk_api import (
     get_submissions,
     update_form_attachment,
     ODKSchema,
     update_review_state,
+    get_attachment,
 )
 from odk2gn.monitoring_utils import (
     parse_and_create_visit,
@@ -51,6 +54,48 @@ pp = pprint.PrettyPrinter(width=41, compact=True)
 
 
 blueprint = Blueprint("odk2gn", __name__)
+
+
+def get_and_post_medium(
+    project_id,
+    form_id,
+    uuid_sub,
+    filename,
+    monitoring_table,
+    media_type,
+    uuid_gn_object,
+):
+    # TODO : remove app context
+    img = get_attachment(project_id, form_id, uuid_sub, filename)
+    if img:
+        uuid_sub = uuid_sub.split(":")[1]
+        medias_name = f"{uuid_sub}_{filename}"
+        table_location = (
+            DB.session.query(BibTablesLocation)
+            .filter_by(
+                schema_name="gn_monitoring",
+                table_name=monitoring_table,
+            )
+            .one()
+        )
+        media_type = (
+            DB.session.query(TNomenclatures)
+            .filter_by(mnemonique=media_type)
+            .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
+            .one()
+        )
+        media = {
+            "media_path": f"media/attachments/{medias_name}",
+            "uuid_attached_row": uuid_gn_object,
+            "id_table_location": table_location.id_table_location,
+            "id_nomenclature_media_type": media_type.id_nomenclature,
+        }
+
+        media = TMedias(**media)
+        DB.session.add(media)
+        DB.session.commit()
+        with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
+            out_file.write(img.content)
 
 
 ###### TODO : celery
@@ -225,3 +270,11 @@ def upgrade_monitoring(
     # Update form
     update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")
+
+
+@click.command()
+@click.option("--project_id", required=True, type=int)
+@click.option("--form_id", required=True, type=str)
+def get_schema(project_id, form_id):
+    odk_schema = ODKSchema(project_id, form_id)
+    pp.pprint(odk_schema.schema)
