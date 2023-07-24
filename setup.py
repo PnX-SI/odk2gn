@@ -24,6 +24,7 @@ setuptools.setup(
             "picto = odk2gn:MODULE_PICTO",
             "blueprint = odk2gn.blueprint:blueprint",
             "config_schema = odk2gn.config:EmptySchema",
+            "migrations = odk2gn:migrations",
         ],
     },
     classifiers=[
