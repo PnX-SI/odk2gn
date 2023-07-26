@@ -91,33 +91,7 @@ def get_and_post_medium(
             out_file.write(img.content)
 
 
-####### Commandes
-
-
-@click.group(name="synchronize")
-def synchronize():
-    pass
-
-
-@click.group(name="upgrade-odk-form")
-def upgrade_odk_form():
-    pass
-
-
-for contrib in entry_points(group="gn_odk_contrib", name="synchronize"):
-    synchronize_cmd = contrib.load()
-    synchronize.add_command(synchronize_cmd)
-
-for contrib in entry_points(group="gn_odk_contrib", name="upgrade_odk_form"):
-    upgrade_form_cmd = contrib.load()
-    upgrade_odk_form.add_command(upgrade_form_cmd)
-
-
-@synchronize.command(name="monitoring")
-@click.argument("module_code")
-@click.option("--project_id", required=True, type=int)
-@click.option("--form_id", required=True, type=str)
-def synchronize_monitoring(module_code, project_id, form_id):
+def synchronize_module(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
 
     log.info(f"--- Start synchro for module {module_code} ---")
@@ -222,17 +196,7 @@ def synchronize_monitoring(module_code, project_id, form_id):
     log.info(f"--- Finish synchronize for module {module_code} ---")
 
 
-@upgrade_odk_form.command(name="monitoring")
-@click.argument("module_code")
-@click.option("--project_id", required=True, type=int)
-@click.option("--form_id", required=True, type=str)
-@click.option("--skip_taxons", is_flag=True, help="Skip taxon sync.")
-@click.option("--skip_observers", is_flag=True, help="Skip observers sync.")
-@click.option("--skip_jdd", is_flag=True, help="Skip jdd sync.")
-@click.option("--skip_sites", is_flag=True, help="Skip sites sync.")
-@click.option("--skip_sites_groups", is_flag=True, help="Skip site groups sync.")
-@click.option("--skip_nomenclatures", is_flag=True, help="Skip nomenclatures sync.")
-def upgrade_monitoring(
+def upgrade_module(
     module_code,
     project_id,
     form_id,
@@ -260,6 +224,70 @@ def upgrade_monitoring(
     # Update form
     update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")
+
+
+####### Commandes
+
+
+@click.group(name="synchronize")
+def synchronize():
+    pass
+
+
+@click.group(name="upgrade-odk-form")
+def upgrade_odk_form():
+    pass
+
+
+for contrib in entry_points(group="gn_odk_contrib", name="synchronize"):
+    synchronize_cmd = contrib.load()
+    synchronize.add_command(synchronize_cmd)
+
+for contrib in entry_points(group="gn_odk_contrib", name="upgrade_odk_form"):
+    upgrade_form_cmd = contrib.load()
+    upgrade_odk_form.add_command(upgrade_form_cmd)
+
+
+@synchronize.command(name="monitoring")
+@click.argument("module_code")
+@click.option("--project_id", required=True, type=int)
+@click.option("--form_id", required=True, type=str)
+def synchronize_monitoring(module_code, project_id, form_id):
+    synchronize_module(module_code, project_id, form_id)
+
+
+@upgrade_odk_form.command(name="monitoring")
+@click.argument("module_code")
+@click.option("--project_id", required=True, type=int)
+@click.option("--form_id", required=True, type=str)
+@click.option("--skip_taxons", is_flag=True, help="Skip taxon sync.")
+@click.option("--skip_observers", is_flag=True, help="Skip observers sync.")
+@click.option("--skip_jdd", is_flag=True, help="Skip jdd sync.")
+@click.option("--skip_sites", is_flag=True, help="Skip sites sync.")
+@click.option("--skip_sites_groups", is_flag=True, help="Skip site groups sync.")
+@click.option("--skip_nomenclatures", is_flag=True, help="Skip nomenclatures sync.")
+def upgrade_monitoring(
+    module_code,
+    project_id,
+    form_id,
+    skip_taxons,
+    skip_observers,
+    skip_jdd,
+    skip_sites,
+    skip_sites_groups,
+    skip_nomenclatures,
+):
+    upgrade_module(
+        module_code,
+        project_id,
+        form_id,
+        skip_taxons,
+        skip_observers,
+        skip_jdd,
+        skip_sites,
+        skip_sites_groups,
+        skip_nomenclatures,
+    )
 
 
 @click.command()

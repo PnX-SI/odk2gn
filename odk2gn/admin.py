@@ -19,53 +19,20 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from utils_flask_sqla_geo.generic import GenericQueryGeo
 from wtforms import validators, StringField, SubmitField, TextAreaField, SelectField
+from wtforms.validators import DataRequired
 
 from odk2gn.models import TOdkForm
 from odk2gn.gn2_utils import get_monitoring_modules
 
 
 class OdkFormModelView(ModelView):
-    def __init__(self, session, **kwargs):
-        # Référence au model utilisé
-        super(OdkFormModelView, self).__init__(TOdkForm, session, **kwargs)
-
     can_create = True
-    can_edit = False
+    can_edit = True
     can_delete = True
 
-    column_list = (TOdkForm.odk_form_id, TOdkForm.odk_project_id, "module_code")
-
-    class ODKForm(Form):
-        odk_form_id_field = StringField()
-        odk_project_id_field = StringField()
-        module_field = SelectField(choices=get_monitoring_modules())
-        submit = SubmitField()
-
-    def get_list():
-        list = []
-        count = 0
-        forms = TOdkForm.query.all()
-        for form in forms:
-            count += 1
-            list.append(form)
-        return (count, list)
-
-    def get_one(id):
-        form = TOdkForm.query.filter_by(id=id)
-        return form
-
-    def create_model(self, form: ODKForm):
-        if form.validate_on_submit():
-            odk_form = TOdkForm(
-                odk_form_id=form.odk_form_id_field.data,
-                odk_project_id=form.odk_project_id_field.data,
-                id_module=(TModules.id_module).query.filter_by(module_code=form.module_field.data),
-            )
-            DB.session.add(odk_form)
-            DB.session.commit()
-
-    def delete_model(self, form):
-        pass
+    # column_list = [TOdkForm.odk_form_id, TOdkForm.odk_project_id, "module_code"]
 
 
-flask_admin.add_view(OdkFormModelView(DB.session, name="Formulaires ODK", category="odk2gn"))
+flask_admin.add_view(
+    OdkFormModelView(model=TOdkForm, session=DB.session, name="Formulaires ODK", category="odk2gn")
+)

@@ -24,7 +24,7 @@ def upgrade():
         CREATE TABLE odk2gn.t_odk_forms(
         id SERIAL NOT NULL,
         odk_form_id varchar(255) NOT NULL,
-        project_id INTEGER NOT NULL,
+        odk_project_id INTEGER NOT NULL,
         id_module INTEGER,
         
         CONSTRAINT pk_t_odk_forms PRIMARY KEY (id),

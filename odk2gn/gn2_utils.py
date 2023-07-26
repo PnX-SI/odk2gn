@@ -31,10 +31,10 @@ log = logging.getLogger("app")
 
 def get_monitoring_modules():
     tab = []
-    modules = (TMonitoringModules.module_code).query.filter_by(type="monitoring_modules").all()
+    modules = (TMonitoringModules).query.filter_by(type="monitoring_modules").all()
     for module in modules:
         tab.append(module)
-    return module
+    return tab
 
 
 def get_module_code(id_module: int):
