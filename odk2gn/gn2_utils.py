@@ -13,6 +13,7 @@ from sqlalchemy.sql import func, select, join
 from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
+from geonature.core.gn_commons.models import TModules
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
@@ -26,6 +27,19 @@ from odk2gn.monitoring_config import get_nomenclatures_fields
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 
 log = logging.getLogger("app")
+
+
+def get_monitoring_modules():
+    tab = []
+    modules = (TMonitoringModules.module_code).query.filter_by(type="monitoring_modules").all()
+    for module in modules:
+        tab.append(module)
+    return module
+
+
+def get_module_code(id_module: int):
+    module_code = (TModules.module_code).query.filter_by(id_module=id_module)
+    return module_code
 
 
 def get_modules_info(module_code: str):

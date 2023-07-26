@@ -42,6 +42,7 @@ from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data, write_r
 
 ###### TODO : celery
 from .tasks import *
+from .admin import *
 
 ####### Commandes
 from odk2gn.commands import synchronize, upgrade_odk_form
