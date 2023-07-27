@@ -137,7 +137,8 @@ def get_taxon_list(id_liste: int):
     taxons = []
     for tax in data:
         tax = tax.as_dict()
-        tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
+        if tax["nom_vern"] is not None:
+            tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
         taxons.append(tax)
     return taxons
 
