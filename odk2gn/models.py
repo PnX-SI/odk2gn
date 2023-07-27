@@ -29,5 +29,7 @@ class TOdkForm(DB.Model):
         nullable=False,
     )
     odk_project_id = DB.Column(DB.Integer, nullable=False)
+    synchronize_command_name = DB.Column(DB.String, nullable=False)
+    upgrade_command_name = DB.Column(DB.String, nullable=False)
 
     module = DB.relationship(TModules, lazy="joined")

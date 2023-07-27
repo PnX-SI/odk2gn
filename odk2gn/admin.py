@@ -33,6 +33,12 @@ class OdkFormModelView(ModelView):
     # column_list = [TOdkForm.odk_form_id, TOdkForm.odk_project_id, "module_code"]
 
 
+class OdkTasksModelView(ModelView):
+    can_create = True
+    can_edit = True
+    can_delete = True
+
+
 flask_admin.add_view(
     OdkFormModelView(model=TOdkForm, session=DB.session, name="Formulaires ODK", category="odk2gn")
 )

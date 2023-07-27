@@ -148,7 +148,9 @@ def synchronize_module(module_code, project_id, form_id):
             filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
             monitoring_table="t_base_visits",
             media_type=module_parser_config["VISIT"]["media_type"],
-            uuid_gn_object=visit.uuid_base_visit,
+            uuid_gn_oontrib in entry_points(group="gn_odk_contrib", name="synchronize_func"):
+                synchronize_func = contrib.load()
+                synchronize_func(project_id=form.odk_project_id, form_id=form.odk_form_id)bject=visit.uuid_base_visit,
         ) """
 
         for obs in observations_list:
@@ -220,7 +222,6 @@ def upgrade_module(
         skip_sites_groups=skip_sites_groups,
         skip_nomenclatures=skip_nomenclatures,
     )
-    f = write_real_csvs(module=module)
     # Update form
     update_form_attachment(project_id=project_id, xml_form_id=form_id, files=files)
     log.info(f"--- Done ---")

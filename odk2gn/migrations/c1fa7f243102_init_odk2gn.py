@@ -26,6 +26,8 @@ def upgrade():
         odk_form_id varchar(255) NOT NULL,
         odk_project_id INTEGER NOT NULL,
         id_module INTEGER,
+        synchronize_command_name varchar(1000) NOT NULL,
+        upgrade_command_name varchar(1000) NOT NULL,
         
         CONSTRAINT pk_t_odk_forms PRIMARY KEY (id),
         CONSTRAINT fk_t_odk_forms_id_module FOREIGN KEY (id_module)
