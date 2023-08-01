@@ -205,11 +205,4 @@ Certains modules GeoNature implémentant des protocoles qui ne sont pas des prot
 Pour ceci, ces modules ont besoin de deux entry-points dans le fichier *setup.py*, un pour la commande `synchronize` et un pour la commande `upgrade-odk-form`.
 La création des objets odk_form dans le volet admin se fait exactement de la même manière, sauf que les commandes de synchronisation et de mise à jour des formulaires ne s'appellent pas "monitoring", mais le nom indiqué dans le fichier où ces fonctions sont définis pour ce sous-module.
 
-```sh
-entry_points={
- "gn_odk_contrib": [
-      "synchronize=odk_ext_module.main:synchronize",
-      "upgrade_odk_form=odk_ext_module.main:upgrade_odk_form",
-  ]
-},
-```
+![Fichier setup.py pour un module non monitoring](docs/img/pf_odk_setup_file.png)
