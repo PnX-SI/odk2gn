@@ -18,7 +18,7 @@ Bien qu'indépendant, l'installation de ce module se fait dans l'environnement d
 # Activation du virtual env de GeoNature
 source <path_vers_gn>/backend/venv/bin/activate
 ```
-# Installation des modules : 
+### Installation des modules : 
 se mettre dans le dossier où figure le fichier setup.py du module, puis dans le terminal:
 ```sh
 pip install -e . -r requirements.txt
@@ -33,7 +33,7 @@ cp odk2gn_config.toml.example odk2gn_config.toml
 
 ## Configuration
 
-**ODK central**
+### ODK central
 
 Renseigner les paramètres de connexion au serveur ODK Central, pour `pyODK` (https://github.com/getodk/pyodk)
 
@@ -45,13 +45,13 @@ password = "password"
 default_project_id = 1
 ```
 
-**Tâches de fond**
+### Tâches de fond
 
 Il est possible de faire tourner des tâches de synchronisation de la base et de mise à jour des fichiers csv des formulaires en tâches de fond.
 À ces fins, des chaines de caractères comme ceux dans un cron, synchronize_schedule pour la synchronisation de la base, et upgrade_schedule pour la mis à jour des fichiers. Les chaines sont de la forme "* * * * *". Le premier élément représente les minutes, le deuxième les heures, le troisième le jour de la semaine, le quatrième le jour du mois, et le cinquième le mois de l'année. Pour en savoir plus sur ce qui est possible d'écrire pour remplir ces chaines, veuillez consulter le site https://docs.celeryq.dev/en/stable/reference/celery.schedules.html#celery.schedules.crontab.
 
 
-**Modules monitoring**
+### Modules monitoring
 
 Les formulaires monitoring ODK doivent respecter le template xlsx de monitoring fourni avec ce dépôt. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée destination de la base de données GeoNature (pour les champs générique des visites et observations). Tous les champs qui ne "match" pas ces correspondances seront poussés comme champ spécifique au format json. Il existe deux versions de ce template, une avec l'option de création de sites, et une sans.
 
