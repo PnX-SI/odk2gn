@@ -23,7 +23,7 @@ setuptools.setup(
             "code = odk2gn:MODULE_CODE",
             "picto = odk2gn:MODULE_PICTO",
             "blueprint = odk2gn.blueprint:blueprint",
-            "config_schema = odk2gn.config:EmptySchema",
+            "config_schema = odk2gn.config_schema:Odk2GnSchema",
             "migrations = odk2gn:migrations",
         ],
     },

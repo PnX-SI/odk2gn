@@ -10,9 +10,12 @@ from celery.schedules import crontab
 from flask import current_app
 from geonature.utils.celery import celery_app
 from odk2gn.commands import synchronize_module, upgrade_module
-from odk2gn.config import CentralSchema
 from odk2gn.gn2_utils import get_module_code
 from odk2gn.models import TOdkForm
+
+from geonature.utils.config import config
+
+cron = config["ODK2GN"]["tasks"]
 
 
 if sys.version_info < (3, 10):
@@ -25,13 +28,27 @@ logger = get_task_logger(__name__)
 
 @celery_app.on_after_finalize.connect
 def setup_periodic_tasks(sender, **kwargs):
+    sync_cron = cron["synchronize_schedule"].split(" ")
     sender.add_periodic_task(
-        crontab(minute=0, hour="*/1"),
+        crontab(
+            minute=sync_cron[0],
+            hour=sync_cron[1],
+            day_of_week=sync_cron[2],
+            day_of_month=sync_cron[3],
+            month_of_year=sync_cron[4],
+        ),
         synchronize_all_modules.s(),
         name="synchronize_monitoring_modules",
     )
+    upgrade_cron = cron["upgrade_schedule"].split(" ")
     sender.add_periodic_task(
-        crontab(minute=0, hour=12),
+        crontab(
+            minute=upgrade_cron[0],
+            hour=upgrade_cron[1],
+            day_of_week=upgrade_cron[2],
+            day_of_month=upgrade_cron[3],
+            month_of_year=upgrade_cron[4],
+        ),
         upgrade_all_forms.s(),
         name="upgrade_monitoring_modules",
     )

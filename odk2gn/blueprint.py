@@ -23,7 +23,6 @@ from gn_module_monitoring.monitoring.models import TMonitoringSites
 from geonature.core.gn_monitoring.models import TBaseSites
 from geonature.core.gn_commons.models import TMedias
 from geonature.utils.env import DB
-from odk2gn.config import config
 from odk2gn.odk_api import (
     get_submissions,
     update_form_attachment,
@@ -60,3 +59,5 @@ blueprint = Blueprint("odk2gn", __name__)
 
 blueprint.cli.add_command(synchronize)
 blueprint.cli.add_command(upgrade_odk_form)
+
+print(config["ODK2GN"])

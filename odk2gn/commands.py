@@ -23,7 +23,7 @@ from pypnnomenclature.models import TNomenclatures
 from geonature.core.gn_commons.models import TMedias
 from geonature.utils.env import DB
 
-from odk2gn.config import config
+from geonature.utils.config import config
 from odk2gn.odk_api import (
     get_submissions,
     update_form_attachment,
@@ -93,15 +93,17 @@ def get_and_post_medium(
 
 def synchronize_module(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
-
     log.info(f"--- Start synchro for module {module_code} ---")
     try:
-        module_parser_config = config[module_code]
+        for module in config["ODK2GN"]["modules"]:
+            if module["module_code"] == module_code:
+                module_parser_config = module
     except KeyError as e:
         log.warning(
             f"No mapping found for module {module_code} - get the default ODK monitoring template mapping !  "
         )
         module_parser_config = {}
+    print(module_parser_config)
     module_parser_config = ProcoleSchema().load(module_parser_config)
     gn_module = get_modules_info(module_code)
 
