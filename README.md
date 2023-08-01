@@ -149,7 +149,7 @@ Une fois arrivé.e ici, cliquer sur le bouton "Create", puis remplir le formulai
  - Bien sélectionner le module qui correspond au formulaire.
  - L'ODK Form Id doit **obligatoirement** correspondre à celui dans le menu settings du formulaire xlsx.
  - L'ODK Project Id doit être le celui où figure le formulaire dans ODK Central
- - Les champs de nom de commande Synchronize et Upgrade doivent être remplis avec **monitoring** dans le cas d'un module monitoring. 
+ - Les champs de nom de commande Synchronize et Upgrade doivent être remplis avec **monitoring** dans le cas d'un module monitoring.
 
 Une fois que ceci est fait, cliquer sur save.
 
@@ -195,5 +195,14 @@ Des options permettent de ne pas synchroniser certains types de données :
 - `--skip_jdd` : ne pas générer le fichier des jeux de données
 - `--skip_sites` : ne pas générer le fichier des sites
 - `--skip_nomenclatures` : ne pas générer le fichier des nomenclatures
-- `--skip_sites_groups` : ne pas générer le fichier des groupes de sites$
+- `--skip_sites_groups` : ne pas générer le fichier des groupes de sites
 
+
+## Sous modules hors Monitoring
+
+Certains modules GeoNature implémentant des protocoles qui ne sont pas des protocoles monitoring peuvent être implémentés avec odk2gn.
+
+Pour ceci, ces modules ont besoin de deux entry-points dans le fichier *setup.py*, un pour la commande `synchronize` et un pour la commande `upgrade-odk-form`.
+La création des objets odk_form dans le volet admin se fait exactement de la même manière, sauf que les commandes de synchronisation et de mise à jour des formulaires ne s'appellent pas "monitoring", mais le nom indiqué dans le fichier où ces fonctions sont définis pour ce sous-module.
+
+![Fichier setup.py pour un module non monitoring](docs/img/pf_odk_setup_file.png)
