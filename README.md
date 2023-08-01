@@ -140,6 +140,8 @@ Des exemples fonctionnels de formulaires sont aussi disponibles dans les dossier
 
 À chaque fois qu'un nouveau formulaire est passé à ODK Central, si on veut l'utiliser avec GeoNature, il faut créer un nouvel objet odk_form. Pour ceci, il faut lancer GeoNature, puis aller dans le menu admin , puis dans l'option "BackOffice GeoNature". Ensuite, il faut entrer dans le volet "Formulaires ODK".
 
+![Page d'administration d'ODK2GN](docs/img/odk2gn_admin.png)
+
 Une fois arrivé.e ici, cliquer sur le bouton "Create", puis remplir le formulaire.
 
 **ATTENTION** : Bien veiller à faire tout ce qui suit correctement.
