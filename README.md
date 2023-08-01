@@ -136,7 +136,7 @@ Des exemples fonctionnels de formulaires sont aussi disponibles dans les dossier
 - https://github.com/PnX-SI/protocoles_suivi/tree/master/chiro/odk_form
 - https://github.com/PnX-SI/protocoles_suivi/tree/master/stom/odk_form
 
-### Création d'objets odk_form
+## Création d'objets odk_form
 
 À chaque fois qu'un nouveau formulaire est passé à ODK Central, si on veut l'utiliser avec GeoNature, il faut créer un nouvel objet odk_form. Pour ceci, il faut lancer GeoNature, puis aller dans le menu admin , puis dans l'option "BackOffice GeoNature". Ensuite, il faut entrer dans le volet "Formulaires ODK".
 
