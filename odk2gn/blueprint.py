@@ -59,5 +59,3 @@ blueprint = Blueprint("odk2gn", __name__)
 
 blueprint.cli.add_command(synchronize)
 blueprint.cli.add_command(upgrade_odk_form)
-
-print(config["ODK2GN"])
