@@ -145,7 +145,7 @@ Une fois arrivé.e ici, cliquer sur le bouton "Create", puis remplir le formulai
 **ATTENTION** : Bien veiller à faire tout ce qui suit correctement.
  
  - Bien sélectionner le module qui correspond au formulaire.
- - L'ODK Form Id doit **obligtoirement** correspondre à celui dans le menu settings du formulaire xlsx.
+ - L'ODK Form Id doit **obligatoirement** correspondre à celui dans le menu settings du formulaire xlsx.
  - L'ODK Project Id doit être le celui où figure le formulaire dans ODK Central
  - Les champs de nom de commande Synchronize et Upgrade doivent être remplis avec **monitoring** dans le cas d'un module monitoring. 
 
