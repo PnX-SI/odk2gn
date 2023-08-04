@@ -205,7 +205,7 @@ Certains modules GeoNature implémentant des protocoles qui ne sont pas des prot
 Pour ceci, ces modules ont besoin de deux entry-points dans le fichier *setup.py*, un pour la commande `synchronize` et un pour la commande `upgrade-odk-form`.
 La création des objets odk_form dans le volet admin se fait exactement de la même manière, sauf que les commandes de synchronisation et de mise à jour des formulaires ne s'appellent pas "monitoring", mais le nom indiqué dans le fichier où ces fonctions sont définis pour ce sous-module.
 
-Voici un example de code de *setup.py* pour le module flore prioritaire:
+Voici un example de code de *setup.py* pour le module flore prioritaire. Le code pour ce sous-module est dans le repo à l'URL suivant: https://github.com/PnEcrins/odk2gn_flore_prioritaire. Il s'installe de la même manière que ce module.
 
 ```sh
 import setuptools
