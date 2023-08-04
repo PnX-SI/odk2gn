@@ -37,7 +37,7 @@ from odk2gn.monitoring_utils import (
 )
 from odk2gn.config_schema import ProcoleSchema
 
-from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data, write_real_csvs
+from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data
 
 ###### TODO : celery
 from .tasks import *

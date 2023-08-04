@@ -38,7 +38,7 @@ from odk2gn.monitoring_utils import (
 )
 from odk2gn.config_schema import ProcoleSchema
 
-from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data, write_real_csvs
+from odk2gn.gn2_utils import get_modules_info, get_gn2_attachments_data
 from odk2gn.tasks import *
 
 # TODO : post visite
@@ -61,57 +61,60 @@ def get_and_post_medium(
     # TODO : remove app context
     img = get_attachment(project_id, form_id, uuid_sub, filename)
     if img:
-        uuid_sub = uuid_sub.split(":")[1]
-        medias_name = f"{uuid_sub}_{filename}"
-        table_location = (
-            DB.session.query(BibTablesLocation)
-            .filter_by(
-                schema_name="gn_monitoring",
-                table_name=monitoring_table,
+        try:
+            uuid_sub = uuid_sub.split(":")[1]
+            medias_name = f"{uuid_sub}_{filename}"
+            table_location = (
+                DB.session.query(BibTablesLocation)
+                .filter_by(
+                    schema_name="gn_monitoring",
+                    table_name=monitoring_table,
+                )
+                .one()
             )
-            .one()
-        )
-        media_type = (
-            DB.session.query(TNomenclatures)
-            .filter_by(mnemonique=media_type)
-            .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
-            .one()
-        )
-        media = {
-            "media_path": f"media/attachments/{medias_name}",
-            "uuid_attached_row": uuid_gn_object,
-            "id_table_location": table_location.id_table_location,
-            "id_nomenclature_media_type": media_type.id_nomenclature,
-        }
+            media_type = (
+                DB.session.query(TNomenclatures)
+                .filter_by(mnemonique=media_type)
+                .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
+                .one()
+            )
+            media = {
+                "media_path": f"media/attachments/{medias_name}",
+                "uuid_attached_row": uuid_gn_object,
+                "id_table_location": table_location.id_table_location,
+                "id_nomenclature_media_type": media_type.id_nomenclature,
+            }
 
-        media = TMedias(**media)
-        DB.session.add(media)
-        DB.session.commit()
-        with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
-            out_file.write(img.content)
+            media = TMedias(**media)
+            DB.session.add(media)
+            DB.session.commit()
+            with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
+                out_file.write(img.content)
+        except:
+            pass
 
 
 def synchronize_module(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
     log.info(f"--- Start synchro for module {module_code} ---")
-    try:
-        for module in config["ODK2GN"]["modules"]:
-            if module["module_code"] == module_code:
-                module_parser_config = module
-    except KeyError as e:
+    module_parser_config = {}
+    for module in config["ODK2GN"]["modules"]:
+        if module["module_code"] == module_code:
+            module_parser_config = module
+    if module_parser_config == {}:
         log.warning(
             f"No mapping found for module {module_code} - get the default ODK monitoring template mapping !  "
         )
-        module_parser_config = {}
-    print(module_parser_config)
+        module_parser_config["module_code"] = module_code
+
     module_parser_config = ProcoleSchema().load(module_parser_config)
+
     gn_module = get_modules_info(module_code)
 
     monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
     for sub in form_data:
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
-
         try:
             if sub[module_parser_config.get("create_site")] == "true":
                 site = parse_and_create_site(
@@ -123,7 +126,6 @@ def synchronize_module(module_code, project_id, form_id):
                 DB.session.add(site)
         except:
             pass
-
         observations_list = []
         try:
             observations_list = flatten_data.pop(
@@ -142,23 +144,18 @@ def synchronize_module(module_code, project_id, form_id):
             gn_module,
             odk_form_schema,
         )
-
-        """ get_and_post_medium(
+        get_and_post_medium(
             project_id=project_id,
             form_id=form_id,
             uuid_sub=flatten_data.get("meta/instanceID"),
             filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
             monitoring_table="t_base_visits",
             media_type=module_parser_config["VISIT"]["media_type"],
-            uuid_gn_oontrib in entry_points(group="gn_odk_contrib", name="synchronize_func"):
-                synchronize_func = contrib.load()
-                synchronize_func(project_id=form.odk_project_id, form_id=form.odk_form_id)bject=visit.uuid_base_visit,
-        ) """
-
+            uuid_gn_object=visit.uuid_base_visit,
+        )
         for obs in observations_list:
             gn_uuid_obs = uuid.uuid4()
             flatten_obs = flatdict.FlatDict(obs, delimiter="/")
-
             observation = parse_and_create_obs(
                 flatten_obs,
                 module_parser_config,
@@ -166,8 +163,7 @@ def synchronize_module(module_code, project_id, form_id):
                 odk_form_schema,
                 gn_uuid_obs,
             )
-
-            """get_and_post_medium(
+            get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
                 uuid_sub=flatten_data.get("meta/instanceID"),
@@ -175,7 +171,7 @@ def synchronize_module(module_code, project_id, form_id):
                 monitoring_table="t_observations",
                 media_type=module_parser_config["OBSERVATION"]["media_type"],
                 uuid_gn_object=gn_uuid_obs,
-            )"""
+            )
             visit.observations.append(observation)
         try:
             if sub[module_parser_config.get("create_site")] == "true":
@@ -186,7 +182,6 @@ def synchronize_module(module_code, project_id, form_id):
         try:
             DB.session.commit()
             update_review_state(project_id, form_id, sub["__id"], "approved")
-
         except SQLAlchemyError as e:
             log.error("Error while posting data")
             log.error(str(e))

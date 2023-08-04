@@ -25,6 +25,7 @@ class SiteSchema(Schema):
     id_inventor = fields.Str(load_default="observers")
     data = fields.Str(load_default="site_creation")
     geom = fields.Str(load_default="geom")
+    site_group = fields.Str(load_default="site_group")
 
 
 class VisitSchema(Schema):

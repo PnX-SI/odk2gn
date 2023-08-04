@@ -30,6 +30,8 @@
         first_use_date = "visit_date_min"
         # nom du champ de geométrie
         geom = "geom"
+        #nom du champ de groupe de sites
+        site_group = "site_group"
     [modules.VISIT]
         # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
         comments = "comments_visit"
