@@ -136,7 +136,7 @@ Des exemples fonctionnels de formulaires sont aussi disponibles dans les dossier
 - https://github.com/PnX-SI/protocoles_suivi/tree/master/chiro/odk_form
 - https://github.com/PnX-SI/protocoles_suivi/tree/master/stom/odk_form
 
-## Création d'objets odk_form
+## Mise en place de la synchronisation automatique des formulaires
 
 À chaque fois qu'un nouveau formulaire est passé à ODK Central, si on veut l'utiliser avec GeoNature, il faut créer un nouvel objet odk_form. Pour ceci, il faut lancer GeoNature, puis aller dans le menu admin , puis dans l'option "BackOffice GeoNature". Ensuite, il faut entrer dans le volet "Formulaires ODK".
 
@@ -151,7 +151,7 @@ Une fois arrivé.e ici, cliquer sur le bouton "Create", puis remplir le formulai
  - L'ODK Project Id doit être le celui où figure le formulaire dans ODK Central
  - Les champs de nom de commande Synchronize et Upgrade doivent être remplis avec **monitoring** dans le cas d'un module monitoring.
 
-Une fois que ceci est fait, cliquer sur save.
+Une fois que ceci est fait, cliquer sur "save".
 
 
 ## Commandes
