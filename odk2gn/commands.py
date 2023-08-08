@@ -208,7 +208,6 @@ def upgrade_module(
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
     module = get_modules_info(module_code=module_code)
-
     # Get gn2 attachments data
     files = get_gn2_attachments_data(
         module=module,

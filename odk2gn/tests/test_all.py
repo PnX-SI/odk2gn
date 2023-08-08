@@ -39,6 +39,7 @@ from odk2gn.tests.fixtures import (
     failing_sub,
     mod_parser_config,
     other_failing_sub,
+    failing_sub_3,
 )
 
 
@@ -121,8 +122,6 @@ class TestCommand:
         mon_schema_fields,
         module,
         my_config,
-        attachment,
-        app,
         site_type,
         observers_and_list,
     ):
@@ -157,7 +156,6 @@ class TestCommand:
         module,
         my_config,
         attachment,
-        app,
         site_type,
         observers_and_list,
     ):
@@ -184,13 +182,49 @@ class TestCommand:
         except AssertionError:
             assert result.exit_code == 1
 
-    def test_upgrade(self, mocker, module):
+    def test_failing_sync_3(
+        self,
+        mocker,
+        failing_sub_3,
+        mon_schema_fields,
+        module,
+        my_config,
+        attachment,
+        site_type,
+        observers_and_list,
+    ):
+        try:
+            mocker.patch("odk2gn.commands.get_submissions", return_value=failing_sub_3)
+            mocker.patch(
+                "odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields
+            )
+            mocker.patch("odk2gn.commands.get_config", return_value=my_config)
+            mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
+            mocker.patch(
+                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
+                return_value=site_type.id_nomenclature,
+            )
+            mocker.patch(
+                "odk2gn.monitoring_utils.get_observers",
+                return_value=observers_and_list["user_list"],
+            )
+            runner = CliRunner()
+            result = runner.invoke(
+                synchronize,
+                ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
+            )
+        except Exception:
+            assert result.exit_code == 1
+
+    def test_upgrade(self, mocker, my_config, module):
         mocker.patch("odk2gn.commands.update_form_attachment")
+        mocker.patch("odk2gn.monitoring_config.get_config", return_value=my_config)
         runner = CliRunner()
         result = runner.invoke(
             upgrade_odk_form,
             ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
         )
+        assert result.exit_code == 0
 
 
 @pytest.mark.usefixtures("temporary_transaction")

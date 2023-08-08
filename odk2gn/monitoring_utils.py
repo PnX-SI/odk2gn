@@ -94,6 +94,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
     if id_groupe is not None:
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
         groupe.sites.append(site)
+
     return site
 
 

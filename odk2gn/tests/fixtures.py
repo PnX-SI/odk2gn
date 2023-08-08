@@ -517,7 +517,6 @@ def sub_with_site_creation(
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "count": 1,
                     "comments": "test",
                 }
             ],
@@ -623,11 +622,52 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
             "observations": (
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "comptage": 1,
+                    "comptage": "1",
                     "comments_observation": "test",
                     "medias_observation": None,
                 }
             ),
+        },
+    ]
+    return sub
+
+
+@pytest.fixture(scope="function")
+def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point):
+    sub = [
+        {
+            "__id": str(uuid.uuid4()),
+            "create_site": "true",
+            "site_creation": {
+                "site_name": "test",
+                "base_site_description": "test",
+                "geom": point["geometry"],
+                "is_new": True,
+                "site_group": site_group.id_sites_group,
+            },
+            "visit": {
+                "visit_date_min": str(datetime.datetime.now()),
+                "id_module": module.id_module,
+                "medias_visit": None,
+                "comments_visit": "test",
+                "observers": [
+                    {
+                        "observer": observers_and_list["user_list"][0],
+                        "id_role": observers_and_list["user_list"][0].id_role,
+                    }
+                ],
+                "hauteur_moy_vegetation": 12,
+            },
+            "dataset": {"id_dataset": None},
+            "nb_observations": 1,
+            "observations": [
+                {
+                    "cd_nom": taxon_and_list["taxon"].cd_nom,
+                    "comptage": 1,
+                    "comments_observation": "test",
+                    "medias_observation": None,
+                }
+            ],
         },
     ]
     return sub
@@ -647,7 +687,11 @@ def mod_parser_config(module):
             "site_group": "site_group",
         },
         "VISIT": {"media": "media", "media_type": "media_type", "comments": "comments_visit"},
-        "OBSERVATION": {"comments": "comments_observation", "media": "medias_observation"},
+        "OBSERVATION": {
+            "comments": "comments_observation",
+            "media": "medias_observation",
+            "comptage": "comptage",
+        },
     }
     return conf
 

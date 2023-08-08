@@ -66,7 +66,6 @@ def get_gn2_attachments_data(
     # Taxon
     if not skip_taxons:
         data = get_taxon_list(module.id_list_taxonomy)
-
         files["gn_taxons.csv"] = to_csv(header=("cd_nom", "nom_complet", "nom_vern"), data=data)
     # Observers
     if not skip_observers:
@@ -75,8 +74,8 @@ def get_gn2_attachments_data(
     # JDD
     if not skip_jdd:
         data = format_jdd_list(module.datasets)
-
         files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
+
     # Sites
     if not skip_sites:
         data = get_site_list(module.id_module)
@@ -101,6 +100,7 @@ def get_gn2_attachments_data(
             header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
             data=nomenclatures,
         )
+
     return files
 
 
