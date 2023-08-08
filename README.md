@@ -4,7 +4,9 @@ ODK2GN est un module python utilisant les modèles de GeoNature pour intégrer d
 
 Il permet actuellement d'importer des données collectées avec ODK vers le module Monitoring de GeoNature et de mettre à jour les listes de valeurs du formulaire ODK en fonction des données de la base de données GeoNature, en se basant sur les fichiers de configuration du module Monitoring.
 
-Développé dans le cadre du workshop ODK des parcs nationaux de France et de l'OFB (Décembre 2022) : https://geonature.fr/documents/2022-12-PNX-OFB-Workshop-ODK.pdf
+Il est aussi possible d'utiliser ODK2GN pour créer des formulaires mobiles de saisie dans d'autres modules de GeoNature, comme l'exemple du module [Flore prioritaire](https://github.com/PnEcrins/odk2gn_flore_prioritaire).
+
+Première version développée dans le cadre du workshop ODK des parcs nationaux de France et de l'OFB (Décembre 2022) : https://geonature.fr/documents/2022-12-PNX-OFB-Workshop-ODK.pdf
 
 ## Architecture
 
@@ -18,18 +20,18 @@ Bien qu'indépendant, l'installation de ce module se fait dans l'environnement d
 # Activation du virtual env de GeoNature
 source <path_vers_gn>/backend/venv/bin/activate
 ```
-### Installation des modules : 
-se mettre dans le dossier où figure le fichier setup.py du module, puis dans le terminal:
-```sh
-pip install -e . -r requirements.txt
-```
-Faire cette manipulation à chaque fois qu'on crée un nouveau module.
-Copier le fichier odk2gn_config.toml.example dans le dossier /config de la version de GeoNature installée avec la série de commandes suivantes:
- ```sh
-mv odk2gn_config.toml.example <path_vers_gn>/config/ 
-cd <path_vers_gn>/config/ 
-cp odk2gn_config.toml.example odk2gn_config.toml
-```
+
+### Installation des modules
+
+- Se mettre dans le dossier où figure le fichier setup.py du module, puis dans le terminal :
+  ```sh
+  pip install -e . -r requirements.txt
+  ```
+- Faire cette manipulation à chaque fois qu'on crée un nouveau module.
+- Copier le fichier odk2gn_config.toml.example dans le dossier /config de la version de GeoNature installée avec la série de commandes suivantes:
+  ```sh
+  mv odk2gn_config.toml.example <path_vers_gn>/config/odk2gn_config.toml
+  ```
 
 ## Configuration
 
@@ -47,15 +49,15 @@ default_project_id = 1
 
 ### Tâches de fond
 
-Il est possible de faire tourner des tâches de synchronisation de la base et de mise à jour des fichiers csv des formulaires en tâches de fond.
-À ces fins, des chaines de caractères comme ceux dans un cron, synchronize_schedule pour la synchronisation de la base, et upgrade_schedule pour la mis à jour des fichiers. Les chaines sont de la forme "* * * * *". Le premier élément représente les minutes, le deuxième les heures, le troisième le jour de la semaine, le quatrième le jour du mois, et le cinquième le mois de l'année. Pour en savoir plus sur ce qui est possible d'écrire pour remplir ces chaines, veuillez consulter le site https://docs.celeryq.dev/en/stable/reference/celery.schedules.html#celery.schedules.crontab.
+Il est possible de faire tourner des tâches de synchronisation automatique de la base de données et de mise à jour des fichiers CSV des formulaires en tâches de fond.
 
+À ces fins, des chaines de caractères comme ceux dans un cron, `synchronize_schedule` pour la synchronisation de la base, et `upgrade_schedule` pour la mise à jour des fichiers. Les chaines sont de la forme `* * * * *`. Le premier élément représente les minutes, le deuxième les heures, le troisième le jour de la semaine, le quatrième le jour du mois, et le cinquième le mois de l'année. Pour en savoir plus sur ce qu'il est possible d'écrire pour remplir ces chaines, veuillez consulter le site https://docs.celeryq.dev/en/stable/reference/celery.schedules.html#celery.schedules.crontab.
 
 ### Modules monitoring
 
-Les formulaires monitoring ODK doivent respecter le template xlsx de monitoring fourni avec ce dépôt. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée destination de la base de données GeoNature (pour les champs générique des visites et observations). Tous les champs qui ne "match" pas ces correspondances seront poussés comme champ spécifique au format json. Il existe deux versions de ce template, une avec l'option de création de sites, et une sans.
+Les formulaires monitoring ODK doivent respecter le template xlsx de monitoring fourni avec ce dépôt. Ce template crée des formulaires dont les noms de champs respectent la structure de donnée de destination de la base de données GeoNature (pour les champs génériques des visites et observations). Tous les champs qui ne "matchent" pas ces correspondances seront poussés comme champ spécifique au format json. Il existe deux versions de ce template, une avec l'option de création de sites, et une sans.
 
-Actuellement, les champs suivants sont configurables et peuvent être différents de la structure défini par le template xlsx:
+Actuellement, les champs suivants sont configurables et peuvent être différents de la structure défini par le template xlsx :
 
 - le code du module. Champ `module_code`
 - le nom du champ "booléen" indiquant si des sites sont crées. Champ `create_site`
@@ -82,8 +84,7 @@ Actuellement, les champs suivants sont configurables et peuvent être différent
   - le nom du champ contenant le média. Champ `media`
   - le type média. Champ `media_type`
 
-
-Exemple protocole STOM (cette configuration correspond à la configuration par défaut et n'a pas besoin d'être spécifiée).
+Exemple du protocole STOM (cette configuration correspond à la configuration par défaut et n'a pas besoin d'être spécifiée).
 
 ```
 [[modules]]
@@ -124,12 +125,12 @@ Exemple protocole STOM (cette configuration correspond à la configuration par d
         # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
         media_type = "Photo"
 ```
-Pour ajouter un autre module monitoring dans la config, il faut ajouter dans le fichier odk2gn_config.toml un nouvel élément ```[[modules]]```, contenant au minimum le code du module, ainsi que tous les champs du formulaire pour le nouveau module au niveau des niveaux implémentés Ces niveaux doivent être dans des balises
-[modules.(SITE/VISITE/OBSERVATION)].
+
+Pour ajouter un autre module monitoring dans la config, il faut ajouter dans le fichier `odk2gn_config.toml` un nouvel élément ```[[modules]]```, contenant au minimum le code du module, ainsi que tous les champs du formulaire pour le nouveau module au niveau des niveaux implémentés. Ces niveaux doivent être dans des balises `[modules.(SITE/VISITE/OBSERVATION)]`.
 
 ## Templates et exemples de formulaires
 
-Deux templates de formulaire au format XLSX est fourni dans le dossier ``/odk_template_form``, un avec la possibilité de créer des sites, et un sans. Ils permettent d'avoir la structure de base de définition d'un formulaire compatible avec le module Monitoring de GeoNature et la structure de données attendue par ODK2GN.
+Deux templates de formulaire au format XLSX sont fournis dans le dossier ``/odk_template_form``, un avec la possibilité de créer des sites, et un sans. Ils permettent d'avoir la structure de base de définition d'un formulaire compatible avec le module Monitoring de GeoNature et la structure de données attendue par ODK2GN.
 
 Des exemples fonctionnels de formulaires sont aussi disponibles dans les dossiers d'exemples de protocoles de Monitoring :
 
@@ -138,7 +139,7 @@ Des exemples fonctionnels de formulaires sont aussi disponibles dans les dossier
 
 ## Mise en place de la synchronisation automatique des formulaires
 
-À chaque fois qu'un nouveau formulaire est passé à ODK Central, si on veut l'utiliser avec GeoNature, il faut créer un nouvel objet odk_form. Pour ceci, il faut lancer GeoNature, puis aller dans le menu admin , puis dans l'option "BackOffice GeoNature". Ensuite, il faut entrer dans le volet "Formulaires ODK".
+À chaque fois qu'un nouveau formulaire est passé à ODK Central, si on veut l'utiliser avec GeoNature, il faut créer un nouvel objet odk_form. Pour ceci, il faut lancer GeoNature, puis aller dans le menu admin, puis dans l'option "BackOffice GeoNature". Ensuite, il faut entrer dans le volet "Formulaires ODK".
 
 ![Page d'administration d'ODK2GN](docs/img/odk2gn_admin.png)
 
@@ -166,7 +167,8 @@ source <path_vers_gn>/backend/venv/bin/activate
 
 Permet de récupérer les données saisies dans ODK central via ODK collect ainsi que les médias associés.
 
-De façon a distinguer les données intégrées en base, de celles non traitées le module opère une modification de la métadonnées `reviewState`
+De façon à distinguer les données intégrées en base, de celles non traitées le module opère une modification de la métadonnées `reviewState`.
+
 Une fois une soumission intégrée en base son `reviewState` est modifiée en `approved`. Si l'insertion dans GeoNature ne peut se faire la soumission est marquée en `hasIssues`. De cette façon l’administrateur de données peut traiter manuellement la données problèmatique via enketo.
 
 ```sh
@@ -198,16 +200,17 @@ Des options permettent de ne pas synchroniser certains types de données :
 - `--skip_sites_groups` : ne pas générer le fichier des groupes de sites
 
 
-## Sous modules hors Monitoring
+## Sous-modules hors Monitoring
 
-Certains modules GeoNature implémentant des protocoles qui ne sont pas des protocoles monitoring peuvent être implémentés avec odk2gn.
+Certains modules GeoNature implémentant des protocoles qui ne sont pas des protocoles monitoring peuvent être implémentés avec ODK2GN.
 
-Pour ceci, ces modules ont besoin de deux entry-points dans le fichier *setup.py*, un pour la commande `synchronize` et un pour la commande `upgrade-odk-form`.
-La création des objets odk_form dans le volet admin se fait exactement de la même manière, sauf que les commandes de synchronisation et de mise à jour des formulaires ne s'appellent pas "monitoring", mais le nom indiqué dans le fichier où ces fonctions sont définis pour ce sous-module.
+Pour ceci, ces modules ont besoin de deux entry-points dans le fichier `setup.py`, un pour la commande `synchronize` et un pour la commande `upgrade-odk-form`.
 
-Voici un example de code de *setup.py* pour le module flore prioritaire. Le code pour ce sous-module est dans le repo à l'URL suivant: https://github.com/PnEcrins/odk2gn_flore_prioritaire. Il s'installe de la même manière que ce module.
+La création des objets odk_form dans le volet admin se fait exactement de la même manière, sauf que les commandes de synchronisation et de mise à jour des formulaires ne s'appellent pas "monitoring", mais le nom indiqué dans le fichier où ces fonctions sont définies pour ce sous-module.
 
-```sh
+Voici un example de code de `setup.py` pour le module flore prioritaire (https://github.com/PnEcrins/odk2gn_flore_prioritaire) :
+
+```python
 import setuptools
 from pathlib import Path
 
