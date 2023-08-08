@@ -4,13 +4,16 @@ import json
 
 from datetime import datetime
 from pyodk.client import Client
-from odk2gn.config import config_file
+
+from geonature.utils.config import config
+from geonature.utils.module import get_module_config_path
 
 
+odk2gn_config = config["ODK2GN"]
+odk2gn_config_file = get_module_config_path("ODK2GN")
 log = logging.getLogger("app")
 
-
-client = Client(config_path=config_file)
+client = Client(config_path=odk2gn_config_file)
 
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):

@@ -2,6 +2,7 @@ import logging
 import uuid
 import flatdict
 import csv
+import json
 import datetime
 from shapely.geometry import Polygon, Point, LineString
 
@@ -26,29 +27,22 @@ from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
 from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, format_coords, to_wkt
 
 
-def parse_and_create_site(flatten_sub, module_parser_config, module):
-    print("PARSE AND CREATE SITE ???")
-    print(flatten_sub)
+def get_site_type_cd_nomenclature(monitoring_config):
+    return monitoring_config["site"]["generic"]["id_nomenclature_type_site"]["value"][
+        "cd_nomenclature"
+    ]
+
+
+def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, module):
     # a ne pas être hard codé dans le futur
-    if module.module_code == "STOM":
-        cd_nomenclature = "STOM"
-    elif module.module_code == "suivi_nardaie":
-        cd_nomenclature = "SUIVI_NARDAIE"
-    elif module.module_code == "chiro":
-        cd_nomenclature = "CHI"
-    else:
-        cd_nomenclature = module.module_code
-
+    cd_nomenclature = get_site_type_cd_nomenclature(monitoring_config)
     id_type = get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
-
     site_dict_to_post = {
         "id_module": module.id_module,
         "id_nomenclature_type_site": id_type,
         "data": {},
     }
     for key, val in flatten_sub.items():
-        print("LAAAA", key)
-        print("LAAAA", val)
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
         if odk_column_name == module_parser_config["SITE"].get("base_site_name"):
@@ -61,10 +55,14 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
         elif odk_column_name == module_parser_config["SITE"].get("id_inventor"):
             # là encore on utilise la valeur de la visite pour éviter la double entrée
             site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
-        elif odk_column_name == "site_group":
+        elif odk_column_name == module_parser_config["SITE"].get("site_group"):
             # transtypage pour la solidité des données
-            id_groupe = int(val)
-            site_dict_to_post["id_sites_group"] = id_groupe
+            try:
+                id_groupe = int(val)
+                site_dict_to_post["id_sites_group"] = id_groupe
+            except:
+                pass
+
         # données géométriques
         # type, coordinates et accuracy sont des noms de variables qui seront toujours présents dans une donnée géométrique d'ODK, ils sont déjà génériques
         elif odk_column_name == "type" and module_parser_config["SITE"].get("geom") in key:
@@ -89,13 +87,14 @@ def parse_and_create_site(flatten_sub, module_parser_config, module):
     # traitements des relations BDD
     site.modules.append(module)
     module.sites.append(site)  # redondance?
-
     # traitement de ce qui peut éventuellement être de valeur nulle
     if site.data == {}:
         site.data = None
+
     if id_groupe is not None:
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
         groupe.sites.append(site)
+
     return site
 
 
@@ -128,7 +127,6 @@ def parse_and_create_visit(
 
 
     """
-
     visit_generic_column = monitoring_config["visit"]["generic"]
     visit_specific_column = monitoring_config["visit"]["specific"]
     # get uuid from the submission and use it has visit UUID

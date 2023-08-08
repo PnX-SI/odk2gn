@@ -15,12 +15,13 @@ def get_nomenclatures_fields(module_code: str, niveau: str):
 
         # composant nomenclature
         if type_widget == "nomenclature":
-            nomenclatures_fields.append(
-                {
-                    "code_nomenclature_type": form["code_nomenclature_type"],
-                    "cd_nomenclatures": form.get("cd_nomenclatures", None),
-                }
-            )
+            if form["code_nomenclature_type"]:
+                nomenclatures_fields.append(
+                    {
+                        "code_nomenclature_type": form["code_nomenclature_type"],
+                        "cd_nomenclatures": form.get("cd_nomenclatures", None),
+                    }
+                )
 
         # composant datalist
         if type_widget == "datalist":

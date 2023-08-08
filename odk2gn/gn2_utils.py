@@ -13,6 +13,7 @@ from sqlalchemy.sql import func, select, join
 from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
+from geonature.core.gn_commons.models import TModules
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
@@ -26,6 +27,19 @@ from odk2gn.monitoring_config import get_nomenclatures_fields
 from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
 
 log = logging.getLogger("app")
+
+
+def get_monitoring_modules():
+    tab = []
+    modules = (TMonitoringModules).query.filter_by(type="monitoring_modules").all()
+    for module in modules:
+        tab.append(module)
+    return tab
+
+
+def get_module_code(id_module: int):
+    module_code = (TModules.query.filter_by(id_module=id_module).one()).module_code
+    return module_code
 
 
 def get_modules_info(module_code: str):
@@ -52,7 +66,6 @@ def get_gn2_attachments_data(
     # Taxon
     if not skip_taxons:
         data = get_taxon_list(module.id_list_taxonomy)
-
         files["gn_taxons.csv"] = to_csv(header=("cd_nom", "nom_complet", "nom_vern"), data=data)
     # Observers
     if not skip_observers:
@@ -61,8 +74,8 @@ def get_gn2_attachments_data(
     # JDD
     if not skip_jdd:
         data = format_jdd_list(module.datasets)
-
         files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
+
     # Sites
     if not skip_sites:
         data = get_site_list(module.id_module)
@@ -87,6 +100,7 @@ def get_gn2_attachments_data(
             header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
             data=nomenclatures,
         )
+
     return files
 
 
@@ -123,7 +137,8 @@ def get_taxon_list(id_liste: int):
     taxons = []
     for tax in data:
         tax = tax.as_dict()
-        tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
+        if tax["nom_vern"] is not None:
+            tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
         taxons.append(tax)
     return taxons
 
@@ -180,12 +195,6 @@ def format_jdd_list(datasets: list):
     for jdd in datasets:
         data.append({"id_dataset": jdd.id_dataset, "dataset_name": jdd.dataset_name})
     return data
-
-
-def get_nomenclatures_to_filter():
-    q = TNomenclatures.query
-
-    return q
 
 
 def get_ref_nomenclature_list(
@@ -262,82 +271,13 @@ def to_csv(header: list[str], data: list[dict]):
     return res
 
 
-def to_real_csv(file_name, header: list[str], data: list[dict]):
-    """Permet de créer des fichiers csv formattés pour être postés sur ODK Collect
-
-
-    :param header: liste de noms de colonne pour le fichier csv
-    :type header: list
-    :param data: données à poster formattés en dictionnaires
-    :type data: list[dict]
-    """
+# Décommenter ceci pour avoir les fichiers csv à téléverser en vrai
+"""def to_real_csv(file_name, header: list[str], data: list[dict]):
     with open(file_name, "w") as file:
         writer = csv.DictWriter(file, fieldnames=header, extrasaction="ignore")
         writer.writeheader()
         for row in data:
-            writer.writerow(row)
-
-
-def write_real_csvs(
-    module: TMonitoringModules,
-    skip_taxons: bool = False,
-    skip_observers: bool = False,
-    skip_jdd: bool = False,
-    skip_sites: bool = False,
-    skip_nomenclatures: bool = False,
-    skip_sites_groups: bool = False,
-):
-    files = {}
-    # Taxon
-    if not skip_taxons:
-        data = get_taxon_list(module.id_list_taxonomy)
-
-        files["gn_taxons.csv"] = to_real_csv(
-            file_name="gn_taxons.csv", header=("cd_nom", "nom_complet", "nom_vern"), data=data
-        )
-    # Observers
-    if not skip_observers:
-        data = get_observer_list(module.id_list_observer)
-        files["gn_observateurs.csv"] = to_real_csv(
-            file_name="gn_observateurs.csv", header=("id_role", "nom_complet"), data=data
-        )
-    # JDD
-    if not skip_jdd:
-        data = format_jdd_list(module.datasets)
-
-        files["gn_jdds.csv"] = to_real_csv(
-            file_name="gn_jdds.csv", header=("id_dataset", "dataset_name"), data=data
-        )
-    # Sites
-    if not skip_sites:
-        data = get_site_list(module.id_module)
-        files["gn_sites.csv"] = to_real_csv(
-            file_name="gn_sites.csv",
-            header=("id_base_site", "base_site_name", "geometry"),
-            data=data,
-        )
-
-    if not skip_sites_groups:
-        data = get_site_groups_list(module.id_module)
-        files["gn_groupes.csv"] = to_real_csv(
-            file_name="gn_groupes.csv", header=("id_sites_group", "sites_group_name"), data=data
-        )
-
-    # Nomenclature
-    if not skip_nomenclatures:
-        n_fields = []
-        for niveau in ["site", "visit", "observation"]:
-            n_fields = n_fields + get_nomenclatures_fields(
-                module_code=module.module_code, niveau=niveau
-            )
-
-        nomenclatures = get_nomenclature_data(n_fields)
-        files["gn_nomenclatures.csv"] = to_real_csv(
-            file_name="gn_nomenclatures.csv",
-            header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
-            data=nomenclatures,
-        )
-    return files
+            writer.writerow(row)"""
 
 
 def to_wkt(geom):
@@ -362,14 +302,13 @@ def format_coords(geom):
     Return: the argument as just x and y coordinates
     """
 
-    if geom["type"] == "Polygon":
+    if geom["type"] != "Point":
         for coords in geom["coordinates"]:
-            for point in coords:
-                if len(point) == 3:
-                    point.pop(-1)
-                if len(point) == 4:
-                    point.pop(-1)
-                    point.pop(-1)
+            if len(coords) == 3:
+                coords.pop(-1)
+            if len(coords) == 4:
+                coords.pop(-1)
+                coords.pop(-1)
 
     if geom["type"] == "Point":
         p = geom["coordinates"]

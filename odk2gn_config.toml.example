@@ -1,0 +1,116 @@
+
+[central]
+    base_url = "https://your-odk-central-server.com"
+    username = "fake.user@fake-email.com"
+    password = "fakepassword"
+    default_project_id = 0
+
+[tasks]
+    synchronize_schedule = "* * * * *"
+    upgrade_schedule = "* * * * *"
+
+[email_for_error]
+    email_for_error = "fake.error.email@fake-email.com"
+
+
+[[modules]]
+    module_code = "STOM"
+    # booléen indiquant la création de sites
+    create_site="create_site"
+    [modules.SITE]
+        # nom du champ nom du site
+        base_site_name = "site_name"
+        # nom du champ description du site
+        base_site_description = "base_site_description"
+        # nom du champ definissant l'inventeur du site
+        id_inventor = "observers"
+        # nom du groupe contenant les champs additionnels
+        data = "site_creation"
+        # nom du champ de date de première utilisation du site
+        first_use_date = "visit_date_min"
+        # nom du champ de geométrie
+        geom = "geom"
+        #nom du champ de groupe de sites
+        site_group = "site_group"
+    [modules.VISIT]
+        # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
+        comments = "comments_visit"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_visit"
+        # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
+        observers_repeat = 'observer'
+        # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
+        id_observer = 'id_role'
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
+    [modules.OBSERVATION]
+        # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
+        observations_repeat = "observations"
+        # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
+        comments = "comments_observation"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_observation"
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
+[[modules]]
+    module_code = "chiro" 
+    [modules.VISIT]
+        # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
+        comments = "comments_visit"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_visit"
+        # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
+        observers_repeat = 'observer'
+        # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
+        id_observer = 'id_role'
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
+    [modules.OBSERVATION]
+        # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
+        observations_repeat = "observations"
+        # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
+        comments = "comments_observation"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_observation"
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
+[[modules]]
+    module_code = "suivi_nardaie"
+    # booléen indiquant la création de sites
+    create_site="create_site"
+    [modules.SITE]
+        # nom du champ nom du site
+        base_site_name = "site_name"
+        # nom du champ description du site
+        base_site_description = "base_site_description"
+        # nom du champ definissant l'inventeur du site
+        id_inventor = "observers"
+        # nom du groupe contenant les champs additionnels
+        data = "site_creation"
+        # nom du champ de date de première utilisation du site
+        first_use_date = "visit_date_min"
+        # nom du champ de geométrie
+        geom = "geom"
+    [modules.VISIT]
+        # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
+        comments = "comments_visit"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_visit"
+        # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
+        observers_repeat = 'observer'
+        # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
+        id_observer = 'id_role'
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
+    [modules.OBSERVATION]
+        # nom du noeud repeat d'accès au tableau d'observations (optionnel, defaut : 'observations')
+        observations_repeat = "observations"
+        # nom du champ commentaire de l'observation (optionnel, defaut comments_observation)
+        comments = "comments_observation"
+        # nom du champ média de la visite (optionnel, defaut medias_visit)
+        media = "medias_observation"
+        # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
+        media_type = "Photo"
+
+
+    
