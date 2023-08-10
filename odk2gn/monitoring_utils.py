@@ -24,7 +24,7 @@ from gn_module_monitoring.monitoring.models import TMonitoringModules
 log = logging.getLogger("app")
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
-from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, format_coords, to_wkt
+from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, format_coords, to_wkb
 
 
 def get_site_type_cd_nomenclature(monitoring_config):
@@ -81,7 +81,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
     # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
     format_coords(geom)
-    geom = to_wkt(geom)
+    geom = to_wkb(geom)
     site.geom = geom
 
     # traitements des relations BDD
@@ -156,7 +156,6 @@ def parse_and_create_visit(
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get(
                 "value"
             )
-
         elif odk_column_name in visit_specific_column.keys():
             odk_field = odk_form_schema.get_field_info(odk_column_name)
             if odk_field["selectMultiple"]:

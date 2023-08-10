@@ -17,10 +17,6 @@ client = Client(config_path=odk2gn_config_file)
 
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):
-    print(
-        "URL BIS##################",
-        f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}",
-    )
     img = client.get(
         f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
     )

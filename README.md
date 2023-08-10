@@ -30,7 +30,11 @@ source <path_vers_gn>/backend/venv/bin/activate
 - Faire cette manipulation à chaque fois qu'on crée un nouveau module.
 - Copier le fichier odk2gn_config.toml.example dans le dossier /config de la version de GeoNature installée avec la série de commandes suivantes:
   ```sh
-  mv odk2gn_config.toml.example <path_vers_gn>/config/odk2gn_config.toml
+  cp odk2gn_config.toml.example <path_vers_gn>/config/odk2gn_config.toml
+  ```
+  Mettre à jour la base de données avec la commande
+  ```sh
+  geonature db upgrade odk2gn@head
   ```
 
 ## Configuration
@@ -52,6 +56,8 @@ default_project_id = 1
 Il est possible de faire tourner des tâches de synchronisation automatique de la base de données et de mise à jour des fichiers CSV des formulaires en tâches de fond.
 
 À ces fins, des chaines de caractères comme ceux dans un cron, `synchronize_schedule` pour la synchronisation de la base, et `upgrade_schedule` pour la mise à jour des fichiers. Les chaines sont de la forme `* * * * *`. Le premier élément représente les minutes, le deuxième les heures, le troisième le jour de la semaine, le quatrième le jour du mois, et le cinquième le mois de l'année. Pour en savoir plus sur ce qu'il est possible d'écrire pour remplir ces chaines, veuillez consulter le site https://docs.celeryq.dev/en/stable/reference/celery.schedules.html#celery.schedules.crontab.
+
+**ATTENTION** L'heure indiqué dans le crontab est en UTC.
 
 ### Modules monitoring
 

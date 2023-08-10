@@ -4,7 +4,7 @@ import csv
 import json
 import geojson
 from shapely.geometry import shape
-
+from geoalchemy2.shape import from_shape
 
 import tempfile
 from sqlalchemy.orm.exc import NoResultFound
@@ -280,7 +280,7 @@ def to_csv(header: list[str], data: list[dict]):
             writer.writerow(row)"""
 
 
-def to_wkt(geom):
+def to_wkb(geom):
     """reformats the geographic data as a WKT
 
     Keyword arguments:
@@ -291,7 +291,7 @@ def to_wkt(geom):
     s = json.dumps(geom)
     g1 = geojson.loads(s)
     g2 = shape(g1)
-    return g2.wkt
+    return from_shape(g2, srid=4326)
 
 
 def format_coords(geom):

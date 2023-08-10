@@ -6,8 +6,8 @@
     default_project_id = 0
 
 [tasks]
-    synchronize_schedule = "* * * * *"
-    upgrade_schedule = "* * * * *"
+    synchronize_schedule = "0 0 * * *"
+    upgrade_schedule = "0 0 * * *"
 
 [email_for_error]
     email_for_error = "fake.error.email@fake-email.com"
@@ -38,7 +38,7 @@
         # nom du champ média de la visite (optionnel, defaut medias_visit)
         media = "medias_visit"
         # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
-        observers_repeat = 'observer'
+        observers_repeat = 'observers'
         # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
         id_observer = 'id_role'
         # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
@@ -60,7 +60,7 @@
         # nom du champ média de la visite (optionnel, defaut medias_visit)
         media = "medias_visit"
         # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
-        observers_repeat = 'observer'
+        observers_repeat = 'observers'
         # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
         id_observer = 'id_role'
         # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
@@ -97,7 +97,7 @@
         # nom du champ média de la visite (optionnel, defaut medias_visit)
         media = "medias_visit"
         # nom du du noeud d'accès au tableau d'observateur (optionnel, defaut 'observer')
-        observers_repeat = 'observer'
+        observers_repeat = 'observers'
         # nom de la clé contenant l'id_role du noeud "observers_repeat" (optionnel, defaut 'id_role')
         id_observer = 'id_role'
         # type du media (optionnel, defaut "Photo" - valeur possible "Photo", "PDF", "Audio", "Vidéo (fichier)" )
