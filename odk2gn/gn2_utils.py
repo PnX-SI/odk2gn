@@ -4,6 +4,7 @@ import csv
 import json
 import geojson
 from shapely.geometry import shape
+from shapely.ops import transform
 
 
 import tempfile
@@ -290,8 +291,8 @@ def to_wkt(geom):
 
     s = json.dumps(geom)
     g1 = geojson.loads(s)
-    g2 = shape(g1)
-    return g2.wkt
+    geom = transform(lambda x, y, z=None: (x, y), shape(g1))
+    return geom.wkt
 
 
 def format_coords(geom):
