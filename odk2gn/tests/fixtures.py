@@ -6,7 +6,7 @@ import datetime
 import flatdict
 import json
 from pathlib import Path
-from odk2gn.gn2_utils import to_wkt
+from odk2gn.gn2_utils import to_wkb
 from geonature.utils.env import db
 from geonature import create_app
 from geonature.core.gn_meta.models import TDatasets
@@ -258,7 +258,7 @@ def site(module, site_type, point):
     with db.session.begin_nested():
         b_site = TMonitoringSites(
             base_site_name="test_site",
-            geom=to_wkt(point["geometry"]),
+            geom=to_wkb(point["geometry"]),
             id_module=module.id_module,
             id_nomenclature_type_site=site_type.id_nomenclature,
         )

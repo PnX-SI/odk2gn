@@ -25,18 +25,9 @@ from odk2gn.models import TOdkForm
 from odk2gn.gn2_utils import get_monitoring_modules
 
 
-class OdkFormModelView(ModelView):
-    can_create = True
-    can_edit = True
-    can_delete = True
-
-    # column_list = [TOdkForm.odk_form_id, TOdkForm.odk_project_id, "module_code"]
-
-
-class OdkTasksModelView(ModelView):
-    can_create = True
-    can_edit = True
-    can_delete = True
+class OdkFormModelView(CruvedProtectedMixin, ModelView):
+    module_code = "ADMIN"
+    object_code = "ODK2GN"
 
 
 flask_admin.add_view(

@@ -53,7 +53,7 @@ from odk2gn.gn2_utils import (
     get_ref_nomenclature_list,
     get_modules_info,
     get_gn2_attachments_data,
-    to_wkt,
+    to_wkb,
     format_coords,
     get_module_code,
     get_monitoring_modules,
@@ -113,7 +113,9 @@ class TestCommand:
             synchronize,
             ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
         )
+        print(result.stdout)
         assert result.exit_code == 0
+        assert False
 
     def test_failing_synchronize(
         self,

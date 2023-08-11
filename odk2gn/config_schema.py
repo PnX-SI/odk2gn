@@ -3,8 +3,8 @@ from marshmallow.validate import OneOf
 
 
 class Odk2GnTaskSchema(Schema):
-    synchronize_schedule = fields.Str(load_default="SYNCHRONIZE_STR")
-    upgrade_schedule = fields.Str(load_default="UPGRADE_STR")
+    synchronize_schedule = fields.Str(load_default="0 0 * * *")
+    upgrade_schedule = fields.Str(load_default="0 0 * * *")
 
 
 class CentralSchema(Schema):
