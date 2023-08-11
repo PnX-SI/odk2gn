@@ -3,7 +3,8 @@ import os
 import csv
 import json
 import geojson
-from shapely.geometry import shape
+from shapely.geometry import asShape, shape, Point, Polygon
+from shapely.ops import transform
 from geoalchemy2.shape import from_shape
 
 import tempfile
@@ -280,40 +281,40 @@ def to_csv(header: list[str], data: list[dict]):
             writer.writerow(row)"""
 
 
-def to_wkb(geom):
-    """reformats the geographic data as a WKT
+def to_wkb(geojson):
+    """reformats the geographic data as a WKB
 
     Keyword arguments:
     argument -- geoJSON geography
-    Return: WKT geography
+    Return: WKB geography
     """
+    print("geojson: ", geojson)
+    geom = transform(lambda x, y, z=None: (x, y), shape(geojson))
+    print("geom :", geom)
+    return from_shape(geom, srid=4326)
 
-    s = json.dumps(geom)
-    g1 = geojson.loads(s)
-    g2 = shape(g1)
-    return from_shape(g2, srid=4326)
+
+# def format_coords(geom):
+#     """removes the z coordinate of a geoJSON
+
+#     Keyword arguments:
+#     geom -- geoJSON geography
+#     Return: the argument as just x and y coordinates
+#     """
+#     if geom["type"] != "Point":
+#         for coords in geom["coordinates"]:
+#             if len(coords) == 3:
+#                 coords.pop(-1)
+#             if len(coords) == 4:
+#                 coords.pop(-1)
+#                 coords.pop(-1)
+
+#     if geom["type"] == "Point":
+#         p = geom["coordinates"]
+#         if len(p) == 3:
+#             p.pop(-1)
+#         if len(p) == 4:
+#             p.pop(-1)
 
 
-def format_coords(geom):
-    """removes the z coordinate of a geoJSON
-
-    Keyword arguments:
-    geom -- geoJSON geography
-    Return: the argument as just x and y coordinates
-    """
-
-    if geom["type"] != "Point":
-        for coords in geom["coordinates"]:
-            if len(coords) == 3:
-                coords.pop(-1)
-            if len(coords) == 4:
-                coords.pop(-1)
-                coords.pop(-1)
-
-    if geom["type"] == "Point":
-        p = geom["coordinates"]
-        if len(p) == 3:
-            p.pop(-1)
-        if len(p) == 4:
-            p.pop(-1)
-            p.pop(-1)
+#             p.pop(-1)

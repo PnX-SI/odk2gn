@@ -24,7 +24,7 @@ from gn_module_monitoring.monitoring.models import TMonitoringModules
 log = logging.getLogger("app")
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
-from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, format_coords, to_wkb
+from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, to_wkb
 
 
 def get_site_type_cd_nomenclature(monitoring_config):
@@ -80,7 +80,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
-    format_coords(geom)
+    # format_coords(geom)
     geom = to_wkb(geom)
     site.geom = geom
 
