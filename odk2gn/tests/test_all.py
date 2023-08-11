@@ -54,7 +54,6 @@ from odk2gn.gn2_utils import (
     get_modules_info,
     get_gn2_attachments_data,
     to_wkb,
-    format_coords,
     get_module_code,
     get_monitoring_modules,
 )
@@ -298,20 +297,6 @@ class TestUtilsFunctions:
         #     dict_cols
         # )
 
-    def test_format_coords_point(self, point_4, point_3):
-        format_coords(point_4["geometry"])
-        format_coords(point_3["geometry"])
-        assert len(point_3["geometry"]["coordinates"]) == 2
-        assert len(point_4["geometry"]["coordinates"]) == 2
-
-    def test_format_coords_polygon(self, polygon_3, polygon_4):
-        format_coords(polygon_3["geometry"])
-        format_coords(polygon_4["geometry"])
-        for coord in polygon_3["geometry"]["coordinates"]:
-            assert len(coord) == 2
-        for coord in polygon_4["geometry"]["coordinates"]:
-            assert len(coord) == 2
-
     def test_get_modules_info1(self, module):
         mod = get_modules_info(module.module_code)
         assert mod == module
@@ -372,4 +357,5 @@ class TestUtilsFunctions:
         for sub in sub_with_site_creation:
             flat_sub = flatdict.FlatDict(sub, delimiter="/")
             site = parse_and_create_site(flat_sub, mod_parser_config, my_config, module)
+            print(site)
             assert site in module.sites
