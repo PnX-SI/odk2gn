@@ -34,6 +34,7 @@ from odk2gn.tests.fixtures import (
     sub_with_site_creation,
     site_group,
     site,
+    polygon,
     polygon_3,
     polygon_4,
     failing_sub,
@@ -112,9 +113,7 @@ class TestCommand:
             synchronize,
             ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
         )
-        print(result.stdout)
         assert result.exit_code == 0
-        assert False
 
     def test_failing_synchronize(
         self,
@@ -357,5 +356,4 @@ class TestUtilsFunctions:
         for sub in sub_with_site_creation:
             flat_sub = flatdict.FlatDict(sub, delimiter="/")
             site = parse_and_create_site(flat_sub, mod_parser_config, my_config, module)
-            print(site)
             assert site in module.sites

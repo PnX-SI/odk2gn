@@ -288,9 +288,13 @@ def to_wkb(geojson):
     argument -- geoJSON geography
     Return: WKB geography
     """
-    print("geojson: ", geojson)
+    # Fonctionne avec tout sauf polygone avec précision (4ème val dans une coordonnée)
+    if geojson["type"] == "Polygon":
+        for coord in geojson["coordinates"]:
+            for c in coord:
+                if len(c) == 4:
+                    c.pop(-1)
     geom = transform(lambda x, y, z=None: (x, y), shape(geojson))
-    print("geom :", geom)
     return from_shape(geom, srid=4326)
 
 
