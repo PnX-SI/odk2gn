@@ -1,0 +1,12 @@
+[submodule "dependencies/Utils-Flask-SQLAlchemy-Geo"]
+	path = dependencies/Utils-Flask-SQLAlchemy-Geo
+	url = https://github.com/PnX-SI/Utils-Flask-SQLAlchemy-Geo.git
+[submodule "dependencies/Utils-Flask-SQLAlchemy"]
+	path = dependencies/Utils-Flask-SQLAlchemy
+	url = https://github.com/PnX-SI/Utils-Flask-SQLAlchemy.git
+[submodule "dependencies/gn_module_monitoring"]
+	path = dependencies/gn_module_monitoring
+	url = https://github.com/PnX-SI/gn_module_monitoring.git
+[submodule "dependencies/GeoNature"]
+	path = dependencies/GeoNature
+	url = https://github.com/PnX-SI/GeoNature.git
