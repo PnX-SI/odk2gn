@@ -1,5 +1,4 @@
-config.toml
-*.jpg
+config.tom
 .vscode/*
 *.csv
 odk_template_form/gn_jdds.csv
