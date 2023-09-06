@@ -44,15 +44,35 @@ def point_3():
 
 
 @pytest.fixture(scope="function")
+def polygon():
+    polygon = {
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [6.0535113, 44.5754145],
+                    [6.0535109, 44.5754135],
+                    [6.0535120, 44.5754150],
+                    [6.0535113, 44.5754145],
+                ],
+            ],
+        }
+    }
+    return polygon
+
+
+@pytest.fixture(scope="function")
 def polygon_4():
     polygon = {
         "geometry": {
             "type": "Polygon",
             "coordinates": [
-                [6.0535113, 44.5754145, 0, 0],
-                [6.0535109, 44.5754135, 0, 0],
-                [6.0535120, 44.5754150, 0, 0],
-                [6.0535113, 44.5754145, 0, 0],
+                [
+                    [6.0535113, 44.5754145, 0, 0],
+                    [6.0535109, 44.5754135, 0, 0],
+                    [6.0535120, 44.5754150, 0, 0],
+                    [6.0535113, 44.5754145, 0, 0],
+                ],
             ],
         }
     }
@@ -65,10 +85,12 @@ def polygon_3():
         "geometry": {
             "type": "Polygon",
             "coordinates": [
-                [6.0535113, 44.5754145, 0],
-                [6.0535109, 44.5754135, 0],
-                [6.0535120, 44.5754150, 0],
-                [6.0535113, 44.5754145, 0],
+                [
+                    [6.0535113, 44.5754145, 0],
+                    [6.0535109, 44.5754135, 0],
+                    [6.0535120, 44.5754150, 0],
+                    [6.0535113, 44.5754145, 0],
+                ],
             ],
         }
     }
@@ -480,7 +502,18 @@ def submissions(site, observers_and_list, module, taxon_and_list):
 
 @pytest.fixture(scope="function")
 def sub_with_site_creation(
-    observers_and_list, module, taxon_and_list, site_group, point, nomenclature, attachment
+    observers_and_list,
+    module,
+    taxon_and_list,
+    site_group,
+    polygon,
+    polygon_4,
+    point,
+    point_4,
+    point_3,
+    polygon_3,
+    nomenclature,
+    attachment,
 ):
     __id = str(uuid.uuid4())
     sub = [
@@ -490,7 +523,7 @@ def sub_with_site_creation(
             "site_creation": {
                 "site_name": "test",
                 "base_site_description": "test",
-                "geom": point["geometry"],
+                "geom": point_4["geometry"],
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
             },
@@ -528,7 +561,7 @@ def sub_with_site_creation(
             "site_creation": {
                 "site_name": "test",
                 "base_site_description": "test",
-                "geom": point["geometry"],
+                "geom": polygon_4["geometry"],
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),

@@ -34,6 +34,7 @@ from odk2gn.tests.fixtures import (
     sub_with_site_creation,
     site_group,
     site,
+    polygon,
     polygon_3,
     polygon_4,
     failing_sub,
@@ -54,7 +55,6 @@ from odk2gn.gn2_utils import (
     get_modules_info,
     get_gn2_attachments_data,
     to_wkb,
-    format_coords,
     get_module_code,
     get_monitoring_modules,
 )
@@ -113,9 +113,7 @@ class TestCommand:
             synchronize,
             ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
         )
-        print(result.stdout)
         assert result.exit_code == 0
-        assert False
 
     def test_failing_synchronize(
         self,
@@ -297,20 +295,6 @@ class TestUtilsFunctions:
         # assert set(["mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"]).issubset(
         #     dict_cols
         # )
-
-    def test_format_coords_point(self, point_4, point_3):
-        format_coords(point_4["geometry"])
-        format_coords(point_3["geometry"])
-        assert len(point_3["geometry"]["coordinates"]) == 2
-        assert len(point_4["geometry"]["coordinates"]) == 2
-
-    def test_format_coords_polygon(self, polygon_3, polygon_4):
-        format_coords(polygon_3["geometry"])
-        format_coords(polygon_4["geometry"])
-        for coord in polygon_3["geometry"]["coordinates"]:
-            assert len(coord) == 2
-        for coord in polygon_4["geometry"]["coordinates"]:
-            assert len(coord) == 2
 
     def test_get_modules_info1(self, module):
         mod = get_modules_info(module.module_code)
