@@ -7,6 +7,7 @@ import uuid
 
 import flatdict
 
+from flask import has_app_context, current_app, app
 
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
@@ -15,6 +16,7 @@ else:
 
 from sqlalchemy.orm import exc
 from sqlalchemy.exc import SQLAlchemyError
+from geonature import create_app
 from geonature.utils.env import BACKEND_DIR
 from gn_module_monitoring.config.repositories import get_config
 from geonature.utils.utilsmails import send_mail
