@@ -1,10 +1,11 @@
 CHANGELOG
 =========
 
-1.0.0
------
+1.0.0 (unreleased)
+------------------
 
 Refactorisation, consolidation et enrichissement du module par @Xav18.
+Compatible avec GeoNature version 2.13.0 (et plus).
 
 **🚀 Nouveautés**
 
@@ -26,7 +27,7 @@ Si vous mettez à jour ODK2GN, vous devez :
 - l'installer à nouveau car c'est un module ...
 - lancer la migration Alembic pour créer la table `odk2gn.t_odk_forms` et les permissions associées
 
-0.1.0 - Christophe
-------------------
+0.1.0 - Christophe (09-08-2023)
+-------------------------------
 
 Première version fonctionnelle du module suite au workshop des parcs nationaux et de l'OFB en décembre 2022.
