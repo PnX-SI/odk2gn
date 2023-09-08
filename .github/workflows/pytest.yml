@@ -93,6 +93,11 @@ jobs:
         pip install --editable dependencies/gn_module_monitoring
       env:
         GEONATURE_CONFIG_FILE: dependencies/GeoNature/config/test_config.toml
+    - name: Install core modules database
+      run: |
+        geonature upgrade-modules-db
+      env:
+        GEONATURE_CONFIG_FILE: dependencies/GeoNature/config/test_config.toml
     - name: Move odk2gn config file
       run: |
         cp odk2gn_config.toml.example dependencies/GeoNature/config/odk2gn_config.toml
