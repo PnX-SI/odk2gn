@@ -14,17 +14,18 @@ setuptools.setup(
     description="GeoNature-monitoring ODK project",
     maintainer="OFB and PNX",
     # url='https://github.com/PnX-SI/gn_module_monitoring',
-    packages=setuptools.find_packages("odk2gn"),
+    packages=setuptools.find_packages("./"),
     package_dir={"": "."},
     install_requires=requirements,
-    tests_require=[],
     entry_points={
-        "console_scripts": [
-            "synchronize=odk2gn.main:synchronize",
-            "upgrade_odk_form=odk2gn.main:upgrade_odk_form",
-            "test1=odk2gn.main:get_and_post_medias",
-            "odk_schema=odk2gn.main:get_schema",
-        ]
+        "console_scripts": ["odk2gn=odk2gn.main:odk2gn"],
+        "gn_module": [
+            "code = odk2gn:MODULE_CODE",
+            "picto = odk2gn:MODULE_PICTO",
+            "blueprint = odk2gn.blueprint:blueprint",
+            "config_schema = odk2gn.config_schema:Odk2GnSchema",
+            "migrations = odk2gn:migrations",
+        ],
     },
     classifiers=[
         "Development Status :: 1 - Planning",
