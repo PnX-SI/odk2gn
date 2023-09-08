@@ -10,22 +10,22 @@ Necessite python > 3.10 (Debian 11 minimum).
 
 **🚀 Nouveautés**
 
-- Ajout de gestion des sites (en plus des visites et observations
+- Ajout de la possibilité de créer des sites (en plus des visites et observations)
 - Mise à jour des templates de formulaires
 - Packaging du module en tant que module GeoNature
 - Création de la table `odk2gn.t_odk_forms` permettant de lister les projets ODK synchronisés
 - Administration de cette table directement dans le module Admin de GeoNature
-- Endpoint pour pouvoir brancher d'autres modules de GeoNature
-- Création d'un exemple de modules GeoNature (https://github.com/PnEcrins/odk2gn_flore_prioritaire)
+- Possibilité de lancer les synchronisation automatiquement via Celery-beat
 - Mise en place de tests unitaires
-- Lancement automatique des tests avec des Github actions
+- Possibilité de créer des "sous-modules" de synchronisation basé sur d'autre module GeoNature que monitoring. Voir : https://github.com/PnEcrins/odk2gn_flore_prioritaire
 
 **🐛 Corrections**
 
 **⚠️ Notes de version**
 
 Si vous mettez à jour ODK2GN, vous devez : 
-- l'installer à nouveau car c'est un module ...
+- le désinstaller : `pip uninstall odk2gn`
+- l'installer à nouveau car c'est un module maintenant un module GeoNature 
 - lancer la migration Alembic pour créer la table `odk2gn.t_odk_forms` et les permissions associées
 
 0.1.0 - Christophe (09-08-2023)
