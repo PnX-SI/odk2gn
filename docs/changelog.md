@@ -1,11 +1,12 @@
 CHANGELOG
 =========
 
-1.0.0 (unreleased)
+1.0.0 (08-09-2023)
 ------------------
 
 Refactorisation, consolidation et enrichissement du module par @Xav18.
-Compatible avec GeoNature version 2.13.0 (et plus).
+Compatible avec GeoNature version 2.12.0.
+Necessite python > 3.10 (Debian 11 minimum).
 
 **🚀 Nouveautés**
 
