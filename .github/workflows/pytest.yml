@@ -9,11 +9,6 @@ jobs:
       fail-fast: false
       matrix:
         debian-version: ['11']
-        include:
-          - debian-version: '11'
-            python-version: '3.9'
-            postgres-version: '13'
-            postgis-version: '3.2'
 
 
     name: Debian ${{ matrix.debian-version }}
