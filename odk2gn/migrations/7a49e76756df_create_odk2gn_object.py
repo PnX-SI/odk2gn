@@ -24,6 +24,7 @@ def upgrade():
         INSERT INTO gn_permissions.cor_object_module (id_object, id_module)
         VALUES((SELECT id_object FROM gn_permissions.t_objects WHERE code_object = 'ODK2GN'), 
                 (SELECT id_module FROM gn_commons.t_modules WHERE module_code = 'ADMIN'));
+
         """
     )
 
