@@ -38,11 +38,10 @@ def upgrade():
         FROM
             (
                 VALUES
-                     ('ADMIN', 'ODK2GN', 'C', False, False, 'Créer des formulaires ODK')
-                    ,('ADMIN', 'ODK2GN', 'R', False, False, 'Voir des formulaires ODK')
-                    ,('ADMIN', 'ODK2GN', 'U', False, False, 'Modifier des formulaires ODK')
-                    ,('ADMIN', 'ODK2GN', 'E', False, False, 'Exporter des formulaires ODK')
-                    ,('ADMIN', 'ODK2GN', 'D', False, False, 'Supprimer des formulaires ODK')
+                     ('ADMIN', 'ODK2GN', 'C', False, False, 'Créer des synchronisations ODK')
+                    ,('ADMIN', 'ODK2GN', 'R', False, False, 'Voir les synchronisations ODK')
+                    ,('ADMIN', 'ODK2GN', 'U', False, False, 'Modifier des synchronisations ODK')
+                    ,('ADMIN', 'ODK2GN', 'D', False, False, 'Supprimer des synchronisations ODK')
             ) AS v (module_code, object_code, action_code, scope_filter, sensitivity_filter, label)
         JOIN
             gn_commons.t_modules m ON m.module_code = v.module_code
@@ -71,7 +70,6 @@ def upgrade():
                      ('Grp_admin', 'C', 'ADMIN', 'ODK2GN','False')
                     ,('Grp_admin', 'R', 'ADMIN', 'ODK2GN','False')
                     ,('Grp_admin', 'U', 'ADMIN', 'ODK2GN','False')
-                    ,('Grp_admin', 'E', 'ADMIN', 'ODK2GN','False')
                     ,('Grp_admin', 'D', 'ADMIN', 'ODK2GN','False')
             ) AS v (role_nom, action_code, module_code, object_code, sensitivity_filter)
         JOIN
