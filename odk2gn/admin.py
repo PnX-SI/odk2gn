@@ -1,4 +1,3 @@
-from flask import Markup, current_app, flash
 from flask_admin.babel import gettext
 from flask_admin.contrib.sqla import ModelView
 from flask_admin.helpers import is_form_submitted
@@ -26,10 +25,10 @@ from odk2gn.gn2_utils import get_monitoring_modules
 
 
 class OdkFormModelView(CruvedProtectedMixin, ModelView):
-    module_code = "ADMIN"
-    object_code = "ODK2GN"
+    module_code = "ODK2GN"
+    object_code = "ODK2GN_SYNCHRO"
 
 
 flask_admin.add_view(
-    OdkFormModelView(model=TOdkForm, session=DB.session, name="Formulaires ODK", category="odk2gn")
+    OdkFormModelView(model=TOdkForm, session=DB.session, name="Synchronisation ODK", category="odk2gn")
 )

@@ -15,7 +15,6 @@ from geonature.core.gn_meta.models import TDatasets
 from geonature.utils.env import DB
 from geonature.core.gn_commons.models import TModules, cor_module_dataset
 from pypnusershub.db.models import User
-from geonature.core.gn_monitoring.models import corVisitObserver
 
 
 class TOdkForm(DB.Model):

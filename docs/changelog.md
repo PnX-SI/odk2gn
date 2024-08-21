@@ -1,6 +1,26 @@
 CHANGELOG
 =========
 
+
+1.1.0
+-----
+
+- Compatibilité avec GeoNature 2.15 (taxhub v2 et monitoring 1.0.0 (?))
+
+Note de version : 
+
+- installer le module ODK2GN comme un module geonature : 
+
+```
+  geonature install-gn-module <chemin vers odk2gn> --build=false
+```
+Vous devrez ensuite associer des permssions au module :
+
+Pour donner tous les droits aux groupe admin : 
+`geonature permissions supergrant --group --nom "Grp_admin" --yes
+`
+
+
 1.0.0 (08-09-2023)
 ------------------
 

@@ -21,7 +21,7 @@ from gn_module_monitoring.monitoring.models import (
     TMonitoringSites,
     TMonitoringSitesGroups,
 )
-from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
+from apptax.taxonomie.models import BibListes, Taxref
 from utils_flask_sqla.tests.utils import JSONClient
 
 
@@ -164,12 +164,9 @@ def taxon_and_list(plant):
     picto = "images/pictos/nopicto.gif"
     taxon = plant
     with db.session.begin_nested():
-        tax_nom = BibNoms(cd_nom=taxon.cd_nom, cd_ref=taxon.cd_nom, nom_francais=taxon.nom_vern)
         taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test", picto=picto)
-        cnl = CorNomListe(bib_nom=tax_nom, bib_liste=taxon_test_list)
-        tax_nom.listes.append(cnl)
-        taxon_test_list.cnl.append(cnl)
-        db.session.add(tax_nom, taxon_test_list)
+        taxon_and_list.noms.append(taxon)
+        db.session.add(taxon_test_list)
     return {"taxon": taxon, "tax_list": taxon_test_list}
 
 
