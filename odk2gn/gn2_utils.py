@@ -15,7 +15,7 @@ from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_commons.models import TModules
-from geonature.core.gn_monitoring.models import TBaseSites
+from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
@@ -129,10 +129,8 @@ def get_taxon_list(id_liste: int):
     """
     data = (
         DB.session.query(Taxref)
+        .filter(Taxref.listes.any(BibListes.id_liste == id_liste))
         .order_by(Taxref.nom_complet)
-        .filter(BibNoms.cd_nom == Taxref.cd_nom)
-        .filter(BibNoms.id_nom == CorNomListe.id_nom)
-        .filter(CorNomListe.id_liste == id_liste)
         .limit(3000)
     )
     taxons = []

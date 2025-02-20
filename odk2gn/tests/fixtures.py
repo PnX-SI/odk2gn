@@ -11,17 +11,14 @@ from geonature.utils.env import db
 from geonature import create_app
 from geonature.core.gn_meta.models import TDatasets
 from sqlalchemy.event import listen, remove
-from geonature.core.gn_commons.models import TModules
-from gn_module_monitoring.config.repositories import get_config
 from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
-from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
     TMonitoringSitesGroups,
 )
-from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
+from apptax.taxonomie.models import BibListes, Taxref
 from utils_flask_sqla.tests.utils import JSONClient
 
 
@@ -164,12 +161,10 @@ def taxon_and_list(plant):
     picto = "images/pictos/nopicto.gif"
     taxon = plant
     with db.session.begin_nested():
-        tax_nom = BibNoms(cd_nom=taxon.cd_nom, cd_ref=taxon.cd_nom, nom_francais=taxon.nom_vern)
-        taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test", picto=picto)
-        cnl = CorNomListe(bib_nom=tax_nom, bib_liste=taxon_test_list)
-        tax_nom.listes.append(cnl)
-        taxon_test_list.cnl.append(cnl)
-        db.session.add(tax_nom, taxon_test_list)
+        taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test")
+        taxon.listes.append(taxon_test_list)
+        # taxon_test_list.noms(taxon)
+        db.session.add(taxon, taxon_test_list)
     return {"taxon": taxon, "tax_list": taxon_test_list}
 
 
@@ -278,12 +273,10 @@ def site_type():
 @pytest.fixture(scope="function")
 def site(module, site_type, point):
     with db.session.begin_nested():
-        b_site = TMonitoringSites(
-            base_site_name="test_site",
-            geom=to_wkb(point["geometry"]),
-            id_module=module.id_module,
-            id_nomenclature_type_site=site_type.id_nomenclature,
-        )
+        b_site = TMonitoringSites(base_site_name="test_site", geom=to_wkb(point["geometry"]))
+        # ,
+        #     id_module=module.id_module,
+        #     id_nomenclature_type_site=site_type.id_nomenclature,
         # module.sites.append(b_site)
         b_site.modules.append(module)
         db.session.add(b_site)
