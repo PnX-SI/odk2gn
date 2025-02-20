@@ -3,7 +3,7 @@ import os
 import csv
 import json
 import geojson
-from shapely.geometry import asShape, shape, Point, Polygon
+from shapely.geometry import shape, Point, Polygon
 from shapely.ops import transform
 from geoalchemy2.shape import from_shape
 
@@ -15,7 +15,7 @@ from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_commons.models import TModules
-from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
+from geonature.core.gn_monitoring.models import TBaseSites
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
@@ -25,7 +25,7 @@ from gn_module_monitoring.monitoring.models import (
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 
 from odk2gn.monitoring_config import get_nomenclatures_fields
-from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
+from apptax.taxonomie.models import BibListes, cor_nom_liste, Taxref
 
 log = logging.getLogger("app")
 
