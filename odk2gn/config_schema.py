@@ -26,6 +26,7 @@ class SiteSchema(Schema):
     data = fields.Str(load_default="site_creation")
     geom = fields.Str(load_default="geom")
     site_group = fields.Str(load_default="site_group")
+    types_site = fields.Str(load_default="types_site")
 
 
 class VisitSchema(Schema):

@@ -6,6 +6,7 @@ import json
 import datetime
 from shapely.geometry import Polygon, Point, LineString
 
+from sqlalchemy import select
 
 from gn_module_monitoring.monitoring.models import (
     TMonitoringSites,
@@ -18,33 +19,57 @@ from pypnusershub.db.models import User
 from geonature.utils.env import DB
 
 from odk2gn.gn2_utils import format_jdd_list
-from geonature.core.gn_monitoring.models import TBaseSites
+from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
 from gn_module_monitoring.monitoring.models import TMonitoringModules
 
 log = logging.getLogger("app")
 
-from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
+from pypnnomenclature.models import TNomenclatures
 from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, to_wkb
 
 
 def get_site_type_cd_nomenclature(monitoring_config):
+    # TODO : DELETE ?
     return monitoring_config["site"]["generic"]["id_nomenclature_type_site"]["value"][
         "cd_nomenclature"
     ]
 
 
+def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
+    """
+    Cas des champs à choix multiple de type nomenclature
+    ODK stocke les valeurs des choix multiples séparées par un espace
+        dans le cas des nomenclatures la valeur retournée est une suite d'id
+            séparés par un espace.
+
+    Return True quand le champ est de type nomenclature et à choix multiple
+    """
+    if field_name.split("/")[1] in monitoring_config["site"]["specific"]:
+        field_config = monitoring_config["site"]["specific"][field_name.split("/")[1]]
+        if (
+            field_config.get("type_util", None) == "nomenclature"
+            and field_config.get("multiple", None) == True
+        ):
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
 def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, module):
     # a ne pas être hard codé dans le futur
-    cd_nomenclature = get_site_type_cd_nomenclature(monitoring_config)
-    id_type = get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
+    # cd_nomenclature = get_site_type_cd_nomenclature(monitoring_config)
+    id_type = None  # get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
     site_dict_to_post = {
-        "id_module": module.id_module,
-        "id_nomenclature_type_site": id_type,
         "data": {},
     }
+    types_site = []
     for key, val in flatten_sub.items():
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
+        if odk_column_name == module_parser_config["SITE"].get("types_site"):
+            types_site = [int(v) for v in val.split(" ") if v]
         if odk_column_name == module_parser_config["SITE"].get("base_site_name"):
             site_dict_to_post["base_site_name"] = val
         elif odk_column_name == module_parser_config["SITE"].get("base_site_description"):
@@ -54,7 +79,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
             site_dict_to_post["first_use_date"] = datetime.datetime.fromisoformat(val)
         elif odk_column_name == module_parser_config["SITE"].get("id_inventor"):
             # là encore on utilise la valeur de la visite pour éviter la double entrée
-            site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
+            site_dict_to_post["id_inventor"] = val[0]
         elif odk_column_name == module_parser_config["SITE"].get("site_group"):
             # transtypage pour la solidité des données
             try:
@@ -76,7 +101,12 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
         # changer site_creation pour le nom du group du XLSFORM où ces données figurent
         # elif "site_creation" in key:
         elif module_parser_config["SITE"].get("data") in key:
-            site_dict_to_post["data"][odk_column_name] = val
+            if additional_data_is_multiple_nomenclature(monitoring_config, key):
+                # Cas particulier des valeurs multiples pour les nomenclatures
+                site_dict_to_post["data"][odk_column_name] = [int(v) for v in val.split(" ") if v]
+            else:
+                site_dict_to_post["data"][odk_column_name] = val
+
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
@@ -84,9 +114,13 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
     geom = to_wkb(geom)
     site.geom = geom
 
-    # traitements des relations BDD
-    site.modules.append(module)
-    module.sites.append(site)  # redondance?
+    # Récupération des types de sites
+    for id_type in types_site:
+        ts = DB.session.scalar(
+            select(BibTypeSite).filter(BibTypeSite.id_nomenclature_type_site == id_type).limit(1)
+        )
+        site.types_site.append(ts)
+
     # traitement de ce qui peut éventuellement être de valeur nulle
     if site.data == {}:
         site.data = None
