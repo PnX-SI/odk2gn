@@ -128,17 +128,7 @@ def synchronize_module(module_code, project_id, form_id):
                 DB.session.add(site)
         except:
             pass
-        observations_list = []
-        try:
-            observations_list = flatten_data.pop(
-                module_parser_config["OBSERVATION"]["observations_repeat"]
-            )
-            assert type(observations_list) is list
-        except KeyError:
-            log.warning("No observation for this visit")
-        except AssertionError:
-            log.error("Observation node is not a list")
-            raise
+         
         visit = parse_and_create_visit(
             flatten_data,
             module_parser_config,
@@ -146,15 +136,30 @@ def synchronize_module(module_code, project_id, form_id):
             gn_module,
             odk_form_schema,
         )
-        get_and_post_medium(
-            project_id=project_id,
-            form_id=form_id,
-            uuid_sub=flatten_data.get("meta/instanceID"),
-            filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
-            monitoring_table="t_base_visits",
-            media_type=module_parser_config["VISIT"]["media_type"],
-            uuid_gn_object=visit.uuid_base_visit,
-        )
+        if visit:
+            get_and_post_medium(
+                project_id=project_id,
+                form_id=form_id,
+                uuid_sub=flatten_data.get("meta/instanceID"),
+                filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
+                monitoring_table="t_base_visits",
+                media_type=module_parser_config["VISIT"]["media_type"],
+                uuid_gn_object=visit.uuid_base_visit,
+            )
+
+        observations_list = []
+        try:
+            if visit:
+                observations_list = flatten_data.pop(
+                    module_parser_config["OBSERVATION"]["observations_repeat"]
+                )
+            assert type(observations_list) is list
+        except KeyError:
+            log.warning("No observation for this visit")
+        except AssertionError:
+            log.error("Observation node is not a list")
+            raise
+
         for obs in observations_list:
             gn_uuid_obs = uuid.uuid4()
             flatten_obs = flatdict.FlatDict(obs, delimiter="/")
@@ -176,14 +181,16 @@ def synchronize_module(module_code, project_id, form_id):
             )
             visit.observations.append(observation)
         try:
-            if sub[module_parser_config.get("create_site")] == "true":
+            if sub[module_parser_config.get("create_site")] == "true" and visit:
                 site.visits.append(visit)
         except:
             pass
-        DB.session.add(visit)
+
+        if visit:
+            DB.session.add(visit)
         try:
             DB.session.commit()
-            update_review_state(project_id, form_id, sub["__id"], "approved")
+            # update_review_state(project_id, form_id, sub["__id"], "approved")
         except SQLAlchemyError as e:
             log.error("Error while posting data")
             log.error(str(e))
