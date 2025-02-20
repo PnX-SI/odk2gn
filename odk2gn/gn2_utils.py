@@ -3,6 +3,7 @@ import os
 import csv
 import json
 import geojson
+from sqlalchemy import select
 from shapely.geometry import shape, Point, Polygon
 from shapely.ops import transform
 from geoalchemy2.shape import from_shape
@@ -111,12 +112,11 @@ def get_site_groups_list(id_module: int):
     :param id_module: Identifier of the module
     :type id_module : int"""
 
-    data = (
-        DB.session.query(TMonitoringSitesGroups)
+    data = DB.session.scalars(
+        select(TMonitoringSitesGroups)
+        .filter(TMonitoringSitesGroups.modules.any(TModules.id_module == id_module))
         .order_by(TMonitoringSitesGroups.sites_group_name)
-        .filter_by(id_module=id_module)
-        .all()
-    )
+    ).all()
 
     return [group.as_dict() for group in data]
 
@@ -127,8 +127,8 @@ def get_taxon_list(id_liste: int):
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
-    data = (
-        DB.session.query(Taxref)
+    data = DB.session.scalars(
+        select(Taxref)
         .filter(Taxref.listes.any(BibListes.id_liste == id_liste))
         .order_by(Taxref.nom_complet)
         .limit(3000)
@@ -148,21 +148,27 @@ def get_site_list(id_module: int):
     :param id_module: Identifiant du module
     :type id_module: int
     """
-    data = (
-        DB.session.query(
-            TBaseSites.id_base_site,
-            TBaseSites.base_site_name,
-            func.concat(
-                func.st_y(func.st_centroid(TBaseSites.geom)),
-                " ",
-                func.st_x(func.st_centroid(TBaseSites.geom)),
-            ),
-        )
-        .order_by(TBaseSites.base_site_name)
-        .filter(TMonitoringSites.id_base_site == TBaseSites.id_base_site)
-        .filter(TMonitoringSites.id_module == id_module)
-        .all()
+
+    # Available type
+    type_list = DB.session.scalar(
+        select(TMonitoringModules).filter(TMonitoringModules.id_module == id_module).limit(1)
     )
+    query = select(
+        TBaseSites.id_base_site,
+        TBaseSites.base_site_name,
+        func.concat(
+            func.st_y(func.st_centroid(TBaseSites.geom)),
+            " ",
+            func.st_x(func.st_centroid(TBaseSites.geom)),
+        ),
+    ).filter(
+        TMonitoringSites.types_site.any(
+            BibTypeSite.id_nomenclature_type_site.in_(
+                [t.id_nomenclature_type_site for t in type_list.types_site]
+            )
+        )
+    )
+    data = DB.session.execute(query.order_by(TBaseSites.base_site_name)).all()
     res = []
     for d in data:
         res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})

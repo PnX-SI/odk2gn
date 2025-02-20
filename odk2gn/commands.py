@@ -128,7 +128,7 @@ def synchronize_module(module_code, project_id, form_id):
                 DB.session.add(site)
         except:
             pass
-         
+
         visit = parse_and_create_visit(
             flatten_data,
             module_parser_config,

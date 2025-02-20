@@ -36,7 +36,7 @@ def get_site_type_cd_nomenclature(monitoring_config):
 
 
 def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
-    """
+    """ 
     Cas des champs à choix multiple de type nomenclature
     ODK stocke les valeurs des choix multiples séparées par un espace
         dans le cas des nomenclatures la valeur retournée est une suite d'id
@@ -161,6 +161,10 @@ def parse_and_create_visit(
 
 
     """
+    if not "visit" in monitoring_config:
+        # si pas de visite pour le module
+        return None
+
     visit_generic_column = monitoring_config["visit"]["generic"]
     visit_specific_column = monitoring_config["visit"]["specific"]
     # get uuid from the submission and use it has visit UUID
