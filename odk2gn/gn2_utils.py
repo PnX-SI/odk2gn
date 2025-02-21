@@ -21,6 +21,7 @@ from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
     TMonitoringSitesGroups,
+    cor_module_type,
 )
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
@@ -96,8 +97,11 @@ def get_gn2_attachments_data(
             n_fields = n_fields + get_nomenclatures_fields(
                 module_code=module.module_code, niveau=niveau
             )
+        types_site = get_type_site_nomenclature_list(module.id_module)
 
         nomenclatures = get_nomenclature_data(n_fields)
+        nomenclatures = nomenclatures + types_site
+
         files["gn_nomenclatures.csv"] = to_csv(
             header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
             data=nomenclatures,
@@ -200,6 +204,32 @@ def format_jdd_list(datasets: list):
     for jdd in datasets:
         data.append({"id_dataset": jdd.id_dataset, "dataset_name": jdd.dataset_name})
     return data
+
+
+def get_type_site_nomenclature_list(
+    id_module: int,
+):
+
+    q = (
+        select(TNomenclatures)
+        .join(
+            cor_module_type,
+            cor_module_type.c.id_type_site == TNomenclatures.id_nomenclature,
+        )
+        .where(cor_module_type.c.id_module == id_module)
+    )
+    tab = []
+    data = DB.session.scalars(q).all()
+    for d in data:
+        dict = d.as_dict(relationships=["nomenclature_type"])
+        res = {
+            "mnemonique": dict["nomenclature_type"]["mnemonique"],
+            "id_nomenclature": dict["id_nomenclature"],
+            "cd_nomenclature": dict["cd_nomenclature"],
+            "label_default": dict["label_default"],
+        }
+        tab.append(res)
+    return tab
 
 
 def get_ref_nomenclature_list(

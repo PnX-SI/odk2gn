@@ -70,12 +70,13 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
             # on utilise la valeur de la visite pour éviter d'entrer deux fois la même valeur
             site_dict_to_post["first_use_date"] = datetime.datetime.fromisoformat(val)
         elif odk_column_name == module_parser_config["SITE"].get("id_inventor"):
-            #
             # là encore on utilise la valeur de la visite pour éviter la double entrée
             if isinstance(val[0], int):
                 site_dict_to_post["id_inventor"] = val[0]
             elif "id_role" in val[0]:
                 site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
+            else:
+                site_dict_to_post["id_inventor"] = val
         elif odk_column_name == module_parser_config["SITE"].get("site_group"):
             # transtypage pour la solidité des données
             try:
@@ -97,7 +98,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
         # changer site_creation pour le nom du group du XLSFORM où ces données figurent
         # elif "site_creation" in key:
         elif module_parser_config["SITE"].get("data") in key:
-            if additional_data_is_multiple_nomenclature(monitoring_config, key):
+            if additional_data_is_multiple_nomenclature(monitoring_config, key) and val:
                 # Cas particulier des valeurs multiples pour les nomenclatures
                 site_dict_to_post["data"][odk_column_name] = [int(v) for v in val.split(" ") if v]
             else:

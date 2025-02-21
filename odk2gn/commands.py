@@ -118,7 +118,7 @@ def synchronize_module(module_code, project_id, form_id):
     for sub in form_data:
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
         try:
-            if sub[module_parser_config.get("create_site")] == "true":
+            if sub[module_parser_config.get("create_site")] in ("1", 1, "true"):
                 site = parse_and_create_site(
                     flatten_data,
                     module_parser_config,
@@ -136,23 +136,27 @@ def synchronize_module(module_code, project_id, form_id):
             gn_module,
             odk_form_schema,
         )
-        if visit:
-            get_and_post_medium(
-                project_id=project_id,
-                form_id=form_id,
-                uuid_sub=flatten_data.get("meta/instanceID"),
-                filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
-                monitoring_table="t_base_visits",
-                media_type=module_parser_config["VISIT"]["media_type"],
-                uuid_gn_object=visit.uuid_base_visit,
-            )
+        if not visit:
+            # S'il n'y a pas de visites
+            # Sauvegarde des données et passage à la submission suivante
+            commit_data(project_id, form_id, sub["__id"])
+            continue
+
+        get_and_post_medium(
+            project_id=project_id,
+            form_id=form_id,
+            uuid_sub=flatten_data.get("meta/instanceID"),
+            filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
+            monitoring_table="t_base_visits",
+            media_type=module_parser_config["VISIT"]["media_type"],
+            uuid_gn_object=visit.uuid_base_visit,
+        )
 
         observations_list = []
         try:
-            if visit:
-                observations_list = flatten_data.pop(
-                    module_parser_config["OBSERVATION"]["observations_repeat"]
-                )
+            observations_list = flatten_data.pop(
+                module_parser_config["OBSERVATION"]["observations_repeat"]
+            )
             assert type(observations_list) is list
         except KeyError:
             log.warning("No observation for this visit")
@@ -188,20 +192,25 @@ def synchronize_module(module_code, project_id, form_id):
 
         if visit:
             DB.session.add(visit)
-        try:
-            DB.session.commit()
-            # update_review_state(project_id, form_id, sub["__id"], "approved")
-        except SQLAlchemyError as e:
-            log.error("Error while posting data")
-            log.error(str(e))
-            send_mail(
-                config["gn_odk"]["email_for_error"],
-                subject="Synchronisation ODK error",
-                msg_html=str(e),
-            )
-            update_review_state(project_id, form_id, sub["__id"], "hasIssues")
-            DB.session.rollback()
+
+        commit_data(project_id, form_id, sub["__id"])
     log.info(f"--- Finish synchronize for module {module_code} ---")
+
+
+def commit_data(project_id, form_id, sub_id):
+    try:
+        DB.session.commit()
+        update_review_state(project_id, form_id, sub_id, "approved")
+    except SQLAlchemyError as e:
+        log.error("Error while posting data")
+        log.error(str(e))
+        send_mail(
+            config["gn_odk"]["email_for_error"],
+            subject="Synchronisation ODK error",
+            msg_html=str(e),
+        )
+        update_review_state(project_id, form_id, sub_id, "hasIssues")
+        DB.session.rollback()
 
 
 def upgrade_module(
