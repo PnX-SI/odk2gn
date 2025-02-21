@@ -25,14 +25,7 @@ from gn_module_monitoring.monitoring.models import TMonitoringModules
 log = logging.getLogger("app")
 
 from pypnnomenclature.models import TNomenclatures
-from odk2gn.gn2_utils import format_jdd_list, get_id_nomenclature_type_site, to_wkb
-
-
-def get_site_type_cd_nomenclature(monitoring_config):
-    # TODO : DELETE ?
-    return monitoring_config["site"]["generic"]["id_nomenclature_type_site"]["value"][
-        "cd_nomenclature"
-    ]
+from odk2gn.gn2_utils import format_jdd_list, to_wkb
 
 
 def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
@@ -58,9 +51,8 @@ def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
 
 
 def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, module):
-    # a ne pas être hard codé dans le futur
-    # cd_nomenclature = get_site_type_cd_nomenclature(monitoring_config)
-    id_type = None  # get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
+
+    id_type = None
     site_dict_to_post = {
         "data": {},
     }

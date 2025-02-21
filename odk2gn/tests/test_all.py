@@ -101,10 +101,6 @@ class TestCommand:
         mocker.patch("odk2gn.commands.get_config", return_value=my_config)
         mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
         mocker.patch(
-            "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-            return_value=site_type.id_nomenclature,
-        )
-        mocker.patch(
             "odk2gn.monitoring_utils.get_observers",
             return_value=observers_and_list["user_list"],
         )
@@ -132,10 +128,6 @@ class TestCommand:
             )
             mocker.patch("odk2gn.commands.get_config", return_value=my_config)
             mocker.patch("odk2gn.commands.get_attachment", return_value=None)
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-                return_value=site_type.id_nomenclature,
-            )
             mocker.patch(
                 "odk2gn.monitoring_utils.get_observers",
                 return_value=observers_and_list["user_list"],
@@ -167,10 +159,6 @@ class TestCommand:
             mocker.patch("odk2gn.commands.get_config", return_value=my_config)
             mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
             mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-                return_value=site_type.id_nomenclature,
-            )
-            mocker.patch(
                 "odk2gn.monitoring_utils.get_observers",
                 return_value=observers_and_list["user_list"],
             )
@@ -200,10 +188,6 @@ class TestCommand:
             )
             mocker.patch("odk2gn.commands.get_config", return_value=my_config)
             mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-                return_value=site_type.id_nomenclature,
-            )
             mocker.patch(
                 "odk2gn.monitoring_utils.get_observers",
                 return_value=observers_and_list["user_list"],
@@ -349,10 +333,6 @@ class TestUtilsFunctions:
     def test_parse_and_create_site(
         self, mocker, sub_with_site_creation, mod_parser_config, my_config, module, site_type
     ):
-        mocker.patch(
-            "odk2gn.monitoring_utils.get_site_type_cd_nomenclature",
-            return_value=site_type.cd_nomenclature,
-        )
         for sub in sub_with_site_creation:
             flat_sub = flatdict.FlatDict(sub, delimiter="/")
             site = parse_and_create_site(flat_sub, mod_parser_config, my_config, module)

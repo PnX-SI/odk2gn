@@ -242,16 +242,6 @@ def get_nomenclature_data(nomenclatures_fields):
     return data
 
 
-def get_id_nomenclature_type_site(cd_nomenclature):
-    id_nomenclature_type_site = (
-        TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
-        .filter_by(mnemonique="TYPE_SITE")
-        .filter(TNomenclatures.cd_nomenclature == cd_nomenclature)
-        .one()
-    ).id_nomenclature
-    return id_nomenclature_type_site
-
-
 def to_csv(header: list[str], data: list[dict]):
     """Permet de créer des objets texte formattés pour être postés sur ODK Collect
 
