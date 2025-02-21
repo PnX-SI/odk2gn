@@ -48,6 +48,7 @@ class ObservationSchema(Schema):
         load_default="Photo",
         validate=OneOf(["Photo", "PDF", "Audio", "Vidéo (fichier)"]),
     )
+    id_digitiser = fields.Str(load_default="id_digitiser")
     comments = fields.Str(load_default="comments_observation")
 
 

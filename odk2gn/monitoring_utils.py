@@ -78,8 +78,12 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
             # on utilise la valeur de la visite pour éviter d'entrer deux fois la même valeur
             site_dict_to_post["first_use_date"] = datetime.datetime.fromisoformat(val)
         elif odk_column_name == module_parser_config["SITE"].get("id_inventor"):
+            #
             # là encore on utilise la valeur de la visite pour éviter la double entrée
-            site_dict_to_post["id_inventor"] = val[0]
+            if isinstance(val[0], int):
+                site_dict_to_post["id_inventor"] = val[0]
+            elif "id_role" in val[0]:
+                site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
         elif odk_column_name == module_parser_config["SITE"].get("site_group"):
             # transtypage pour la solidité des données
             try:
@@ -258,6 +262,9 @@ def parse_and_create_obs(
         # specifig comment column
         if odk_column_name == module_parser_config["OBSERVATION"].get("comments"):
             observation_dict_to_post["comments"] = val
+        # specifig digitiser column
+        if odk_column_name == module_parser_config["OBSERVATION"].get("id_digitiser"):
+            observation_dict_to_post["id_digitiser"] = int(val)
         # specific media column
         if odk_column_name == module_parser_config["OBSERVATION"].get("media"):
             obs_media_name = val
