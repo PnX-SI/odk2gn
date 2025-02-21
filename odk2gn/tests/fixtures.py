@@ -205,7 +205,7 @@ def datasets():
 
 
 @pytest.fixture(scope="function")
-def module():
+def module(site_type):
     with db.session.begin_nested():
         new_module = TMonitoringModules(
             module_code="MODULE_1",
@@ -213,6 +213,7 @@ def module():
             module_path="module_1",
             active_frontend=True,
             active_backend=False,
+            types_site=[site_type],
         )
         db.session.add(new_module)
     return new_module
@@ -276,7 +277,7 @@ def site_type():
 def site(module, site_type, point):
     with db.session.begin_nested():
         b_site = TMonitoringSites(
-            base_site_name="test_site", geom=to_wkb(point["geometry"]), site_type=site_type
+            base_site_name="test_site", geom=to_wkb(point["geometry"]), types_site=[site_type]
         )
         b_site.modules.append(module)
         db.session.add(b_site)
@@ -500,6 +501,7 @@ def sub_with_site_creation(
     module,
     taxon_and_list,
     site_group,
+    site_type,
     polygon,
     polygon_4,
     point,
@@ -520,6 +522,7 @@ def sub_with_site_creation(
                 "geom": point_4["geometry"],
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
+                "types_site": [site_type],
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
@@ -557,6 +560,7 @@ def sub_with_site_creation(
                 "site_name": "test",
                 "base_site_description": "test",
                 "geom": polygon_4["geometry"],
+                "types_site": [site_type],
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
@@ -579,7 +583,7 @@ def sub_with_site_creation(
 
 
 @pytest.fixture(scope="function")
-def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
+def failing_sub(observers_and_list, module, site_type, taxon_and_list, site_group, point):
     sub = [
         {
             "__id": str(uuid.uuid4()),
@@ -590,6 +594,7 @@ def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
                 "geom": point["geometry"],
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
+                "types_site": [site_type],
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
