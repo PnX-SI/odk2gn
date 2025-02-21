@@ -17,6 +17,7 @@ from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
     TMonitoringSitesGroups,
+    BibTypeSite,
 )
 from apptax.taxonomie.models import BibListes, Taxref
 from utils_flask_sqla.tests.utils import JSONClient
@@ -98,7 +99,7 @@ def polygon_3():
 def site_group(module):
     with db.session.begin_nested():
         group = TMonitoringSitesGroups(
-            id_module=module.id_module,
+            modules=[module],
             uuid_sites_group=uuid.uuid4(),
             sites_group_name="test_group",
             sites_group_description="test",
@@ -163,7 +164,6 @@ def taxon_and_list(plant):
     with db.session.begin_nested():
         taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test")
         taxon.listes.append(taxon_test_list)
-        # taxon_test_list.noms(taxon)
         db.session.add(taxon, taxon_test_list)
     return {"taxon": taxon, "tax_list": taxon_test_list}
 
@@ -187,7 +187,8 @@ def submissions(site, observers_and_list, module, taxon_and_list):
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments": "test",
+                    "comments": "test submission",
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ],
         },
@@ -266,18 +267,17 @@ def site_type():
             label_fr="Site Test",
         )
         site_type_nom.active = True
-        db.session.add(site_type_nom)
-    return site_type_nom
+        site_type = BibTypeSite(nomenclature=site_type_nom, config=None)
+        db.session.add(site_type_nom, site_type)
+    return site_type
 
 
 @pytest.fixture(scope="function")
 def site(module, site_type, point):
     with db.session.begin_nested():
-        b_site = TMonitoringSites(base_site_name="test_site", geom=to_wkb(point["geometry"]))
-        # ,
-        #     id_module=module.id_module,
-        #     id_nomenclature_type_site=site_type.id_nomenclature,
-        # module.sites.append(b_site)
+        b_site = TMonitoringSites(
+            base_site_name="test_site", geom=to_wkb(point["geometry"]), site_type=site_type
+        )
         b_site.modules.append(module)
         db.session.add(b_site)
     return b_site
@@ -485,7 +485,8 @@ def submissions(site, observers_and_list, module, taxon_and_list):
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments": "test",
+                    "comments": "test submissions",
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ],
         },
@@ -543,7 +544,8 @@ def sub_with_site_creation(
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "comments": "test",
+                    "comments": f"test sub_with_site_creation failed ",
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ],
             "meta": {"instanceID": "uuid:" + __id},
@@ -602,14 +604,15 @@ def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
                 ],
                 "hauteur_moy_vegetation": 12,
             },
-            "dataset": {"id_dataset": 100},
+            "dataset": {"id_dataset": 1},
             "nb_observations": 1,
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments_observation": "test",
+                    "comments_observation": "test failing sub",
                     "medias_observation": None,
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ],
         },
@@ -649,8 +652,9 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": "1",
-                    "comments_observation": "test",
+                    "comments_observation": "test other failing sub",
                     "medias_observation": None,
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ),
         },
@@ -690,8 +694,9 @@ def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point)
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments_observation": "test",
+                    "comments_observation": "test failing sub 3",
                     "medias_observation": None,
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ],
         },
@@ -763,7 +768,7 @@ def my_config(module, site_type, nomenclature):
                     "hidden": True,
                     "value": {
                         "code_nomenclature_type": "TYPE_SITE",
-                        "cd_nomenclature": site_type.cd_nomenclature,
+                        "cd_nomenclature": site_type.nomenclature.cd_nomenclature,
                     },
                 },
                 "is_new": {"hidden": True, "type_widget": "bool_checkbox"},
