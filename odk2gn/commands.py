@@ -15,7 +15,7 @@ else:
     from importlib.metadata import entry_points
 
 from sqlalchemy.orm import exc
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from geonature import create_app
 from geonature.utils.env import BACKEND_DIR
 from gn_module_monitoring.config.repositories import get_config
@@ -99,6 +99,12 @@ def get_and_post_medium(
 def synchronize_module(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
     log.info(f"--- Start synchro for module {module_code} ---")
+
+    try:
+        gn_module = get_modules_info(module_code=module_code)
+    except NoResultFound:
+        return
+
     module_parser_config = {}
     for module in config["ODK2GN"]["modules"]:
         if module["module_code"] == module_code:
@@ -110,8 +116,6 @@ def synchronize_module(module_code, project_id, form_id):
         module_parser_config["module_code"] = module_code
 
     module_parser_config = ProcoleSchema().load(module_parser_config)
-
-    gn_module = get_modules_info(module_code)
 
     monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
@@ -225,7 +229,11 @@ def upgrade_module(
     skip_nomenclatures,
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
-    module = get_modules_info(module_code=module_code)
+    try:
+        module = get_modules_info(module_code=module_code)
+    except NoResultFound:
+        return
+
     # Get gn2 attachments data
     files = get_gn2_attachments_data(
         module=module,
