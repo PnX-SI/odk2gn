@@ -37,8 +37,8 @@ def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
 
     Return True quand le champ est de type nomenclature et à choix multiple
     """
-    if field_name.split("/")[1] in monitoring_config["site"]["specific"]:
-        field_config = monitoring_config["site"]["specific"][field_name.split("/")[1]]
+    if field_name in monitoring_config["specific"]:
+        field_config = monitoring_config["specific"][field_name]
         if (
             field_config.get("type_util", None) == "nomenclature"
             and field_config.get("multiple", None) == True
@@ -50,7 +50,60 @@ def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
         return False
 
 
-def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, module):
+def additional_data_is_nomenclature(monitoring_config, field_name):
+    """
+    Cas des champs à choix multiple de type nomenclature
+    ODK stocke les valeurs des choix multiples séparées par un espace
+        dans le cas des nomenclatures la valeur retournée est une suite d'id
+            séparés par un espace.
+
+    Return True quand le champ est de type nomenclature et à choix multiple
+    """
+    if field_name in monitoring_config["specific"]:
+        field_config = monitoring_config["specific"][field_name]
+        if field_config.get("type_util", None) == "nomenclature":
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def process_additional_data(monitoring_config, odk_form_schema, field_name, val):
+    odk_field = odk_form_schema.get_field_info(field_name)
+    column_widget = observation_specific_column[odk_column_name].get("type_widget")
+
+    if additional_data_is_multiple_nomenclature(monitoring_config, field_name) and val:
+        # Cas particulier des valeurs multiples pour les nomenclatures
+        return [int(v) for v in val.split(" ") if v]
+    elif additional_data_is_nomenclature(monitoring_config, field_name) and val:
+        # Cas particulier des valeurs multiples pour les nomenclatures
+        return int(val)
+    elif odk_field["selectMultiple"]:
+        if val:
+            # HACK -> convert mutliSelect in list and replace _ by espace
+            return [v.replace("_", " ") for v in val.split(" ")]
+    else:
+        return val
+
+
+def get_digitiser(flatten_sub, module_parser_config):
+
+    for key, val in flatten_sub.items():
+        odk_column_name = key.split("/")[-1]
+        # specifig digitiser column
+        if odk_column_name == module_parser_config.get("id_digitiser"):
+            return int(val)
+
+
+def get_observers(observers_list):
+    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
+    return obss
+
+
+def parse_and_create_site(
+    flatten_sub, module_parser_config, monitoring_config, module, odk_form_schema
+):
 
     id_type = None
     site_dict_to_post = {
@@ -98,11 +151,9 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
         # changer site_creation pour le nom du group du XLSFORM où ces données figurent
         # elif "site_creation" in key:
         elif module_parser_config["SITE"].get("data") in key:
-            if additional_data_is_multiple_nomenclature(monitoring_config, key) and val:
-                # Cas particulier des valeurs multiples pour les nomenclatures
-                site_dict_to_post["data"][odk_column_name] = [int(v) for v in val.split(" ") if v]
-            else:
-                site_dict_to_post["data"][odk_column_name] = val
+            site_dict_to_post["data"][odk_column_name] = process_additional_data(
+                monitoring_config["site"], odk_form_schema, odk_column_name, val
+            )
 
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
@@ -127,11 +178,6 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
         groupe.sites.append(site)
 
     return site
-
-
-def get_observers(observers_list):
-    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
-    return obss
 
 
 def parse_and_create_visit(
@@ -192,14 +238,13 @@ def parse_and_create_visit(
                 "value"
             )
         elif odk_column_name in visit_specific_column.keys():
-            odk_field = odk_form_schema.get_field_info(odk_column_name)
-            if odk_field["selectMultiple"]:
-                if val:
-                    # HACK -> convert mutliSelect in list and replace _ by espace
-                    val = [v.replace("_", " ") for v in val.split(" ")]
-            visit_dict_to_post["data"][odk_column_name] = val or visit_specific_column[
+            process_value = process_additional_data(
+                monitoring_config["visit"], odk_form_schema, odk_column_name, val
+            )
+            visit_dict_to_post["data"][odk_column_name] = process_value or visit_specific_column[
                 odk_column_name
             ].get("value")
+
     if visit_dict_to_post["id_dataset"] == None:
         jdds = format_jdd_list(gn_module.datasets)
         if len(jdds) == 1:
@@ -255,9 +300,6 @@ def parse_and_create_obs(
         # specifig comment column
         if odk_column_name == module_parser_config["OBSERVATION"].get("comments"):
             observation_dict_to_post["comments"] = val
-        # specifig digitiser column
-        if odk_column_name == module_parser_config["OBSERVATION"].get("id_digitiser"):
-            observation_dict_to_post["id_digitiser"] = int(val)
         # specific media column
         if odk_column_name == module_parser_config["OBSERVATION"].get("media"):
             obs_media_name = val
@@ -266,22 +308,11 @@ def parse_and_create_obs(
                 odk_column_name
             ].get("value")
         elif odk_column_name in observation_specific_column.keys():
-            odk_field = odk_form_schema.get_field_info(odk_column_name)
-            column_widget = observation_specific_column[odk_column_name].get("type_widget")
-            if odk_field["type"] == "string" and column_widget == "nomenclature":
-                org_val = val
-                try:
-                    val = int(val, 10)
-                except:
-                    val = org_val
-
-            # if odk_specific_column['type_widget'] == 'nomenclature' and odk_field['type'] == 'string' :
-            if odk_field["selectMultiple"]:
-                if val:
-                    # HACK -> convert mutliSelect in list and replace _ by espace
-                    val = [v.replace("_", " ") for v in val.split(" ")]
-            observation_dict_to_post["data"][odk_column_name] = val or observation_specific_column[
-                odk_column_name
-            ].get("value")
+            process_value = process_additional_data(
+                monitoring_config["observation"], odk_form_schema, odk_column_name, val
+            )
+            observation_dict_to_post["data"][odk_column_name] = (
+                process_value or observation_specific_column[odk_column_name].get("value")
+            )
     obs = TMonitoringObservations(**observation_dict_to_post)
     return obs
