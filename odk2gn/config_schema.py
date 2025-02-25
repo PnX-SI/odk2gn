@@ -20,6 +20,7 @@ class GnODK(Schema):
 
 class SiteSchema(Schema):
     base_site_name = fields.Str(load_default="site_name")
+    base_site_code = fields.Str(load_default="base_site_code")
     base_site_description = fields.Str(load_default="base_site_description")
     first_use_date = fields.Str(load_default="visit_date_min")
     id_inventor = fields.Str(load_default="observers")
@@ -27,6 +28,11 @@ class SiteSchema(Schema):
     geom = fields.Str(load_default="geom")
     site_group = fields.Str(load_default="site_group")
     types_site = fields.Str(load_default="types_site")
+    media = fields.Str(load_default="medias_site")
+    media_type = fields.Str(
+        load_default="Photo",
+        validate=OneOf(["Photo", "PDF", "Audio", "Vidéo (fichier)"]),
+    )
 
 
 class VisitSchema(Schema):
@@ -48,7 +54,6 @@ class ObservationSchema(Schema):
         load_default="Photo",
         validate=OneOf(["Photo", "PDF", "Audio", "Vidéo (fichier)"]),
     )
-    id_digitiser = fields.Str(load_default="id_digitiser")
     comments = fields.Str(load_default="comments_observation")
 
 
@@ -58,6 +63,7 @@ class ProcoleSchema(Schema):
     SITE = fields.Nested(SiteSchema, load_default=SiteSchema().load({}))
     VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
     OBSERVATION = fields.Nested(ObservationSchema, load_default=ObservationSchema().load({}))
+    id_digitiser = fields.Str(load_default="id_digitiser")
 
 
 class Odk2GnSchema(Schema):

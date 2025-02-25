@@ -29,7 +29,7 @@ from odk2gn.gn2_utils import format_jdd_list, to_wkb
 
 
 def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
-    """ 
+    """
     Cas des champs à choix multiple de type nomenclature
     ODK stocke les valeurs des choix multiples séparées par un espace
         dans le cas des nomenclatures la valeur retournée est une suite d'id
@@ -71,7 +71,6 @@ def additional_data_is_nomenclature(monitoring_config, field_name):
 
 def process_additional_data(monitoring_config, odk_form_schema, field_name, val):
     odk_field = odk_form_schema.get_field_info(field_name)
-    column_widget = observation_specific_column[odk_column_name].get("type_widget")
 
     if additional_data_is_multiple_nomenclature(monitoring_config, field_name) and val:
         # Cas particulier des valeurs multiples pour les nomenclatures

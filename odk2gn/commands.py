@@ -37,6 +37,7 @@ from odk2gn.monitoring_utils import (
     parse_and_create_visit,
     parse_and_create_obs,
     parse_and_create_site,
+    get_digitiser,
 )
 from odk2gn.config_schema import ProcoleSchema
 
@@ -81,7 +82,7 @@ def get_and_post_medium(
                 .one()
             )
             media = {
-                "media_path": f"media/attachments/{medias_name}",
+                "media_path": f"{table_location.id_table_location}/{medias_name}",
                 "uuid_attached_row": uuid_gn_object,
                 "id_table_location": table_location.id_table_location,
                 "id_nomenclature_media_type": media_type.id_nomenclature,
@@ -90,9 +91,18 @@ def get_and_post_medium(
             media = TMedias(**media)
             DB.session.add(media)
             DB.session.commit()
-            with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
+
+            media_dir = (
+                BACKEND_DIR / "media" / "attachments" / str(table_location.id_table_location)
+            )
+            media_dir.mkdir(parents=True, exist_ok=True)
+            with open(
+                media_dir / medias_name,
+                "wb",
+            ) as out_file:
                 out_file.write(img.content)
-        except:
+        except Exception as e:
+            log.error(f"Unable to save media {medias_name}")
             pass
 
 
@@ -121,6 +131,7 @@ def synchronize_module(module_code, project_id, form_id):
     form_data = get_submissions(project_id, form_id)
     for sub in form_data:
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
+        id_digitiser = get_digitiser(flatten_data, module_parser_config)
         try:
             if sub[module_parser_config.get("create_site")] in ("1", 1, "true"):
                 site = parse_and_create_site(
@@ -128,11 +139,24 @@ def synchronize_module(module_code, project_id, form_id):
                     module_parser_config,
                     monitoring_config=monitoring_config,
                     module=gn_module,
+                    odk_form_schema=odk_form_schema,
                 )
-                DB.session.add(site)
-        except:
-            pass
+                site.id_digitiser = id_digitiser
 
+                get_and_post_medium(
+                    project_id=project_id,
+                    form_id=form_id,
+                    uuid_sub=flatten_data.get("meta/instanceID"),
+                    filename=flatten_data.get(module_parser_config["SITE"]["media"]),
+                    monitoring_table="t_base_sites",
+                    media_type=module_parser_config["SITE"]["media_type"],
+                    uuid_gn_object=site.uuid_base_site,
+                )
+
+                DB.session.add(site)
+        except Exception as e:
+            raise (e)
+            # pass
         visit = parse_and_create_visit(
             flatten_data,
             module_parser_config,
@@ -145,6 +169,8 @@ def synchronize_module(module_code, project_id, form_id):
             # Sauvegarde des données et passage à la submission suivante
             commit_data(project_id, form_id, sub["__id"])
             continue
+
+        visit.id_digitiser = id_digitiser
 
         get_and_post_medium(
             project_id=project_id,
@@ -166,6 +192,7 @@ def synchronize_module(module_code, project_id, form_id):
             log.warning("No observation for this visit")
         except AssertionError:
             log.error("Observation node is not a list")
+        except Exception as e:
             raise
 
         for obs in observations_list:
@@ -178,6 +205,7 @@ def synchronize_module(module_code, project_id, form_id):
                 odk_form_schema,
                 gn_uuid_obs,
             )
+            observation.id_digitiser = id_digitiser
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
@@ -189,11 +217,10 @@ def synchronize_module(module_code, project_id, form_id):
             )
             visit.observations.append(observation)
         try:
-            if sub[module_parser_config.get("create_site")] == "true" and visit:
+            if sub[module_parser_config.get("create_site")] in ("1", 1, "true") and visit:
                 site.visits.append(visit)
-        except:
-            pass
-
+        except Exception as e:
+            raise
         if visit:
             DB.session.add(visit)
 
