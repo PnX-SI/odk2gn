@@ -3,11 +3,14 @@ from gn_module_monitoring.config.repositories import get_config
 
 def get_nomenclatures_fields(module_code: str, niveau: str):
     config = get_config(module_code)
+    nomenclatures_fields = []
+    if not niveau in config:
+        return nomenclatures_fields
+
     fields = dict(
         config[niveau].get("specific", []),
         **config[niveau].get("generic", []),
     )
-    nomenclatures_fields = []
     for name in fields:
         form = fields[name]
         type_util = form.get("type_util")

@@ -15,7 +15,7 @@ else:
     from importlib.metadata import entry_points
 
 from sqlalchemy.orm import exc
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from geonature import create_app
 from geonature.utils.env import BACKEND_DIR
 from gn_module_monitoring.config.repositories import get_config
@@ -37,6 +37,7 @@ from odk2gn.monitoring_utils import (
     parse_and_create_visit,
     parse_and_create_obs,
     parse_and_create_site,
+    get_digitiser,
 )
 from odk2gn.config_schema import ProcoleSchema
 
@@ -81,7 +82,7 @@ def get_and_post_medium(
                 .one()
             )
             media = {
-                "media_path": f"media/attachments/{medias_name}",
+                "media_path": f"{table_location.id_table_location}/{medias_name}",
                 "uuid_attached_row": uuid_gn_object,
                 "id_table_location": table_location.id_table_location,
                 "id_nomenclature_media_type": media_type.id_nomenclature,
@@ -90,15 +91,30 @@ def get_and_post_medium(
             media = TMedias(**media)
             DB.session.add(media)
             DB.session.commit()
-            with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
+
+            media_dir = (
+                BACKEND_DIR / "media" / "attachments" / str(table_location.id_table_location)
+            )
+            media_dir.mkdir(parents=True, exist_ok=True)
+            with open(
+                media_dir / medias_name,
+                "wb",
+            ) as out_file:
                 out_file.write(img.content)
-        except:
+        except Exception as e:
+            log.error(f"Unable to save media {medias_name}")
             pass
 
 
 def synchronize_module(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
     log.info(f"--- Start synchro for module {module_code} ---")
+
+    try:
+        gn_module = get_modules_info(module_code=module_code)
+    except NoResultFound:
+        return
+
     module_parser_config = {}
     for module in config["ODK2GN"]["modules"]:
         if module["module_code"] == module_code:
@@ -111,23 +127,63 @@ def synchronize_module(module_code, project_id, form_id):
 
     module_parser_config = ProcoleSchema().load(module_parser_config)
 
-    gn_module = get_modules_info(module_code)
-
     monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
+
     for sub in form_data:
+
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
+        id_digitiser = get_digitiser(flatten_data, module_parser_config)
         try:
-            if sub[module_parser_config.get("create_site")] == "true":
-                site = parse_and_create_site(
-                    flatten_data,
-                    module_parser_config,
-                    monitoring_config=monitoring_config,
-                    module=gn_module,
-                )
+            site = parse_and_create_site(
+                flatten_data,
+                module_parser_config,
+                monitoring_config=monitoring_config,
+                module=gn_module,
+                odk_form_schema=odk_form_schema,
+            )
+            site.id_digitiser = id_digitiser
+
+            get_and_post_medium(
+                project_id=project_id,
+                form_id=form_id,
+                uuid_sub=flatten_data.get("meta/instanceID"),
+                filename=flatten_data.get(module_parser_config["SITE"]["media"]),
+                monitoring_table="t_base_sites",
+                media_type=module_parser_config["SITE"]["media_type"],
+                uuid_gn_object=site.uuid_base_site,
+            )
+            if site:
                 DB.session.add(site)
-        except:
-            pass
+        except Exception as e:
+            raise (e)
+            # pass
+        visit = parse_and_create_visit(
+            flatten_data,
+            module_parser_config,
+            monitoring_config,
+            gn_module,
+            odk_form_schema,
+        )
+        if not visit:
+            # S'il n'y a pas de visites
+            # Sauvegarde des données et passage à la submission suivante
+            log.warning("No visit for this site")
+            commit_data(project_id, form_id, sub["__id"])
+            continue
+
+        visit.id_digitiser = id_digitiser
+
+        get_and_post_medium(
+            project_id=project_id,
+            form_id=form_id,
+            uuid_sub=flatten_data.get("meta/instanceID"),
+            filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
+            monitoring_table="t_base_visits",
+            media_type=module_parser_config["VISIT"]["media_type"],
+            uuid_gn_object=visit.uuid_base_visit,
+        )
+
         observations_list = []
         try:
             observations_list = flatten_data.pop(
@@ -138,23 +194,9 @@ def synchronize_module(module_code, project_id, form_id):
             log.warning("No observation for this visit")
         except AssertionError:
             log.error("Observation node is not a list")
+        except Exception as e:
             raise
-        visit = parse_and_create_visit(
-            flatten_data,
-            module_parser_config,
-            monitoring_config,
-            gn_module,
-            odk_form_schema,
-        )
-        get_and_post_medium(
-            project_id=project_id,
-            form_id=form_id,
-            uuid_sub=flatten_data.get("meta/instanceID"),
-            filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
-            monitoring_table="t_base_visits",
-            media_type=module_parser_config["VISIT"]["media_type"],
-            uuid_gn_object=visit.uuid_base_visit,
-        )
+
         for obs in observations_list:
             gn_uuid_obs = uuid.uuid4()
             flatten_obs = flatdict.FlatDict(obs, delimiter="/")
@@ -165,6 +207,7 @@ def synchronize_module(module_code, project_id, form_id):
                 odk_form_schema,
                 gn_uuid_obs,
             )
+            observation.id_digitiser = id_digitiser
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
@@ -176,25 +219,32 @@ def synchronize_module(module_code, project_id, form_id):
             )
             visit.observations.append(observation)
         try:
-            if sub[module_parser_config.get("create_site")] == "true":
+            if site and visit:
                 site.visits.append(visit)
-        except:
-            pass
-        DB.session.add(visit)
-        try:
-            DB.session.commit()
-            update_review_state(project_id, form_id, sub["__id"], "approved")
-        except SQLAlchemyError as e:
-            log.error("Error while posting data")
-            log.error(str(e))
-            send_mail(
-                config["gn_odk"]["email_for_error"],
-                subject="Synchronisation ODK error",
-                msg_html=str(e),
-            )
-            update_review_state(project_id, form_id, sub["__id"], "hasIssues")
-            DB.session.rollback()
+        except Exception as e:
+            raise
+
+        if visit:
+            DB.session.add(visit)
+
+        commit_data(project_id, form_id, sub["__id"])
     log.info(f"--- Finish synchronize for module {module_code} ---")
+
+
+def commit_data(project_id, form_id, sub_id):
+    try:
+        DB.session.commit()
+        update_review_state(project_id, form_id, sub_id, "approved")
+    except SQLAlchemyError as e:
+        log.error("Error while posting data")
+        log.error(str(e))
+        send_mail(
+            config["gn_odk"]["email_for_error"],
+            subject="Synchronisation ODK error",
+            msg_html=str(e),
+        )
+        update_review_state(project_id, form_id, sub_id, "hasIssues")
+        DB.session.rollback()
 
 
 def upgrade_module(
@@ -209,7 +259,11 @@ def upgrade_module(
     skip_nomenclatures,
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
-    module = get_modules_info(module_code=module_code)
+    try:
+        module = get_modules_info(module_code=module_code)
+    except NoResultFound:
+        return
+
     # Get gn2 attachments data
     files = get_gn2_attachments_data(
         module=module,

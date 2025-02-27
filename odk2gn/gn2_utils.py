@@ -3,7 +3,8 @@ import os
 import csv
 import json
 import geojson
-from shapely.geometry import asShape, shape, Point, Polygon
+from sqlalchemy import select
+from shapely.geometry import shape, Point, Polygon
 from shapely.ops import transform
 from geoalchemy2.shape import from_shape
 
@@ -15,17 +16,18 @@ from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_commons.models import TModules
-from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
+from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
     TMonitoringSitesGroups,
+    cor_module_type,
 )
 
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 
 from odk2gn.monitoring_config import get_nomenclatures_fields
-from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
+from apptax.taxonomie.models import BibListes, cor_nom_liste, Taxref
 
 log = logging.getLogger("app")
 
@@ -95,8 +97,11 @@ def get_gn2_attachments_data(
             n_fields = n_fields + get_nomenclatures_fields(
                 module_code=module.module_code, niveau=niveau
             )
+        types_site = get_type_site_nomenclature_list(module.id_module)
 
         nomenclatures = get_nomenclature_data(n_fields)
+        nomenclatures = nomenclatures + types_site
+
         files["gn_nomenclatures.csv"] = to_csv(
             header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
             data=nomenclatures,
@@ -111,12 +116,11 @@ def get_site_groups_list(id_module: int):
     :param id_module: Identifier of the module
     :type id_module : int"""
 
-    data = (
-        DB.session.query(TMonitoringSitesGroups)
+    data = DB.session.scalars(
+        select(TMonitoringSitesGroups)
+        .filter(TMonitoringSitesGroups.modules.any(TModules.id_module == id_module))
         .order_by(TMonitoringSitesGroups.sites_group_name)
-        .filter_by(id_module=id_module)
-        .all()
-    )
+    ).all()
 
     return [group.as_dict() for group in data]
 
@@ -127,12 +131,10 @@ def get_taxon_list(id_liste: int):
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
-    data = (
-        DB.session.query(Taxref)
+    data = DB.session.scalars(
+        select(Taxref)
+        .filter(Taxref.listes.any(BibListes.id_liste == id_liste))
         .order_by(Taxref.nom_complet)
-        .filter(BibNoms.cd_nom == Taxref.cd_nom)
-        .filter(BibNoms.id_nom == CorNomListe.id_nom)
-        .filter(CorNomListe.id_liste == id_liste)
         .limit(3000)
     )
     taxons = []
@@ -150,21 +152,27 @@ def get_site_list(id_module: int):
     :param id_module: Identifiant du module
     :type id_module: int
     """
-    data = (
-        DB.session.query(
-            TBaseSites.id_base_site,
-            TBaseSites.base_site_name,
-            func.concat(
-                func.st_y(func.st_centroid(TBaseSites.geom)),
-                " ",
-                func.st_x(func.st_centroid(TBaseSites.geom)),
-            ),
-        )
-        .order_by(TBaseSites.base_site_name)
-        .filter(TMonitoringSites.id_base_site == TBaseSites.id_base_site)
-        .filter(TMonitoringSites.id_module == id_module)
-        .all()
+
+    # Available type
+    type_list = DB.session.scalar(
+        select(TMonitoringModules).filter(TMonitoringModules.id_module == id_module).limit(1)
     )
+    query = select(
+        TBaseSites.id_base_site,
+        TBaseSites.base_site_name,
+        func.concat(
+            func.st_y(func.st_centroid(TBaseSites.geom)),
+            " ",
+            func.st_x(func.st_centroid(TBaseSites.geom)),
+        ),
+    ).filter(
+        TMonitoringSites.types_site.any(
+            BibTypeSite.id_nomenclature_type_site.in_(
+                [t.id_nomenclature_type_site for t in type_list.types_site]
+            )
+        )
+    )
+    data = DB.session.execute(query.order_by(TBaseSites.base_site_name)).all()
     res = []
     for d in data:
         res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
@@ -196,6 +204,32 @@ def format_jdd_list(datasets: list):
     for jdd in datasets:
         data.append({"id_dataset": jdd.id_dataset, "dataset_name": jdd.dataset_name})
     return data
+
+
+def get_type_site_nomenclature_list(
+    id_module: int,
+):
+
+    q = (
+        select(TNomenclatures)
+        .join(
+            cor_module_type,
+            cor_module_type.c.id_type_site == TNomenclatures.id_nomenclature,
+        )
+        .where(cor_module_type.c.id_module == id_module)
+    )
+    tab = []
+    data = DB.session.scalars(q).all()
+    for d in data:
+        dict = d.as_dict(relationships=["nomenclature_type"])
+        res = {
+            "mnemonique": dict["nomenclature_type"]["mnemonique"],
+            "id_nomenclature": dict["id_nomenclature"],
+            "cd_nomenclature": dict["cd_nomenclature"],
+            "label_default": dict["label_default"],
+        }
+        tab.append(res)
+    return tab
 
 
 def get_ref_nomenclature_list(
@@ -236,16 +270,6 @@ def get_nomenclature_data(nomenclatures_fields):
         data = data + get_ref_nomenclature_list(**f)
 
     return data
-
-
-def get_id_nomenclature_type_site(cd_nomenclature):
-    id_nomenclature_type_site = (
-        TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True)
-        .filter_by(mnemonique="TYPE_SITE")
-        .filter(TNomenclatures.cd_nomenclature == cd_nomenclature)
-        .one()
-    ).id_nomenclature
-    return id_nomenclature_type_site
 
 
 def to_csv(header: list[str], data: list[dict]):
