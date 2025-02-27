@@ -129,30 +129,31 @@ def synchronize_module(module_code, project_id, form_id):
 
     monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
+
     for sub in form_data:
+
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
         id_digitiser = get_digitiser(flatten_data, module_parser_config)
         try:
-            if sub[module_parser_config.get("create_site")] in ("1", 1, "true"):
-                site = parse_and_create_site(
-                    flatten_data,
-                    module_parser_config,
-                    monitoring_config=monitoring_config,
-                    module=gn_module,
-                    odk_form_schema=odk_form_schema,
-                )
-                site.id_digitiser = id_digitiser
+            site = parse_and_create_site(
+                flatten_data,
+                module_parser_config,
+                monitoring_config=monitoring_config,
+                module=gn_module,
+                odk_form_schema=odk_form_schema,
+            )
+            site.id_digitiser = id_digitiser
 
-                get_and_post_medium(
-                    project_id=project_id,
-                    form_id=form_id,
-                    uuid_sub=flatten_data.get("meta/instanceID"),
-                    filename=flatten_data.get(module_parser_config["SITE"]["media"]),
-                    monitoring_table="t_base_sites",
-                    media_type=module_parser_config["SITE"]["media_type"],
-                    uuid_gn_object=site.uuid_base_site,
-                )
-
+            get_and_post_medium(
+                project_id=project_id,
+                form_id=form_id,
+                uuid_sub=flatten_data.get("meta/instanceID"),
+                filename=flatten_data.get(module_parser_config["SITE"]["media"]),
+                monitoring_table="t_base_sites",
+                media_type=module_parser_config["SITE"]["media_type"],
+                uuid_gn_object=site.uuid_base_site,
+            )
+            if site:
                 DB.session.add(site)
         except Exception as e:
             raise (e)
@@ -167,6 +168,7 @@ def synchronize_module(module_code, project_id, form_id):
         if not visit:
             # S'il n'y a pas de visites
             # Sauvegarde des données et passage à la submission suivante
+            log.warning("No visit for this site")
             commit_data(project_id, form_id, sub["__id"])
             continue
 
@@ -217,10 +219,11 @@ def synchronize_module(module_code, project_id, form_id):
             )
             visit.observations.append(observation)
         try:
-            if sub[module_parser_config.get("create_site")] in ("1", 1, "true") and visit:
+            if site and visit:
                 site.visits.append(visit)
         except Exception as e:
             raise
+
         if visit:
             DB.session.add(visit)
 

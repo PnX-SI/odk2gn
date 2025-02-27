@@ -104,6 +104,15 @@ def parse_and_create_site(
     flatten_sub, module_parser_config, monitoring_config, module, odk_form_schema
 ):
 
+    # Test de création du site
+    # S'il y a un champ create_site dans le formulaire
+    #   et qu'il  est  renseigné de façon négative
+    split_key = {key.split("/")[-1]: key for key in flatten_sub.keys()}
+    if module_parser_config.get("create_site") in split_key.keys():
+        key = split_key[module_parser_config.get("create_site")]
+        if flatten_sub[key] in ("0", 0, "false", "no", False, None):
+            return None
+
     id_type = None
     site_dict_to_post = {
         "data": {},
@@ -218,8 +227,17 @@ def parse_and_create_visit(
         "data": {},
     }
     observers_list = []
+
+    # Test de création de la visite
+    # S'il y a un champ create_visit dans le formulaire
+    #   et qu'il n'est pas renseigné de façon négative
+    split_key = {key.split("/")[-1]: key for key in flatten_sub.keys()}
+    if module_parser_config.get("create_visit") in split_key.keys():
+        key = split_key[module_parser_config.get("create_visit")]
+        if flatten_sub[key] in ("0", 0, "false", "no", False, None):
+            return None
+
     for key, val in flatten_sub.items():
-        # print(str(key) + " : " + str(val) + ", ")
         odk_column_name = key.split("/")[-1]
         # specifig comment column
         if odk_column_name == module_parser_config["VISIT"].get("comments"):
@@ -229,8 +247,13 @@ def parse_and_create_visit(
             visit_media_name = val
         # specific observers repeat
         if odk_column_name == module_parser_config["VISIT"].get("observers_repeat"):
-            for role in val:
-                observers_list.append(int(role[module_parser_config["VISIT"].get("id_observer")]))
+            if isinstance(val, (tuple, list, set)):
+                for role in val:
+                    observers_list.append(
+                        int(role[module_parser_config["VISIT"].get("id_observer")])
+                    )
+            else:
+                observers_list.append(val)
         if odk_column_name in visit_generic_column.keys():
             # get val or the default value define in gn_monitoring json
             visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get(
@@ -244,7 +267,7 @@ def parse_and_create_visit(
                 odk_column_name
             ].get("value")
 
-    if visit_dict_to_post["id_dataset"] == None:
+    if visit_dict_to_post.get("id_dataset", None) == None:
         jdds = format_jdd_list(gn_module.datasets)
         if len(jdds) == 1:
             val = jdds[0]["id_dataset"]

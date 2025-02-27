@@ -60,6 +60,7 @@ class ObservationSchema(Schema):
 class ProcoleSchema(Schema):
     module_code = fields.Str(required=True)
     create_site = fields.Str(load_default="create_site")
+    create_visit = fields.Str(load_default="create_visit")
     SITE = fields.Nested(SiteSchema, load_default=SiteSchema().load({}))
     VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
     OBSERVATION = fields.Nested(ObservationSchema, load_default=ObservationSchema().load({}))
