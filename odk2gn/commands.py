@@ -5,7 +5,6 @@ import sys
 import click
 
 
-
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
@@ -57,6 +56,7 @@ def get_schema(project_id, form_id):
 module_monitoring_installed = False
 try:
     from gn_module_monitoring.monitoring.models import TMonitoringSites
+
     module_monitoring_installed = True
 except ImportError:
     pass

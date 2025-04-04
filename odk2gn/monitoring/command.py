@@ -15,19 +15,19 @@ from geonature.utils.utilsmails import send_mail
 
 from gn_module_monitoring.config.repositories import get_config
 
-from odk2gn.monitoring.utils import get_modules_info, get_and_post_medium
 from odk2gn.odk_api import (
     get_submissions,
     update_form_attachment,
     ODKSchema,
     update_review_state,
-    get_attachment,
 )
 from odk2gn.monitoring.utils import (
     parse_and_create_visit,
     parse_and_create_obs,
     parse_and_create_site,
-    get_gn2_attachments_data
+    get_gn2_attachments_data,
+    get_modules_info,
+    get_and_post_medium,
 )
 from odk2gn.commands import synchronize, upgrade_odk_form
 
@@ -38,9 +38,9 @@ log.setLevel(logging.INFO)
 pp = pprint.PrettyPrinter(width=41, compact=True)
 
 
-
 def synchronize_module(module_code, project_id, form_id):
-    odk_form_schema = ODKSchema(project_id, form_id)
+    # odk_form_schema = ODKSchema(project_id, form_id)
+    odk_form_schema = {}
     log.info(f"--- Start synchro for module {module_code} ---")
     module_parser_config = {}
     for module in config["ODK2GN"]["modules"]:
@@ -58,6 +58,7 @@ def synchronize_module(module_code, project_id, form_id):
 
     monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
+
     for sub in form_data:
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
         try:
@@ -70,7 +71,7 @@ def synchronize_module(module_code, project_id, form_id):
                 )
                 DB.session.add(site)
         except:
-            pass
+            print("Error while creating site")
         observations_list = []
         try:
             observations_list = flatten_data.pop(
@@ -131,12 +132,13 @@ def synchronize_module(module_code, project_id, form_id):
             log.error("Error while posting data")
             log.error(str(e))
             send_mail(
-                config["gn_odk"]["email_for_error"],
+                config["ODK2GN"]["email_for_error"],
                 subject="Synchronisation ODK error",
                 msg_html=str(e),
             )
             update_review_state(project_id, form_id, sub["__id"], "hasIssues")
             DB.session.rollback()
+            raise
     log.info(f"--- Finish synchronize for module {module_code} ---")
 
 
@@ -144,12 +146,12 @@ def upgrade_module(
     module_code,
     project_id,
     form_id,
-    skip_taxons,
-    skip_observers,
-    skip_jdd,
-    skip_sites,
-    skip_sites_groups,
-    skip_nomenclatures,
+    skip_taxons=True,
+    skip_observers=True,
+    skip_jdd=True,
+    skip_sites=True,
+    skip_sites_groups=True,
+    skip_nomenclatures=True,
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
     module = get_modules_info(module_code=module_code)

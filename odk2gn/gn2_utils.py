@@ -10,19 +10,19 @@ from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_commons.models import TModules
 
-
+from pypnusershub.db.models import User
 from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
 
-from apptax.taxonomie.models import Taxref
+from apptax.taxonomie.models import Taxref, CorNomListe, BibNoms
+
+from odk2gn.odk_api import get_attachment
 
 log = logging.getLogger("app")
-
 
 
 def get_module_code(id_module: int):
     module_code = (TModules.query.filter_by(id_module=id_module).one()).module_code
     return module_code
-
 
 
 def get_taxon_list(id_liste: int):
@@ -46,6 +46,31 @@ def get_taxon_list(id_liste: int):
     return taxons
 
 
+def get_observers(observers_list):
+    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
+    return obss
+
+
+def get_taxon_list(id_liste: int):
+    """Return dict of Taxref
+    :param id_liste: Identifier of the taxref list
+    :type id_liste: int
+    """
+    data = (
+        DB.session.query(Taxref)
+        .order_by(Taxref.nom_complet)
+        .filter(BibNoms.cd_nom == Taxref.cd_nom)
+        .filter(BibNoms.id_nom == CorNomListe.id_nom)
+        .filter(CorNomListe.id_liste == id_liste)
+        .limit(3000)
+    )
+    taxons = []
+    for tax in data:
+        tax = tax.as_dict()
+        if tax["nom_vern"] is not None:
+            tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
+        taxons.append(tax)
+    return taxons
 
 
 def get_observer_list(id_liste: int):
@@ -174,50 +199,6 @@ def to_wkb(geojson):
     geom = transform(lambda x, y, z=None: (x, y), shape(geojson))
     return from_shape(geom, srid=4326)
 
-
-def get_and_post_medium(
-    project_id,
-    form_id,
-    uuid_sub,
-    filename,
-    monitoring_table,
-    media_type,
-    uuid_gn_object,
-):
-    # TODO : remove app context
-    img = get_attachment(project_id, form_id, uuid_sub, filename)
-    if img:
-        try:
-            uuid_sub = uuid_sub.split(":")[1]
-            medias_name = f"{uuid_sub}_{filename}"
-            table_location = (
-                DB.session.query(BibTablesLocation)
-                .filter_by(
-                    schema_name="gn_monitoring",
-                    table_name=monitoring_table,
-                )
-                .one()
-            )
-            media_type = (
-                DB.session.query(TNomenclatures)
-                .filter_by(mnemonique=media_type)
-                .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
-                .one()
-            )
-            media = {
-                "media_path": f"media/attachments/{medias_name}",
-                "uuid_attached_row": uuid_gn_object,
-                "id_table_location": table_location.id_table_location,
-                "id_nomenclature_media_type": media_type.id_nomenclature,
-            }
-
-            media = TMedias(**media)
-            DB.session.add(media)
-            DB.session.commit()
-            with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
-                out_file.write(img.content)
-        except:
-            pass
 
 # def format_coords(geom):
 #     """removes the z coordinate of a geoJSON

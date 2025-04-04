@@ -17,10 +17,9 @@ class GnODK(Schema):
     email_for_error = fields.Email()
 
 
-
 class Odk2GnSchema(Schema):
     central = fields.Nested(CentralSchema)
     tasks = fields.Nested(Odk2GnTaskSchema)
     email_for_error = fields.Nested(GnODK)
-    # TODO : utilisé ??
-    #modules = fields.Nested(ProcoleSchema, many=True)
+    # On ne peut pas ajouter ProcoleSchema ici, il est lié à monitoring
+    modules = fields.List(fields.Dict)

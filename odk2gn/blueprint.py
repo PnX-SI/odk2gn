@@ -1,7 +1,8 @@
 import logging
 
 from flask import Blueprint
-#TODO : celery
+
+# TODO : celery
 from .tasks import *
 from .admin import *
 

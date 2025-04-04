@@ -5,21 +5,22 @@ Revises: 7a49e76756df
 Create Date: 2024-03-13 14:25:12.455405
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'f5456d10ecc1'
-down_revision = '7a49e76756df'
+revision = "f5456d10ecc1"
+down_revision = "7a49e76756df"
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
-   
-   op.execute(
-    """
+
+    op.execute(
+        """
     DELETE FROM gn_permissions.cor_object_module
     where id_object = (SELECT id_object FROM gn_permissions.t_objects WHERE code_object = 'ODK2GN')
     and id_module =  (SELECT id_module FROM gn_commons.t_modules WHERE module_code = 'ADMIN');
@@ -33,8 +34,8 @@ def upgrade():
         VALUES((SELECT id_object FROM gn_permissions.t_objects WHERE code_object = 'ODK2GN_SYNCHRO'), 
                 (SELECT id_module FROM gn_commons.t_modules WHERE module_code = 'ODK2GN'));
     """
-   )
-   op.execute(
+    )
+    op.execute(
         """
         INSERT INTO
             gn_permissions.t_permissions_available (
@@ -67,10 +68,11 @@ def upgrade():
         """
     )
 
+
 def downgrade():
 
     op.execute(
-    """
+        """
     DELETE FROM gn_permissions.t_permissions
     WHERE id_module = (SELECT id_module FROM gn_commons.t_modules WHERE module_code = 'ODK2GN');
     
@@ -92,7 +94,7 @@ def downgrade():
     """
     )
     op.execute(
-    """
+        """
     DELETE FROM gn_permissions.t_permissions_available
     WHERE id_object = (SELECT id_object FROM gn_permissions.t_objects WHERE code_object = 'ODK2GN')
     """

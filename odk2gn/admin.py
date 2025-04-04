@@ -14,5 +14,7 @@ class OdkFormModelView(CruvedProtectedMixin, ModelView):
 
 
 flask_admin.add_view(
-    OdkFormModelView(model=TOdkForm, session=DB.session, name="Synchronisation ODK", category="odk2gn")
+    OdkFormModelView(
+        model=TOdkForm, session=DB.session, name="Synchronisation ODK", category="odk2gn"
+    )
 )
