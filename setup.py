@@ -11,9 +11,8 @@ with (root_dir / "requirements.in").open() as f:
 setuptools.setup(
     name="odk2gn",
     version=version,
-    description="GeoNature-monitoring ODK project",
+    description="GeoNature-ODK project",
     maintainer="OFB and PNX",
-    # url='https://github.com/PnX-SI/gn_module_monitoring',
     packages=setuptools.find_packages("./"),
     package_dir={"": "."},
     install_requires=requirements,

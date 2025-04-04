@@ -47,23 +47,21 @@ from odk2gn.tests.fixtures import (
 from odk2gn.gn2_utils import (
     format_jdd_list,
     to_csv,
-    get_site_list,
     get_taxon_list,
     get_observer_list,
     get_nomenclature_data,
     get_ref_nomenclature_list,
-    get_modules_info,
-    get_gn2_attachments_data,
     to_wkb,
     get_module_code,
-    get_monitoring_modules,
 )
-from odk2gn.monitoring_config import get_nomenclatures_fields
-
-from odk2gn.monitoring_utils import (
+from odk2gn.monitoring.monitoring_config import get_nomenclatures_fields
+from odk2gn.monitoring.utils import (
     parse_and_create_obs,
     parse_and_create_site,
     parse_and_create_visit,
+    get_gn2_attachments_data,
+    get_modules_info,
+    get_site_list,
 )
 from geonature.core.gn_monitoring.models import TBaseSites
 from odk2gn.odk_api import ODKSchema
@@ -80,7 +78,7 @@ from odk2gn.blueprint import (
     upgrade_odk_form,
 )
 
-from odk2gn.blueprint import get_modules_info
+from odk2gn.monitoring.utils import get_modules_info
 
 
 @pytest.mark.usefixtures("temporary_transaction")
@@ -101,11 +99,11 @@ class TestCommand:
         mocker.patch("odk2gn.commands.get_config", return_value=my_config)
         mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
         mocker.patch(
-            "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
+            "odk2gn.monitoring.utils.get_id_nomenclature_type_site",
             return_value=site_type.id_nomenclature,
         )
         mocker.patch(
-            "odk2gn.monitoring_utils.get_observers",
+            "odk2gn.monitoring.utils.get_observers",
             return_value=observers_and_list["user_list"],
         )
         runner = CliRunner()
@@ -133,11 +131,11 @@ class TestCommand:
             mocker.patch("odk2gn.commands.get_config", return_value=my_config)
             mocker.patch("odk2gn.commands.get_attachment", return_value=None)
             mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
+                "odk2gn.monitoring.utils.get_id_nomenclature_type_site",
                 return_value=site_type.id_nomenclature,
             )
             mocker.patch(
-                "odk2gn.monitoring_utils.get_observers",
+                "odk2gn.monitoring.utils.get_observers",
                 return_value=observers_and_list["user_list"],
             )
             runner = CliRunner()
@@ -167,11 +165,11 @@ class TestCommand:
             mocker.patch("odk2gn.commands.get_config", return_value=my_config)
             mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
             mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
+                "odk2gn.monitoring.utils.get_id_nomenclature_type_site",
                 return_value=site_type.id_nomenclature,
             )
             mocker.patch(
-                "odk2gn.monitoring_utils.get_observers",
+                "odk2gn.monitoring.utils.get_observers",
                 return_value=observers_and_list["user_list"],
             )
             runner = CliRunner()
@@ -201,11 +199,11 @@ class TestCommand:
             mocker.patch("odk2gn.commands.get_config", return_value=my_config)
             mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
             mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
+                "odk2gn.monitoring.utils.get_id_nomenclature_type_site",
                 return_value=site_type.id_nomenclature,
             )
             mocker.patch(
-                "odk2gn.monitoring_utils.get_observers",
+                "odk2gn.monitoring.utils.get_observers",
                 return_value=observers_and_list["user_list"],
             )
             runner = CliRunner()
@@ -329,10 +327,6 @@ class TestUtilsFunctions:
             ]
         ).issubset(files_names)
 
-    def test_get_monitoring_modules(self, module):
-        modules = get_monitoring_modules()
-        assert type(modules) is list
-
     def test_get_monitoring_config(self, mocker, my_config, module):
         mocker.patch(
             "odk2gn.monitoring_config.get_config",
@@ -350,7 +344,7 @@ class TestUtilsFunctions:
         self, mocker, sub_with_site_creation, mod_parser_config, my_config, module, site_type
     ):
         mocker.patch(
-            "odk2gn.monitoring_utils.get_site_type_cd_nomenclature",
+            "odk2gn.monitoring.utils.get_site_type_cd_nomenclature",
             return_value=site_type.cd_nomenclature,
         )
         for sub in sub_with_site_creation:
