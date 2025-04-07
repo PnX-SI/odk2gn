@@ -16,6 +16,7 @@ from gn_module_monitoring.config.repositories import get_config
 from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
+from geonature.tests.fixtures import datasets
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
@@ -31,35 +32,6 @@ def point():
     return point
 
 
-@pytest.fixture(scope="function")
-def point_4():
-    point = {"geometry": {"type": "Point", "coordinates": [6.0535113, 44.5754145, 0, 0]}}
-    return point
-
-
-@pytest.fixture(scope="function")
-def point_3():
-    point = {"geometry": {"type": "Point", "coordinates": [6.0535113, 44.5754145, 0]}}
-    return point
-
-
-@pytest.fixture(scope="function")
-def polygon():
-    polygon = {
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [6.0535113, 44.5754145],
-                    [6.0535109, 44.5754135],
-                    [6.0535120, 44.5754150],
-                    [6.0535113, 44.5754145],
-                ],
-            ],
-        }
-    }
-    return polygon
-
 
 @pytest.fixture(scope="function")
 def polygon_4():
@@ -72,24 +44,6 @@ def polygon_4():
                     [6.0535109, 44.5754135, 0, 0],
                     [6.0535120, 44.5754150, 0, 0],
                     [6.0535113, 44.5754145, 0, 0],
-                ],
-            ],
-        }
-    }
-    return polygon
-
-
-@pytest.fixture(scope="function")
-def polygon_3():
-    polygon = {
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [6.0535113, 44.5754145, 0],
-                    [6.0535109, 44.5754135, 0],
-                    [6.0535120, 44.5754150, 0],
-                    [6.0535113, 44.5754145, 0],
                 ],
             ],
         }
@@ -174,7 +128,7 @@ def taxon_and_list(plant):
 
 
 @pytest.fixture(scope="function")
-def submissions(site, observers_and_list, module, taxon_and_list):
+def submissions(site, observers_and_list, module, taxon_and_list, datasets):
     sub = [
         {
             "__id": str(uuid.uuid4()),
@@ -187,7 +141,7 @@ def submissions(site, observers_and_list, module, taxon_and_list):
                 "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
                 "hauteur_moy_vegetation": 12,
             },
-            "dataset": {"id_dataset": 1},
+            "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
@@ -199,13 +153,6 @@ def submissions(site, observers_and_list, module, taxon_and_list):
     ]
     return sub
 
-
-@pytest.fixture(scope="function")
-def datasets():
-    return [
-        TDatasets(id_dataset=1, dataset_name="ds1"),
-        TDatasets(id_dataset=2, dataset_name="ds2"),
-    ]
 
 
 @pytest.fixture(scope="function")
@@ -474,7 +421,7 @@ def attachment():
 
 
 @pytest.fixture(scope="function")
-def submissions(site, observers_and_list, module, taxon_and_list):
+def submissions(site, observers_and_list, module, taxon_and_list, datasets):
     sub = [
         {
             "__id": str(uuid.uuid4()),
@@ -487,7 +434,7 @@ def submissions(site, observers_and_list, module, taxon_and_list):
                 "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
                 "hauteur_moy_vegetation": 12,
             },
-            "dataset": {"id_dataset": 1},
+            "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
@@ -506,14 +453,11 @@ def sub_with_site_creation(
     module,
     taxon_and_list,
     site_group,
-    polygon,
     polygon_4,
     point,
-    point_4,
-    point_3,
-    polygon_3,
     nomenclature,
     attachment,
+    datasets
 ):
     __id = str(uuid.uuid4())
     sub = [
@@ -523,7 +467,7 @@ def sub_with_site_creation(
             "site_creation": {
                 "site_name": "test",
                 "base_site_description": "test",
-                "geom": point_4["geometry"],
+                "geom": point["geometry"],
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
             },
@@ -533,7 +477,7 @@ def sub_with_site_creation(
                 "media": attachment,
                 "media_type": "Photo",
                 "comments_visit": "test",
-                "dataset": {"id_dataset": 1},
+                "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
                 "observers": [
                     {
                         "observer": observers_and_list["user_list"][0],
@@ -568,7 +512,7 @@ def sub_with_site_creation(
                 "id_module": module.id_module,
                 "medias_visit": "images/pictos/nopicto.gif",
                 "comments_visit": "test",
-                "dataset": {"id_dataset": 1},
+                "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
                 "observers": [
                     {
                         "observer": observers_and_list["user_list"][0],
@@ -585,6 +529,7 @@ def sub_with_site_creation(
 
 @pytest.fixture(scope="function")
 def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
+    "Fail because dataset does not exists"
     sub = [
         {
             "__id": str(uuid.uuid4()),
@@ -609,7 +554,7 @@ def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
                 ],
                 "hauteur_moy_vegetation": 12,
             },
-            "dataset": {"id_dataset": 100},
+            "dataset": {"id_dataset": 152111},
             "nb_observations": 1,
             "observations": [
                 {
@@ -625,7 +570,8 @@ def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
 
 
 @pytest.fixture(scope="function")
-def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
+def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, point, datasets):
+    "Fail because observation is not a list"
     sub = [
         {
             "__id": str(uuid.uuid4()),
@@ -650,7 +596,7 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
                 ],
                 "hauteur_moy_vegetation": 12,
             },
-            "dataset": {"id_dataset": 1},
+            "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
             "nb_observations": 1,
             "observations": (
                 {
@@ -667,6 +613,7 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
 
 @pytest.fixture(scope="function")
 def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point):
+    "Fail because dataset is None and no dataset is define a dataset level"
     sub = [
         {
             "__id": str(uuid.uuid4()),
