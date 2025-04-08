@@ -1,16 +1,5 @@
-from sqlalchemy import select, func, and_
-from sqlalchemy.orm import column_property
-from sqlalchemy.dialects.postgresql import JSONB, UUID
-from uuid import uuid4
-
-from utils_flask_sqla.serializers import serializable
-from utils_flask_sqla_geo.serializers import geoserializable
-
-from sqlalchemy.ext.hybrid import hybrid_property
-
 from geonature.utils.env import DB
 from geonature.core.gn_commons.models import TModules
-
 
 class TOdkForm(DB.Model):
     __tablename__ = "t_odk_forms"

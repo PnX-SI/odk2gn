@@ -23,18 +23,10 @@ source <path_vers_gn>/backend/venv/bin/activate
 
 ### Installation des modules
 
-- Se mettre dans le dossier où figure le fichier setup.py du module, puis dans le terminal :
-  ```sh
-  pip install -e . -r requirements.txt
-  ```
-- Faire cette manipulation à chaque fois qu'on crée un nouveau module.
 - Copier le fichier odk2gn_config.toml.example dans le dossier /config de la version de GeoNature installée avec la série de commandes suivantes:
   ```sh
   cp odk2gn_config.toml.example <path_vers_gn>/config/odk2gn_config.toml
-  ```
-  Mettre à jour la base de données avec la commande
-  ```sh
-  geonature db upgrade odk2gn@head
+  geonature install-gn-module <chemin vers odk2gn> --build=false
   ```
 
 ## Configuration

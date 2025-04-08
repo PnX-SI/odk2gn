@@ -2,22 +2,6 @@ from marshmallow import Schema, fields
 from marshmallow.validate import OneOf
 
 
-class Odk2GnTaskSchema(Schema):
-    synchronize_schedule = fields.Str(load_default="0 0 * * *")
-    upgrade_schedule = fields.Str(load_default="0 0 * * *")
-
-
-class CentralSchema(Schema):
-    base_url = fields.URL(required=True)
-    username = fields.String(required=True)
-    password = fields.String(required=True)
-    default_project_id = fields.Int()
-
-
-class GnODK(Schema):
-    email_for_error = fields.Email()
-
-
 class SiteSchema(Schema):
     base_site_name = fields.Str(load_default="site_name")
     base_site_code = fields.Str(load_default="base_site_code")
@@ -65,11 +49,3 @@ class ProcoleSchema(Schema):
     VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
     OBSERVATION = fields.Nested(ObservationSchema, load_default=ObservationSchema().load({}))
     id_digitiser = fields.Str(load_default="id_digitiser")
-
-
-class Odk2GnSchema(Schema):
-    central = fields.Nested(CentralSchema)
-    tasks = fields.Nested(Odk2GnTaskSchema)
-    email_for_error = fields.Nested(GnODK)
-    # On ne peut pas ajouter ProcoleSchema ici, il est lié à monitoring
-    modules = fields.List(fields.Dict)

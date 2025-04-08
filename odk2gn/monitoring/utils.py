@@ -1,32 +1,36 @@
 import logging
-import uuid
-import flatdict
-import csv
-import json
 import datetime
-from shapely.geometry import Polygon, Point, LineString
 
-from sqlalchemy import select
+from sqlalchemy import select, func
+from sqlalchemy.exc import NoResultFound
 
+from gn_module_monitoring.config.repositories import get_config
 from gn_module_monitoring.monitoring.models import (
     TMonitoringSites,
     TMonitoringVisits,
     TMonitoringObservations,
     TMonitoringSitesGroups,
 )
+
+from geonature.utils.env import DB, BACKEND_DIR
+from geonature.core.gn_commons.models import BibTablesLocation, TMedias, TModules
+from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
+from gn_module_monitoring.monitoring.models import TMonitoringModules, cor_module_type
+from pypnnomenclature.models import TNomenclatures
 from pypnusershub.db.models import User
 
-from geonature.utils.env import DB
-
-from odk2gn.gn2_utils import format_jdd_list
-from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
-from gn_module_monitoring.monitoring.models import TMonitoringModules
+from odk2gn.odk_api import get_attachment
+from odk2gn.gn2_utils import (
+    format_jdd_list,
+    to_wkb,
+    get_nomenclature_data,
+    get_observer_list,
+    get_taxon_list,
+    to_csv,
+    get_observers
+)
 
 log = logging.getLogger("app")
-
-from pypnnomenclature.models import TNomenclatures
-from odk2gn.gn2_utils import format_jdd_list, to_wkb
-
 
 def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
     """
@@ -87,7 +91,6 @@ def process_additional_data(monitoring_config, odk_form_schema, field_name, val)
 
 
 def get_digitiser(flatten_sub, module_parser_config):
-
     for key, val in flatten_sub.items():
         odk_column_name = key.split("/")[-1]
         # specifig digitiser column
@@ -98,6 +101,7 @@ def get_digitiser(flatten_sub, module_parser_config):
 def get_observers(observers_list):
     obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
     return obss
+
 
 
 def parse_and_create_site(
@@ -193,7 +197,7 @@ def parse_and_create_visit(
 ):
     """
     Parse and create a TMonitoringVisits object from a odk submission
-    Return a TMonitoringVisits object
+    Return a TMonitorinODKSchemagVisits object
 
     :param sub: a odk submission with flatten keys
     :type sub: dict
@@ -273,7 +277,9 @@ def parse_and_create_visit(
             val = jdds[0]["id_dataset"]
             visit_dict_to_post["id_dataset"] = val
         else:
-            raise Exception("Only one dataset should be passed this way.")
+            raise AssertionError(
+                "Dataset cannot be None or multiple"
+                )
     visit = TMonitoringVisits(**visit_dict_to_post)
     visit.observers = get_observers(observers_list)
     specific_column_posted = visit_dict_to_post["data"].keys()
@@ -338,3 +344,243 @@ def parse_and_create_obs(
             )
     obs = TMonitoringObservations(**observation_dict_to_post)
     return obs
+
+
+def get_modules_info(module_code: str):
+    try:
+        module = TMonitoringModules.query.filter(
+            TMonitoringModules.module_code.ilike(module_code)
+        ).one()
+        return module
+    except NoResultFound:
+        log.error(f"No GeoNature module found for {module_code}")
+        raise
+
+
+def get_site_groups_list(id_module: int):
+    """Return dict of TMonitoringSitesGroups
+
+    :param id_module: Identifier of the module
+    :type id_module : int"""
+
+    data = (
+        DB.session.query(TMonitoringSitesGroups)
+        .order_by(TMonitoringSitesGroups.sites_group_name)
+        .filter_by(id_module=id_module)
+        .all()
+    )
+
+    return [group.as_dict() for group in data]
+
+
+def get_gn2_attachments_data(
+    module: TMonitoringModules,
+    skip_taxons: bool = False,
+    skip_observers: bool = False,
+    skip_jdd: bool = False,
+    skip_sites: bool = False,
+    skip_nomenclatures: bool = False,
+    skip_sites_groups: bool = False,
+):
+    files = {}
+    # Taxon
+    if not skip_taxons:
+        data = get_taxon_list(module.id_list_taxonomy)
+        files["gn_taxons.csv"] = to_csv(header=("cd_nom", "nom_complet", "nom_vern"), data=data)
+    # Observers
+    if not skip_observers:
+        data = get_observer_list(module.id_list_observer)
+        files["gn_observateurs.csv"] = to_csv(header=("id_role", "nom_complet"), data=data)
+    # JDD
+    if not skip_jdd:
+        data = format_jdd_list(module.datasets)
+        files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
+
+    # Sites
+    if not skip_sites:
+        data = get_site_list(module.id_module)
+        files["gn_sites.csv"] = to_csv(
+            header=("id_base_site", "base_site_name", "geometry"), data=data
+        )
+
+    if not skip_sites_groups:
+        data = get_site_groups_list(module.id_module)
+        files["gn_groupes.csv"] = to_csv(header=("id_sites_group", "sites_group_name"), data=data)
+
+    # Nomenclature
+    if not skip_nomenclatures:
+        n_fields = []
+        for niveau in ["site", "visit", "observation"]:
+            n_fields = n_fields + get_nomenclatures_fields(
+                module_code=module.module_code, niveau=niveau
+            )
+        types_site = get_type_site_nomenclature_list(module.id_module)
+
+        nomenclatures = get_nomenclature_data(n_fields)
+        nomenclatures = nomenclatures + types_site
+        files["gn_nomenclatures.csv"] = to_csv(
+            header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
+            data=nomenclatures,
+        )
+
+    return files
+
+
+def get_site_list(id_module: int):
+    """Return tuple of TBase site for module
+
+    :param id_module: Identifiant du module
+    :type id_module: int
+    """
+
+    # Available type
+    type_list = DB.session.scalar(
+        select(TMonitoringModules).filter(TMonitoringModules.id_module == id_module).limit(1)
+    )
+    query = select(
+        TBaseSites.id_base_site,
+        TBaseSites.base_site_name,
+        func.concat(
+            func.st_y(func.st_centroid(TBaseSites.geom)),
+            " ",
+            func.st_x(func.st_centroid(TBaseSites.geom)),
+        ),
+    ).filter(
+        TMonitoringSites.types_site.any(
+            BibTypeSite.id_nomenclature_type_site.in_(
+                [t.id_nomenclature_type_site for t in type_list.types_site]
+            )
+        )
+    )
+    data = DB.session.execute(query.order_by(TBaseSites.base_site_name)).all()
+    res = []
+    for d in data:
+        res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
+    return res
+
+
+def get_site_groups_list(id_module: int):
+    """Return dict of TMonitoringSitesGroups
+
+    :param id_module: Identifier of the module
+    :type id_module : int"""
+
+    data = DB.session.scalars(
+        select(TMonitoringSitesGroups)
+        .filter(TMonitoringSitesGroups.modules.any(TModules.id_module == id_module))
+        .order_by(TMonitoringSitesGroups.sites_group_name)
+    ).all()
+
+    return [group.as_dict() for group in data]
+
+
+def get_nomenclatures_fields(module_code: str, niveau: str):
+    config = get_config(module_code)
+    fields = dict(
+        config[niveau].get("specific", []),
+        **config[niveau].get("generic", []),
+    )
+    nomenclatures_fields = []
+    for name in fields:
+        form = fields[name]
+        type_util = form.get("type_util")
+        type_widget = form.get("type_widget")
+
+        # composant nomenclature
+        if type_widget == "nomenclature":
+            if form["code_nomenclature_type"]:
+                nomenclatures_fields.append(
+                    {
+                        "code_nomenclature_type": form["code_nomenclature_type"],
+                        "cd_nomenclatures": form.get("cd_nomenclatures", None),
+                    }
+                )
+
+        # composant datalist
+        if type_widget == "datalist":
+            if type_util == "nomenclature":
+                code_nomenclature_type = form.get("api").split("/")[-1]
+                nomenclatures_fields.append(
+                    {
+                        "code_nomenclature_type": code_nomenclature_type,
+                        "regne": form.get("params", {}).get("regne"),
+                        "group2_inpn": form.get("params", {}).get("group2_inpn"),
+                    }
+                )
+    return nomenclatures_fields
+
+
+def get_and_post_medium(
+    project_id,
+    form_id,
+    uuid_sub,
+    filename,
+    monitoring_table,
+    media_type,
+    uuid_gn_object,
+):
+    img = get_attachment(project_id, form_id, uuid_sub, filename)
+    medias_name = f"{uuid_sub}_{filename}"
+    if img:
+        uuid_sub = uuid_sub.split(":")[1]
+        table_location = (
+            DB.session.query(BibTablesLocation)
+            .filter_by(
+                schema_name="gn_monitoring",
+                table_name=monitoring_table,
+            )
+            .one()
+        )
+        media_type = (
+            DB.session.query(TNomenclatures)
+            .filter_by(mnemonique=media_type)
+            .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
+            .one()
+        )
+        media = {
+            "media_path": f"{table_location.id_table_location}/{medias_name}",
+            "uuid_attached_row": uuid_gn_object,
+            "id_table_location": table_location.id_table_location,
+            "id_nomenclature_media_type": media_type.id_nomenclature,
+        }
+
+        media = TMedias(**media)
+        DB.session.add(media)
+        DB.session.commit()
+
+        media_dir = (
+            BACKEND_DIR / "media" / "attachments" / str(table_location.id_table_location)
+        )
+        media_dir.mkdir(parents=True, exist_ok=True)
+        with open(
+            media_dir / medias_name,
+            "wb",
+        ) as out_file:
+            out_file.write(img)
+
+
+
+def get_type_site_nomenclature_list(
+    id_module: int,
+):
+
+    q = (
+        select(TNomenclatures)
+        .join(
+            cor_module_type,
+            cor_module_type.c.id_type_site == TNomenclatures.id_nomenclature,
+        )
+        .where(cor_module_type.c.id_module == id_module)
+    )
+    tab = []
+    data = DB.session.scalars(q).all()
+    for d in data:
+        dict = d.as_dict(relationships=["nomenclature_type"])
+        res = {
+            "mnemonique": dict["nomenclature_type"]["mnemonique"],
+            "id_nomenclature": dict["id_nomenclature"],
+            "cd_nomenclature": dict["cd_nomenclature"],
+            "label_default": dict["label_default"],
+        }
+        tab.append(res)
+    return tab

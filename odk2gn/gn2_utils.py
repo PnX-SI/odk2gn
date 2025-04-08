@@ -1,43 +1,28 @@
 import logging
 import os
 import csv
-import json
-import geojson
-from sqlalchemy import select
 from shapely.geometry import shape, Point, Polygon
 from shapely.ops import transform
+from sqlalchemy.exc import SQLAlchemyError
 from geoalchemy2.shape import from_shape
+from sqlalchemy import select
 
 import tempfile
-from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func, select, join
 from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
-from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_commons.models import TModules
+from geonature.utils.utilsmails import send_mail
+from geonature.utils.config import config
 from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
-from gn_module_monitoring.monitoring.models import (
-    TMonitoringModules,
-    TMonitoringSites,
-    TMonitoringSitesGroups,
-    cor_module_type,
-)
 
-from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
 
-from odk2gn.monitoring_config import get_nomenclatures_fields
+from pypnusershub.db.models import User
+from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
+
 from apptax.taxonomie.models import BibListes, cor_nom_liste, Taxref
+from odk2gn.odk_api import update_review_state
 
 log = logging.getLogger("app")
-
-
-def get_monitoring_modules():
-    tab = []
-    modules = (TMonitoringModules).query.filter_by(type="monitoring_modules").all()
-    for module in modules:
-        tab.append(module)
-    return tab
 
 
 def get_module_code(id_module: int):
@@ -45,89 +30,34 @@ def get_module_code(id_module: int):
     return module_code
 
 
-def get_modules_info(module_code: str):
-    try:
-        module = TMonitoringModules.query.filter(
-            TMonitoringModules.module_code.ilike(module_code)
-        ).one()
-        return module
-    except NoResultFound:
-        log.error(f"No GeoNature module found for {module_code}")
-        raise
+def get_taxon_list(id_liste: int):
+    """Return dict of Taxref
+
+    :param id_liste: Identifier of the taxref list
+    :type id_liste: int
+    """
+    data = (
+        DB.session.query(Taxref)
+        .order_by(Taxref.nom_complet)
+        .filter(Taxref.listes.any(id_liste=id_liste))
+        .limit(3000)
+    )
+    taxons = []
+    for tax in data:
+        tax = tax.as_dict()
+        if tax["nom_vern"] is not None:
+            tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
+        taxons.append(tax)
+    return taxons
 
 
-def get_gn2_attachments_data(
-    module: TMonitoringModules,
-    skip_taxons: bool = False,
-    skip_observers: bool = False,
-    skip_jdd: bool = False,
-    skip_sites: bool = False,
-    skip_nomenclatures: bool = False,
-    skip_sites_groups: bool = False,
-):
-    files = {}
-    # Taxon
-    if not skip_taxons:
-        data = get_taxon_list(module.id_list_taxonomy)
-        files["gn_taxons.csv"] = to_csv(header=("cd_nom", "nom_complet", "nom_vern"), data=data)
-    # Observers
-    if not skip_observers:
-        data = get_observer_list(module.id_list_observer)
-        files["gn_observateurs.csv"] = to_csv(header=("id_role", "nom_complet"), data=data)
-    # JDD
-    if not skip_jdd:
-        data = format_jdd_list(module.datasets)
-        files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
-
-    # Sites
-    if not skip_sites:
-        data = get_site_list(module.id_module)
-        files["gn_sites.csv"] = to_csv(
-            header=("id_base_site", "base_site_name", "geometry"), data=data
-        )
-
-    if not skip_sites_groups:
-        data = get_site_groups_list(module.id_module)
-        files["gn_groupes.csv"] = to_csv(header=("id_sites_group", "sites_group_name"), data=data)
-
-    # Nomenclature
-    if not skip_nomenclatures:
-        n_fields = []
-        for niveau in ["site", "visit", "observation"]:
-            n_fields = n_fields + get_nomenclatures_fields(
-                module_code=module.module_code, niveau=niveau
-            )
-        types_site = get_type_site_nomenclature_list(module.id_module)
-
-        nomenclatures = get_nomenclature_data(n_fields)
-        nomenclatures = nomenclatures + types_site
-
-        files["gn_nomenclatures.csv"] = to_csv(
-            header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
-            data=nomenclatures,
-        )
-
-    return files
-
-
-def get_site_groups_list(id_module: int):
-    """Return dict of TMonitoringSitesGroups
-
-    :param id_module: Identifier of the module
-    :type id_module : int"""
-
-    data = DB.session.scalars(
-        select(TMonitoringSitesGroups)
-        .filter(TMonitoringSitesGroups.modules.any(TModules.id_module == id_module))
-        .order_by(TMonitoringSitesGroups.sites_group_name)
-    ).all()
-
-    return [group.as_dict() for group in data]
+def get_observers(observers_list):
+    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
+    return obss
 
 
 def get_taxon_list(id_liste: int):
     """Return dict of Taxref
-
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
@@ -144,39 +74,6 @@ def get_taxon_list(id_liste: int):
             tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
         taxons.append(tax)
     return taxons
-
-
-def get_site_list(id_module: int):
-    """Return tuple of TBase site for module
-
-    :param id_module: Identifiant du module
-    :type id_module: int
-    """
-
-    # Available type
-    type_list = DB.session.scalar(
-        select(TMonitoringModules).filter(TMonitoringModules.id_module == id_module).limit(1)
-    )
-    query = select(
-        TBaseSites.id_base_site,
-        TBaseSites.base_site_name,
-        func.concat(
-            func.st_y(func.st_centroid(TBaseSites.geom)),
-            " ",
-            func.st_x(func.st_centroid(TBaseSites.geom)),
-        ),
-    ).filter(
-        TMonitoringSites.types_site.any(
-            BibTypeSite.id_nomenclature_type_site.in_(
-                [t.id_nomenclature_type_site for t in type_list.types_site]
-            )
-        )
-    )
-    data = DB.session.execute(query.order_by(TBaseSites.base_site_name)).all()
-    res = []
-    for d in data:
-        res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
-    return res
 
 
 def get_observer_list(id_liste: int):
@@ -204,32 +101,6 @@ def format_jdd_list(datasets: list):
     for jdd in datasets:
         data.append({"id_dataset": jdd.id_dataset, "dataset_name": jdd.dataset_name})
     return data
-
-
-def get_type_site_nomenclature_list(
-    id_module: int,
-):
-
-    q = (
-        select(TNomenclatures)
-        .join(
-            cor_module_type,
-            cor_module_type.c.id_type_site == TNomenclatures.id_nomenclature,
-        )
-        .where(cor_module_type.c.id_module == id_module)
-    )
-    tab = []
-    data = DB.session.scalars(q).all()
-    for d in data:
-        dict = d.as_dict(relationships=["nomenclature_type"])
-        res = {
-            "mnemonique": dict["nomenclature_type"]["mnemonique"],
-            "id_nomenclature": dict["id_nomenclature"],
-            "cd_nomenclature": dict["cd_nomenclature"],
-            "label_default": dict["label_default"],
-        }
-        tab.append(res)
-    return tab
 
 
 def get_ref_nomenclature_list(
@@ -321,6 +192,21 @@ def to_wkb(geojson):
     geom = transform(lambda x, y, z=None: (x, y), shape(geojson))
     return from_shape(geom, srid=4326)
 
+
+def commit_data(project_id, form_id, sub_id):
+    try:
+        DB.session.commit()
+        update_review_state(project_id, form_id, sub_id, "approved")
+    except SQLAlchemyError as e:
+        log.error("Error while posting data")
+        log.error(str(e))
+        send_mail(
+            config["gn_odk"]["email_for_error"],
+            subject="Synchronisation ODK error",
+            msg_html=str(e),
+        )
+        update_review_state(project_id, form_id, sub_id, "hasIssues")
+        DB.session.rollback()
 
 # def format_coords(geom):
 #     """removes the z coordinate of a geoJSON
