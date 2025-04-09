@@ -107,34 +107,32 @@ def get_observers(observers_list):
 def parse_and_create_site(
     flatten_sub, module_parser_config, monitoring_config, module, odk_form_schema
 ):
-
     # Test de création du site
     # S'il y a un champ create_site dans le formulaire
     #   et qu'il  est  renseigné de façon négative
-    split_key = {key.split("/")[-1]: key for key in flatten_sub.keys()}
-    if module_parser_config.get("create_site") in split_key.keys():
-        key = split_key[module_parser_config.get("create_site")]
-        if flatten_sub[key] in ("0", 0, "false", "no", False, None):
+    if module_parser_config.get("create_site") in flatten_sub.keys():
+        create_site_key = module_parser_config.get("create_site")
+        if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
             return None
 
     id_type = None
     site_dict_to_post = {
         "data": {},
     }
+    site_specific_fields = monitoring_config["site"]["specific"]
     types_site = []
     for key, val in flatten_sub.items():
-        odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
-        if odk_column_name == module_parser_config["SITE"].get("types_site"):
+        if key == module_parser_config["SITE"].get("types_site"):
             types_site = [int(v) for v in val.split(" ") if v]
-        if odk_column_name == module_parser_config["SITE"].get("base_site_name"):
+        if key == module_parser_config["SITE"].get("base_site_name"):
             site_dict_to_post["base_site_name"] = val
-        elif odk_column_name == module_parser_config["SITE"].get("base_site_description"):
+        elif key == module_parser_config["SITE"].get("base_site_description"):
             site_dict_to_post["base_site_description"] = val
-        elif odk_column_name == module_parser_config["SITE"].get("first_use_date"):
+        elif key == module_parser_config["SITE"].get("first_use_date"):
             # on utilise la valeur de la visite pour éviter d'entrer deux fois la même valeur
             site_dict_to_post["first_use_date"] = datetime.datetime.fromisoformat(val)
-        elif odk_column_name == module_parser_config["SITE"].get("id_inventor"):
+        elif key == module_parser_config["SITE"].get("id_inventor"):
             # là encore on utilise la valeur de la visite pour éviter la double entrée
             if isinstance(val[0], int):
                 site_dict_to_post["id_inventor"] = val[0]
@@ -142,29 +140,21 @@ def parse_and_create_site(
                 site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
             else:
                 site_dict_to_post["id_inventor"] = val
-        elif odk_column_name == module_parser_config["SITE"].get("site_group"):
+        elif key == module_parser_config["SITE"].get("site_group"):
             # transtypage pour la solidité des données
-            try:
-                id_groupe = int(val)
-                site_dict_to_post["id_sites_group"] = id_groupe
-            except:
-                pass
+            id_groupe = int(val)
+            site_dict_to_post["id_sites_group"] = id_groupe
 
         # données géométriques
         # type, coordinates et accuracy sont des noms de variables qui seront toujours présents dans une donnée géométrique d'ODK, ils sont déjà génériques
-        elif odk_column_name == "type" and module_parser_config["SITE"].get("geom") in key:
+        elif key == "type":
             geom_type = val
-        elif odk_column_name == "coordinates" and module_parser_config["SITE"].get("geom") in key:
+        elif key == "coordinates":
             coords = val
-        # la précision n'est pas relevée en BDD, donc on sépare son cas pour ne rien faire avec
-        elif odk_column_name == "accuracy" and module_parser_config["SITE"].get("geom") in key:
-            pass
-        # tous les spécificités d'un site d'un module
-        # changer site_creation pour le nom du group du XLSFORM où ces données figurent
-        # elif "site_creation" in key:
-        elif module_parser_config["SITE"].get("data") in key:
-            site_dict_to_post["data"][odk_column_name] = process_additional_data(
-                monitoring_config["site"], odk_form_schema, odk_column_name, val
+        # Champs additionnels
+        elif key in site_specific_fields.keys():
+            site_dict_to_post["data"][key] = process_additional_data(
+                monitoring_config["site"], odk_form_schema, key, val
             )
 
     site = TMonitoringSites(**site_dict_to_post)
@@ -181,9 +171,6 @@ def parse_and_create_site(
         )
         site.types_site.append(ts)
 
-    # traitement de ce qui peut éventuellement être de valeur nulle
-    if site.data == {}:
-        site.data = None
 
     if id_groupe is not None:
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
@@ -235,22 +222,17 @@ def parse_and_create_visit(
     # Test de création de la visite
     # S'il y a un champ create_visit dans le formulaire
     #   et qu'il n'est pas renseigné de façon négative
-    split_key = {key.split("/")[-1]: key for key in flatten_sub.keys()}
-    if module_parser_config.get("create_visit") in split_key.keys():
-        key = split_key[module_parser_config.get("create_visit")]
-        if flatten_sub[key] in ("0", 0, "false", "no", False, None):
+    if module_parser_config.get("create_visit") in flatten_sub.keys():
+        create_site_key = module_parser_config.get("create_visit")
+        if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
             return None
 
     for key, val in flatten_sub.items():
-        odk_column_name = key.split("/")[-1]
         # specifig comment column
-        if odk_column_name == module_parser_config["VISIT"].get("comments"):
+        if key == module_parser_config["VISIT"].get("comments"):
             visit_dict_to_post["comments"] = val
-        # specific media column
-        if odk_column_name == module_parser_config["VISIT"].get("media"):
-            visit_media_name = val
         # specific observers repeat
-        if odk_column_name == module_parser_config["VISIT"].get("observers_repeat"):
+        if key == module_parser_config["VISIT"].get("observers_repeat"):
             if isinstance(val, (tuple, list, set)):
                 for role in val:
                     observers_list.append(
@@ -258,17 +240,17 @@ def parse_and_create_visit(
                     )
             else:
                 observers_list.append(val)
-        if odk_column_name in visit_generic_column.keys():
+        if key in visit_generic_column.keys():
             # get val or the default value define in gn_monitoring json
-            visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get(
+            visit_dict_to_post[key] = val or visit_generic_column[key].get(
                 "value"
             )
-        elif odk_column_name in visit_specific_column.keys():
+        elif key in visit_specific_column.keys():
             process_value = process_additional_data(
-                monitoring_config["visit"], odk_form_schema, odk_column_name, val
+                monitoring_config["visit"], odk_form_schema, key, val
             )
-            visit_dict_to_post["data"][odk_column_name] = process_value or visit_specific_column[
-                odk_column_name
+            visit_dict_to_post["data"][key] = process_value or visit_specific_column[
+                key
             ].get("value")
 
     if visit_dict_to_post.get("id_dataset", None) == None:
@@ -281,6 +263,8 @@ def parse_and_create_visit(
                 "Dataset cannot be None or multiple"
                 )
     visit = TMonitoringVisits(**visit_dict_to_post)
+    if not observers_list:
+        log.warning("No observers for this visit")
     visit.observers = get_observers(observers_list)
     specific_column_posted = visit_dict_to_post["data"].keys()
     missing_visit_cols_from_odk = list(set(visit_specific_column) - set(specific_column_posted))
@@ -323,24 +307,19 @@ def parse_and_create_obs(
     }
 
     for key, val in flatten_obs.items():
-        odk_column_name = key.split("/")[-1]
-
         # specifig comment column
-        if odk_column_name == module_parser_config["OBSERVATION"].get("comments"):
+        if key == module_parser_config["OBSERVATION"].get("comments"):
             observation_dict_to_post["comments"] = val
-        # specific media column
-        if odk_column_name == module_parser_config["OBSERVATION"].get("media"):
-            obs_media_name = val
-        if odk_column_name in observation_generic_column.keys():
-            observation_dict_to_post[odk_column_name] = val or observation_generic_column[
-                odk_column_name
+        if key in observation_generic_column.keys():
+            observation_dict_to_post[key] = val or observation_generic_column[
+                key
             ].get("value")
-        elif odk_column_name in observation_specific_column.keys():
+        elif key in observation_specific_column.keys():
             process_value = process_additional_data(
-                monitoring_config["observation"], odk_form_schema, odk_column_name, val
+                monitoring_config["observation"], odk_form_schema, key, val
             )
-            observation_dict_to_post["data"][odk_column_name] = (
-                process_value or observation_specific_column[odk_column_name].get("value")
+            observation_dict_to_post["data"][key] = (
+                process_value or observation_specific_column[key].get("value")
             )
     obs = TMonitoringObservations(**observation_dict_to_post)
     return obs

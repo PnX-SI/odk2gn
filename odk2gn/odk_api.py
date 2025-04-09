@@ -15,6 +15,7 @@ client = Client(config_path=odk2gn_config_file)
 
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):
+    print("URL", f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}")
     img = client.get(
         f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
     )
@@ -22,6 +23,7 @@ def get_attachment(project_id, form_id, uuid_sub, media_name):
         return img.content
     else:
         log.warning(f"Image not found for submission {uuid_sub}")
+
 
 
 def get_submissions(project_id, form_id):
@@ -33,7 +35,7 @@ def get_submissions(project_id, form_id):
             project_id=project_id,
             expand="*",
             # TODO : try received or edited (but edited not actually support)
-            filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
+            # filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
             # filter="__system/reviewState eq 'rejected'",
         )
         return form_data["value"]

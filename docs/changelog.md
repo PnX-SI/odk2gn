@@ -20,6 +20,10 @@ Pour donner tous les droits aux groupe admin :
 `geonature permissions supergrant --group --nom "Grp_admin" --yes
 `
 
+Note de version:
+
+La valeur par defaut du champs `base_site_name` et désormais `base_site_name`, anciennement `site_name`. Veuillez changer le nom du champs dans vos formulaire ODK ou modifierr votre configuration
+
 
 1.0.0 (08-09-2023)
 ------------------

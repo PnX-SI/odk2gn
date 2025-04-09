@@ -19,7 +19,7 @@
     create_site="create_site"
     [modules.SITE]
         # nom du champ nom du site
-        base_site_name = "site_name"
+        base_base_site_name = "base_site_name"
         # nom du champ description du site
         base_site_description = "base_site_description"
         # nom du champ definissant l'inventeur du site
@@ -80,7 +80,7 @@
     create_site="create_site"
     [modules.SITE]
         # nom du champ nom du site
-        base_site_name = "site_name"
+        base_base_site_name = "base_site_name"
         # nom du champ description du site
         base_site_description = "base_site_description"
         # nom du champ definissant l'inventeur du site

@@ -3,12 +3,11 @@ from marshmallow.validate import OneOf
 
 
 class SiteSchema(Schema):
-    base_site_name = fields.Str(load_default="site_name")
+    base_site_name = fields.Str(load_default="base_site_name")
     base_site_code = fields.Str(load_default="base_site_code")
     base_site_description = fields.Str(load_default="base_site_description")
     first_use_date = fields.Str(load_default="visit_date_min")
     id_inventor = fields.Str(load_default="observers")
-    data = fields.Str(load_default="site_creation")
     geom = fields.Str(load_default="geom")
     site_group = fields.Str(load_default="site_group")
     types_site = fields.Str(load_default="types_site")

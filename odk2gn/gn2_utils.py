@@ -1,6 +1,7 @@
 import logging
 import os
 import csv
+import flatdict
 from shapely.geometry import shape, Point, Polygon
 from shapely.ops import transform
 from sqlalchemy.exc import SQLAlchemyError
@@ -30,27 +31,6 @@ def get_module_code(id_module: int):
     return module_code
 
 
-def get_taxon_list(id_liste: int):
-    """Return dict of Taxref
-
-    :param id_liste: Identifier of the taxref list
-    :type id_liste: int
-    """
-    data = (
-        DB.session.query(Taxref)
-        .order_by(Taxref.nom_complet)
-        .filter(Taxref.listes.any(id_liste=id_liste))
-        .limit(3000)
-    )
-    taxons = []
-    for tax in data:
-        tax = tax.as_dict()
-        if tax["nom_vern"] is not None:
-            tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
-        taxons.append(tax)
-    return taxons
-
-
 def get_observers(observers_list):
     obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
     return obss
@@ -61,6 +41,8 @@ def get_taxon_list(id_liste: int):
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
+    if id_liste is None:
+        log.warning("Id taxon list is None - the generated file will be empty")
     data = DB.session.scalars(
         select(Taxref)
         .filter(Taxref.listes.any(BibListes.id_liste == id_liste))
@@ -82,6 +64,8 @@ def get_observer_list(id_liste: int):
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
+    if id_liste is None:
+        log.warning("Id observer list is None - the generated file will be empty")
     data = (
         DB.session.query(VUserslistForallMenu)
         .order_by(VUserslistForallMenu.nom_complet)
@@ -97,6 +81,8 @@ def format_jdd_list(datasets: list):
     :param datasets: List of associated dataset
     :type datasets: []
     """
+    if not datasets:
+        log.warning("No dataset associated to the module - the generated file will be empty")
     data = []
     for jdd in datasets:
         data.append({"id_dataset": jdd.id_dataset, "dataset_name": jdd.dataset_name})
@@ -232,3 +218,25 @@ def commit_data(project_id, form_id, sub_id):
 
 
 #             p.pop(-1)
+
+
+def flat_and_short_dict(d: dict) -> dict:
+    """Flat a dict and remove prefix key
+
+    Parameters
+    ----------
+    d : dict
+        the dict to flat and short
+
+    Returns
+    -------
+    dict
+    """
+    flat_dict = flatdict.FlatDict(d, delimiter="/")
+    new_dict = {}
+    for k, v in flat_dict.items():
+        new_key = k.split("/")[-1]
+        new_dict[new_key] = v
+
+    return new_dict
+

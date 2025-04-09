@@ -20,7 +20,7 @@ from odk2gn.odk_api import (
     update_form_attachment,
     ODKSchema
 )
-from odk2gn.gn2_utils import commit_data
+from odk2gn.gn2_utils import commit_data, flat_and_short_dict
 from odk2gn.monitoring.utils import (
     parse_and_create_visit,
     parse_and_create_obs,
@@ -36,6 +36,21 @@ from odk2gn.monitoring.config_schema import ProcoleSchema
 log = logging.getLogger("app")
 log.setLevel(logging.INFO)
 pp = pprint.PrettyPrinter(width=41, compact=True)
+
+
+def test(obj):
+    new_obj = {}
+    # if isinstance(obj, dict):
+    #     test(obj)
+    # if isinstance(obj, list):
+    #     return {}
+        # for el in obj:
+        #     test(el)
+    for k, v in obj.items():
+        new_key = k.split("/")[-1]
+        new_obj[new_key] = v
+
+    return new_obj
 
 
 def synchronize_module(module_code, project_id, form_id):
@@ -63,7 +78,7 @@ def synchronize_module(module_code, project_id, form_id):
     form_data = get_submissions(project_id, form_id)
 
     for sub in form_data:
-        flatten_data = flatdict.FlatDict(sub, delimiter="/")
+        flatten_data = flat_and_short_dict(sub)
         id_digitiser = get_digitiser(flatten_data, module_parser_config)
         site = parse_and_create_site(
             flatten_data,
@@ -76,7 +91,7 @@ def synchronize_module(module_code, project_id, form_id):
         get_and_post_medium(
             project_id=project_id,
             form_id=form_id,
-            uuid_sub=flatten_data.get("meta/instanceID"),
+            uuid_sub=flatten_data.get("instanceID"),
             filename=flatten_data.get(module_parser_config["SITE"]["media"]),
             monitoring_table="t_base_sites",
             media_type=module_parser_config["SITE"]["media_type"],
@@ -104,7 +119,7 @@ def synchronize_module(module_code, project_id, form_id):
         get_and_post_medium(
             project_id=project_id,
             form_id=form_id,
-            uuid_sub=flatten_data.get("meta/instanceID"),
+            uuid_sub=flatten_data.get("instanceID"),
             filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
             monitoring_table="t_base_visits",
             media_type=module_parser_config["VISIT"]["media_type"],
@@ -127,7 +142,7 @@ def synchronize_module(module_code, project_id, form_id):
 
         for obs in observations_list:
             gn_uuid_obs = uuid.uuid4()
-            flatten_obs = flatdict.FlatDict(obs, delimiter="/")
+            flatten_obs = flat_and_short_dict(obs)
             observation = parse_and_create_obs(
                 flatten_obs,
                 module_parser_config,
@@ -139,7 +154,7 @@ def synchronize_module(module_code, project_id, form_id):
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
-                uuid_sub=flatten_data.get("meta/instanceID"),
+                uuid_sub=flatten_data.get("instanceID"),
                 filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
                 monitoring_table="t_observations",
                 media_type=module_parser_config["OBSERVATION"]["media_type"],
@@ -161,12 +176,12 @@ def upgrade_module(
     module_code,
     project_id,
     form_id,
-    skip_taxons=True,
-    skip_observers=True,
-    skip_jdd=True,
-    skip_sites=True,
-    skip_sites_groups=True,
-    skip_nomenclatures=True,
+    skip_taxons=False,
+    skip_observers=False,
+    skip_jdd=False,
+    skip_sites=False,
+    skip_sites_groups=False,
+    skip_nomenclatures=False,
 ):
     log.info(f"--- Start upgrade form for module {module_code} ---")
     try:
