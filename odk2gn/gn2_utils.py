@@ -15,8 +15,6 @@ from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
 
 from apptax.taxonomie.models import Taxref, CorNomListe, BibNoms
 
-from odk2gn.odk_api import get_attachment
-
 log = logging.getLogger("app")
 
 

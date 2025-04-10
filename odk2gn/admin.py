@@ -1,4 +1,3 @@
-from flask_admin.babel import gettext
 from flask_admin.contrib.sqla import ModelView
 from geonature.core.admin.admin import CruvedProtectedMixin
 from geonature.core.admin.admin import admin as flask_admin
