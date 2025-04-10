@@ -1,5 +1,4 @@
 import pytest, csv
-import flatdict
 
 from sqlalchemy.orm.exc import NoResultFound
 from gn_module_monitoring.monitoring.models import TMonitoringSites
@@ -13,6 +12,8 @@ from odk2gn.gn2_utils import (
     get_observer_list,
     get_ref_nomenclature_list,
     get_module_code,
+    flat_and_short_dict
+    
 )
 from odk2gn.monitoring.utils import (
     parse_and_create_site,
@@ -127,7 +128,18 @@ class TestCommand:
 
     def test_upgrade(self, mocker, my_config, module):
         mocker.patch("odk2gn.monitoring.command.update_form_attachment", return_value=b"")
-        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
+        mocker.patch("odk2gn.monitoring.utils.get_config", return_value=my_config)
+
+        upgrade_module(
+            module.module_code, 
+            99, 
+            "bidon"
+            )
+        
+    def test_upgrade_no_observation(self, mocker, my_config_no_observation, module):
+        # test que l'upgrade fonctionne meme avec un module sans le niveau "observation"
+        mocker.patch("odk2gn.monitoring.command.update_form_attachment", return_value=b"")
+        mocker.patch("odk2gn.monitoring.utils.get_config", return_value=my_config_no_observation)
 
         upgrade_module(
             module.module_code, 
@@ -257,7 +269,7 @@ class TestUtilsFunctions:
         mon_schema_fields
     ):
         for sub in sub_with_site_creation:
-            flat_sub = flatdict.FlatDict(sub, delimiter="/")
+            flat_sub = flat_and_short_dict(sub)
             mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
 
             odk_schema = ODKSchema("test", "test")
@@ -265,3 +277,9 @@ class TestUtilsFunctions:
             site = parse_and_create_site(flat_sub, mod_parser_config, my_config, module, odk_schema)
             assert type(site) is TMonitoringSites
             #TODO : improve check of site
+
+
+    def test_flat_and_short(self, dict_to_flat_and_short):
+        res = flat_and_short_dict(dict_to_flat_and_short)
+        assert "coords" in res
+        assert "type" in res

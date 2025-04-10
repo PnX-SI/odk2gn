@@ -433,9 +433,10 @@ def sub_with_site_creation(
             "create_site": "true",
             "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
+                "type": "Point",
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
                 # tel que renvoyé par l'API 'types_site' est une chaine de
@@ -474,7 +475,7 @@ def sub_with_site_creation(
             "__id": str(uuid.uuid4()),
             "create_site": "true",
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": polygon_4["geometry"],
                 "types_site": str(site_type.id_nomenclature_type_site),
@@ -508,7 +509,7 @@ def failing_sub(observers_and_list, module, site_type, taxon_and_list, site_grou
             "id_digitiser": observers_and_list["user_list"][0].id_role,
             "create_site": "true",
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
@@ -552,7 +553,7 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
             "create_site": "true",
             "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
@@ -573,15 +574,13 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
             },
             "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
             "nb_observations": 1,
-            "observations": (
-                {
+            "observations": ({
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": "1",
                     "comments_observation": "test other failing sub",
                     "medias_observation": None,
                     "id_digitiser": observers_and_list["user_list"][0].id_role,
-                }
-            ),
+            },),
         },
     ]
     return sub
@@ -596,7 +595,7 @@ def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point)
             "create_site": "true",
             "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
@@ -832,6 +831,27 @@ def my_config(module, site_type, nomenclature):
         },
     }
     return conf
+
+@pytest.fixture(scope="function")
+def my_config_no_observation(my_config):
+    new_config = my_config.copy()
+    new_config.pop("observation")
+    return new_config
+
+
+@pytest.fixture(scope="function")
+def dict_to_flat_and_short():
+    return {
+        "group": {
+                "sites_group": {
+                    "geom": {
+                        "coords": 123,
+                        "type": "Point"
+                    }
+                }
+        }
+    }
+
 
 
 "======================================================================================================================================================================"

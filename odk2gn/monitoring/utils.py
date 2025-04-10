@@ -456,8 +456,8 @@ def get_site_groups_list(id_module: int):
 def get_nomenclatures_fields(module_code: str, niveau: str):
     config = get_config(module_code)
     fields = dict(
-        config.get(niveau, {}).get("specific", []),
-        **config.get(niveau, {}).get("generic", []),
+        config.get(niveau, {}).get("specific", {}),
+        **config.get(niveau, {}).get("generic", {}),
     )
     nomenclatures_fields = []
     for name in fields:
