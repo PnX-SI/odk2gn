@@ -6,6 +6,7 @@ CHANGELOG
 -----
 
 - Compatibilité avec GeoNature 2.14 et monitoring 0.7.X
+- Possibilité d'utiliser le module sans avoir le module monitoring d'installé
 
 Note de version : 
 
