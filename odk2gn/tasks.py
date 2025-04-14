@@ -1,27 +1,14 @@
-import os
 import time
-import sys
-from datetime import datetime, timedelta
-from pathlib import Path
 
-from sqlalchemy import func
 from celery.utils.log import get_task_logger
 from celery.schedules import crontab
-from flask import current_app
 from geonature.utils.celery import celery_app
-from odk2gn.commands import synchronize_module, upgrade_module
-from odk2gn.gn2_utils import get_module_code
 from odk2gn.models import TOdkForm
 
 from geonature.utils.config import config
 
 cron = config["ODK2GN"]["tasks"]
 
-
-if sys.version_info < (3, 10):
-    from importlib_metadata import entry_points
-else:
-    from importlib.metadata import entry_points
 
 logger = get_task_logger(__name__)
 
@@ -54,8 +41,7 @@ def setup_periodic_tasks(sender, **kwargs):
     )
 
 
-from click import Context
-from odk2gn.commands import synchronize_monitoring, synchronize, upgrade_odk_form
+from odk2gn.commands import synchronize, upgrade_odk_form
 
 
 @celery_app.task(bind=True)

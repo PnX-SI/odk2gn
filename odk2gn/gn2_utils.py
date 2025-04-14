@@ -1,41 +1,21 @@
 import logging
 import os
 import csv
-import json
-import geojson
-from shapely.geometry import asShape, shape, Point, Polygon
+from shapely.geometry import shape
 from shapely.ops import transform
 from geoalchemy2.shape import from_shape
 
 import tempfile
-from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func, select, join
 from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
-from geonature.core.gn_meta.models import TDatasets
 from geonature.core.gn_commons.models import TModules
-from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
-from gn_module_monitoring.monitoring.models import (
-    TMonitoringModules,
-    TMonitoringSites,
-    TMonitoringSitesGroups,
-)
 
-from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
+from pypnusershub.db.models import User
+from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
 
-from odk2gn.monitoring_config import get_nomenclatures_fields
-from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
+from apptax.taxonomie.models import Taxref, CorNomListe, BibNoms
 
 log = logging.getLogger("app")
-
-
-def get_monitoring_modules():
-    tab = []
-    modules = (TMonitoringModules).query.filter_by(type="monitoring_modules").all()
-    for module in modules:
-        tab.append(module)
-    return tab
 
 
 def get_module_code(id_module: int):
@@ -43,87 +23,34 @@ def get_module_code(id_module: int):
     return module_code
 
 
-def get_modules_info(module_code: str):
-    try:
-        module = TMonitoringModules.query.filter(
-            TMonitoringModules.module_code.ilike(module_code)
-        ).one()
-        return module
-    except NoResultFound:
-        log.error(f"No GeoNature module found for {module_code}")
-        raise
+def get_taxon_list(id_liste: int):
+    """Return dict of Taxref
 
-
-def get_gn2_attachments_data(
-    module: TMonitoringModules,
-    skip_taxons: bool = False,
-    skip_observers: bool = False,
-    skip_jdd: bool = False,
-    skip_sites: bool = False,
-    skip_nomenclatures: bool = False,
-    skip_sites_groups: bool = False,
-):
-    files = {}
-    # Taxon
-    if not skip_taxons:
-        data = get_taxon_list(module.id_list_taxonomy)
-        files["gn_taxons.csv"] = to_csv(header=("cd_nom", "nom_complet", "nom_vern"), data=data)
-    # Observers
-    if not skip_observers:
-        data = get_observer_list(module.id_list_observer)
-        files["gn_observateurs.csv"] = to_csv(header=("id_role", "nom_complet"), data=data)
-    # JDD
-    if not skip_jdd:
-        data = format_jdd_list(module.datasets)
-        files["gn_jdds.csv"] = to_csv(header=("id_dataset", "dataset_name"), data=data)
-
-    # Sites
-    if not skip_sites:
-        data = get_site_list(module.id_module)
-        files["gn_sites.csv"] = to_csv(
-            header=("id_base_site", "base_site_name", "geometry"), data=data
-        )
-
-    if not skip_sites_groups:
-        data = get_site_groups_list(module.id_module)
-        files["gn_groupes.csv"] = to_csv(header=("id_sites_group", "sites_group_name"), data=data)
-
-    # Nomenclature
-    if not skip_nomenclatures:
-        n_fields = []
-        for niveau in ["site", "visit", "observation"]:
-            n_fields = n_fields + get_nomenclatures_fields(
-                module_code=module.module_code, niveau=niveau
-            )
-
-        nomenclatures = get_nomenclature_data(n_fields)
-        files["gn_nomenclatures.csv"] = to_csv(
-            header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
-            data=nomenclatures,
-        )
-
-    return files
-
-
-def get_site_groups_list(id_module: int):
-    """Return dict of TMonitoringSitesGroups
-
-    :param id_module: Identifier of the module
-    :type id_module : int"""
-
+    :param id_liste: Identifier of the taxref list
+    :type id_liste: int
+    """
     data = (
-        DB.session.query(TMonitoringSitesGroups)
-        .order_by(TMonitoringSitesGroups.sites_group_name)
-        .filter_by(id_module=id_module)
-        .all()
+        DB.session.query(Taxref)
+        .order_by(Taxref.nom_complet)
+        .filter(Taxref.listes.any(id_liste=id_liste))
+        .limit(3000)
     )
+    taxons = []
+    for tax in data:
+        tax = tax.as_dict()
+        if tax["nom_vern"] is not None:
+            tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
+        taxons.append(tax)
+    return taxons
 
-    return [group.as_dict() for group in data]
+
+def get_observers(observers_list):
+    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
+    return obss
 
 
 def get_taxon_list(id_liste: int):
     """Return dict of Taxref
-
     :param id_liste: Identifier of the taxref list
     :type id_liste: int
     """
@@ -142,33 +69,6 @@ def get_taxon_list(id_liste: int):
             tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
         taxons.append(tax)
     return taxons
-
-
-def get_site_list(id_module: int):
-    """Return tuple of TBase site for module
-
-    :param id_module: Identifiant du module
-    :type id_module: int
-    """
-    data = (
-        DB.session.query(
-            TBaseSites.id_base_site,
-            TBaseSites.base_site_name,
-            func.concat(
-                func.st_y(func.st_centroid(TBaseSites.geom)),
-                " ",
-                func.st_x(func.st_centroid(TBaseSites.geom)),
-            ),
-        )
-        .order_by(TBaseSites.base_site_name)
-        .filter(TMonitoringSites.id_base_site == TBaseSites.id_base_site)
-        .filter(TMonitoringSites.id_module == id_module)
-        .all()
-    )
-    res = []
-    for d in data:
-        res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
-    return res
 
 
 def get_observer_list(id_liste: int):

@@ -4,70 +4,27 @@ import uuid
 import flatdict
 
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.exc import SQLAlchemyError
 
 from gn_module_monitoring.config.repositories import get_config
 
-from odk2gn.tests.fixtures import (
-    submissions,
-    datasets,
-    header,
-    data,
-    taxon_and_list,
-    module,
-    point,
-    point_3,
-    point_4,
-    module,
-    nomenclature,
-    observers_and_list,
-    test,
-    the_csv,
-    mon_schema_fields,
-    my_config,
-    attachment,
-    mail,
-    review_state,
-    site_type,
-    plant,
-    type_nomenclature,
-    sub_with_site_creation,
-    site_group,
-    site,
-    polygon,
-    polygon_3,
-    polygon_4,
-    failing_sub,
-    mod_parser_config,
-    other_failing_sub,
-    failing_sub_3,
-)
+from odk2gn.tests.fixtures import *
 
 
 from odk2gn.gn2_utils import (
     format_jdd_list,
     to_csv,
-    get_site_list,
     get_taxon_list,
     get_observer_list,
-    get_nomenclature_data,
     get_ref_nomenclature_list,
-    get_modules_info,
-    get_gn2_attachments_data,
-    to_wkb,
     get_module_code,
-    get_monitoring_modules,
 )
-from odk2gn.monitoring_config import get_nomenclatures_fields
-
-from odk2gn.monitoring_utils import (
-    parse_and_create_obs,
+from odk2gn.monitoring.utils import (
     parse_and_create_site,
-    parse_and_create_visit,
+    get_gn2_attachments_data,
+    get_modules_info,
+    get_site_list,
+    get_nomenclatures_fields,
 )
-from geonature.core.gn_monitoring.models import TBaseSites
-from odk2gn.odk_api import ODKSchema
-
 from pypnusershub.db.models import UserList, User
 
 from geonature.utils.env import db
@@ -75,13 +32,12 @@ from geonature.utils.env import db
 
 from odk2gn.blueprint import (
     synchronize,
-    synchronize_monitoring,
-    get_submissions,
     upgrade_odk_form,
 )
 
-from odk2gn.blueprint import get_modules_info
+from odk2gn.monitoring.utils import get_modules_info
 
+from odk2gn.monitoring.command import synchronize_module, upgrade_module
 
 @pytest.mark.usefixtures("temporary_transaction")
 class TestCommand:
@@ -96,25 +52,16 @@ class TestCommand:
         observers_and_list,
         attachment,
     ):
-        mocker.patch("odk2gn.commands.get_submissions", return_value=sub_with_site_creation)
+        mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=sub_with_site_creation)
         mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
-        mocker.patch("odk2gn.commands.get_config", return_value=my_config)
-        mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
+        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
+        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=attachment)
+        mocker.patch("odk2gn.monitoring.command.update_review_state", return_value={})
         mocker.patch(
-            "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-            return_value=site_type.id_nomenclature,
-        )
-        mocker.patch(
-            "odk2gn.monitoring_utils.get_observers",
+            "odk2gn.gn2_utils.get_observers",
             return_value=observers_and_list["user_list"],
         )
-        runner = CliRunner()
-        result = runner.invoke(
-            synchronize,
-            ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
-        )
-        assert result.exit_code == 0
-
+        synchronize_module(module.module_code, 99, "bidon")
     def test_failing_synchronize(
         self,
         mocker,
@@ -125,28 +72,18 @@ class TestCommand:
         site_type,
         observers_and_list,
     ):
-        try:
-            mocker.patch("odk2gn.commands.get_submissions", return_value=failing_sub)
-            mocker.patch(
-                "odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields
-            )
-            mocker.patch("odk2gn.commands.get_config", return_value=my_config)
-            mocker.patch("odk2gn.commands.get_attachment", return_value=None)
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-                return_value=site_type.id_nomenclature,
-            )
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_observers",
-                return_value=observers_and_list["user_list"],
-            )
-            runner = CliRunner()
-            result = runner.invoke(
-                synchronize,
-                ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
-            )
-        except SQLAlchemyError:
-            assert result.exit_code == 1
+        mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=failing_sub)
+        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
+        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
+        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=attachment)
+        mocker.patch("odk2gn.monitoring.command.update_review_state", return_value={})
+        mocker.patch(
+            "odk2gn.gn2_utils.get_observers",
+            return_value=observers_and_list["user_list"],
+        )
+        with pytest.raises(Exception):
+            synchronize_module(module.module_code, 99, "bidon")
+
 
     def test_failing_synchronize_2(
         self,
@@ -159,28 +96,17 @@ class TestCommand:
         site_type,
         observers_and_list,
     ):
-        try:
-            mocker.patch("odk2gn.commands.get_submissions", return_value=other_failing_sub)
-            mocker.patch(
-                "odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields
-            )
-            mocker.patch("odk2gn.commands.get_config", return_value=my_config)
-            mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-                return_value=site_type.id_nomenclature,
-            )
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_observers",
-                return_value=observers_and_list["user_list"],
-            )
-            runner = CliRunner()
-            result = runner.invoke(
-                synchronize,
-                ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
-            )
-        except AssertionError:
-            assert result.exit_code == 1
+        mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=other_failing_sub)
+        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
+        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
+        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=attachment)
+        mocker.patch("odk2gn.monitoring.command.update_review_state", return_value={})
+        mocker.patch(
+            "odk2gn.gn2_utils.get_observers",
+            return_value=observers_and_list["user_list"],
+        )
+        with pytest.raises(AssertionError):
+            synchronize_module(module.module_code, 99, "bidon")
 
     def test_failing_sync_3(
         self,
@@ -193,44 +119,35 @@ class TestCommand:
         site_type,
         observers_and_list,
     ):
-        try:
-            mocker.patch("odk2gn.commands.get_submissions", return_value=failing_sub_3)
-            mocker.patch(
-                "odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields
-            )
-            mocker.patch("odk2gn.commands.get_config", return_value=my_config)
-            mocker.patch("odk2gn.commands.get_attachment", return_value=attachment)
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_id_nomenclature_type_site",
-                return_value=site_type.id_nomenclature,
-            )
-            mocker.patch(
-                "odk2gn.monitoring_utils.get_observers",
-                return_value=observers_and_list["user_list"],
-            )
-            runner = CliRunner()
-            result = runner.invoke(
-                synchronize,
-                ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
-            )
-        except Exception:
-            assert result.exit_code == 1
+        mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=failing_sub_3)
+        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
+        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
+        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=attachment)
+        mocker.patch("odk2gn.monitoring.command.update_review_state", return_value={})
+        mocker.patch(
+            "odk2gn.gn2_utils.get_observers",
+            return_value=observers_and_list["user_list"],
+        )
+        with pytest.raises(AssertionError):
+            synchronize_module(module.module_code, 99, "bidon")
+
 
     def test_upgrade(self, mocker, my_config, module):
-        mocker.patch("odk2gn.commands.update_form_attachment")
-        mocker.patch("odk2gn.monitoring_config.get_config", return_value=my_config)
-        runner = CliRunner()
-        result = runner.invoke(
-            upgrade_odk_form,
-            ["monitoring", module.module_code, "--project_id", 99, "--form_id", "bidon"],
-        )
-        assert result.exit_code == 0
+        mocker.patch("odk2gn.monitoring.command.update_form_attachment")
+        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
+
+        upgrade_module(
+            module.module_code, 
+            99, 
+            "bidon"
+            )
+
 
 
 @pytest.mark.usefixtures("temporary_transaction")
 class TestUtilsFunctions:
     def test_format_jdd_list1(self, datasets):
-        ds = format_jdd_list(datasets)
+        ds = format_jdd_list(datasets.values())
 
         assert type(ds) is list
         dict_cols = set(ds[0].keys())
@@ -312,7 +229,7 @@ class TestUtilsFunctions:
 
     def test_monitoring_files(self, mocker, my_config, module):
         mocker.patch(
-            "odk2gn.monitoring_config.get_config",
+            "odk2gn.monitoring.utils.get_config",
             return_value=my_config,
         )
         files = get_gn2_attachments_data(module)
@@ -329,13 +246,9 @@ class TestUtilsFunctions:
             ]
         ).issubset(files_names)
 
-    def test_get_monitoring_modules(self, module):
-        modules = get_monitoring_modules()
-        assert type(modules) is list
-
     def test_get_monitoring_config(self, mocker, my_config, module):
         mocker.patch(
-            "odk2gn.monitoring_config.get_config",
+            "odk2gn.monitoring.utils.get_config",
             return_value=my_config,
         )
         for niveau in ["site", "visit", "observation"]:
@@ -350,7 +263,7 @@ class TestUtilsFunctions:
         self, mocker, sub_with_site_creation, mod_parser_config, my_config, module, site_type
     ):
         mocker.patch(
-            "odk2gn.monitoring_utils.get_site_type_cd_nomenclature",
+            "odk2gn.monitoring.utils.get_site_type_cd_nomenclature",
             return_value=site_type.cd_nomenclature,
         )
         for sub in sub_with_site_creation:
