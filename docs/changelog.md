@@ -1,13 +1,11 @@
 CHANGELOG
 =========
 
-1.2.0 - unreleased
+1.2.0 - (19-09-2025)
 -------------------
 
-- La version 1.0.X de monitoring ajoute la possibilité d'associer des sites à plusieurs module via la notion de "type de site". Le champs "type_site" doit donc être envoyé par le formulaire ODK. Voir le fichier d'exemple "ODK-Form-GeoNature-monitoring-Template-With-Site-Creation.xlsx". Une valeur par défaut peut être passé si le module a un seul type de site.
-
-1.1.0 (15-04-2025)
-------------------
+- Compatibilité avec GeoNature 2.14 et monitoring 0.7.X
+- Possibilité d'utiliser le module sans avoir le module monitoring d'installé
 
 **🚀 Nouveautés**
 
