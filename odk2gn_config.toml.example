@@ -15,8 +15,10 @@
 
 [[modules]]
     module_code = "STOM"
-    # booléen indiquant la création de sites
-    create_site="create_site"
+    # booléen indiquant la création de sites/visites/obs
+    create_site=false
+    create_visit=true
+    create_observation=true
     [modules.SITE]
         # nom du champ nom du site
         base_site_name = "site_name"
@@ -24,8 +26,6 @@
         base_site_description = "base_site_description"
         # nom du champ definissant l'inventeur du site
         id_inventor = "observers"
-        # nom du groupe contenant les champs additionnels
-        data = "site_creation"
         # nom du champ de date de première utilisation du site
         first_use_date = "visit_date_min"
         # nom du champ de geométrie
@@ -54,6 +54,10 @@
         media_type = "Photo"
 [[modules]]
     module_code = "chiro" 
+    # booléen indiquant la création de sites/visites/obs
+    create_site=fakse
+    create_visit=true
+    create_observation=true
     [modules.VISIT]
         # nom du champ commentaire de la visite (optionnel, defaut comments_visit)
         comments = "comments_visit"
@@ -76,8 +80,10 @@
         media_type = "Photo"
 [[modules]]
     module_code = "suivi_nardaie"
-    # booléen indiquant la création de sites
-    create_site="create_site"
+    # booléen indiquant la création de sites/visites/obs
+    create_site=true
+    create_visit=true
+    create_observation=true
     [modules.SITE]
         # nom du champ nom du site
         base_site_name = "site_name"
@@ -85,8 +91,6 @@
         base_site_description = "base_site_description"
         # nom du champ definissant l'inventeur du site
         id_inventor = "observers"
-        # nom du groupe contenant les champs additionnels
-        data = "site_creation"
         # nom du champ de date de première utilisation du site
         first_use_date = "visit_date_min"
         # nom du champ de geométrie

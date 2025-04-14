@@ -1,22 +1,12 @@
 import pytest
 import csv
-import os
 import uuid
 import datetime
-import flatdict
-import json
 from pathlib import Path
 from odk2gn.gn2_utils import to_wkb
 from geonature.utils.env import db
-from geonature import create_app
-from geonature.core.gn_meta.models import TDatasets
-from sqlalchemy.event import listen, remove
-from geonature.core.gn_commons.models import TModules
-from gn_module_monitoring.config.repositories import get_config
 from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
-from geonature.core.gn_monitoring.models import TBaseSites, corSiteModule
-from geonature.tests.fixtures import datasets
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
@@ -401,6 +391,13 @@ def mon_schema_fields():
             "binary": None,
             "selectMultiple": None,
         },
+        {
+            "path": "/meta/nb_observations",
+            "name": "nb_observations",
+            "type": "number",
+            "binary": None,
+            "selectMultiple": None,
+        },
     ]
 
 
@@ -711,6 +708,18 @@ def my_config(module, site_type, nomenclature):
                     "type_widget": "textarea",
                     "attribut_label": "Description",
                 },
+                "id_nomenclature_type_site": {
+                    "attribut_label": "Type site",
+                    "code_nomenclature_type": "TYPE_SITE",
+                    "hidden": True,
+                    "required": True,
+                    "type_util": "nomenclature",
+                    "type_widget": "nomenclature",
+                    "value": {
+                        "cd_nomenclature": "STOM",
+                        "code_nomenclature_type": "TYPE_SITE"
+                    }
+                }
             },
             "specific": {
                 "id_nomenclature_type_site": {
@@ -779,7 +788,6 @@ def my_config(module, site_type, nomenclature):
                     "module_code": "__MODULE.MODULE_CODE",
                     "required": True,
                 },
-                "nb_observations": {"attribut_label": "Nombre d'observations"},
                 "medias": {
                     "type_widget": "medias",
                     "attribut_label": "Médias",
@@ -813,10 +821,10 @@ def my_config(module, site_type, nomenclature):
                     "api": "nomenclatures/TEST",
                     "params": {"regne": "all", "group2_inpn": "all"},
                 },
+                "nb_observations": {"attribut_label": "Nombre d'observations"},
             },
             "children_types": ["observation"],
             "parent_types": ["site"],
-            "nb_observations": {"attribut_label": "Nombre d'observations"},
         },
         "observation": {
             "generic": {

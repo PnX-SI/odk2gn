@@ -7,7 +7,6 @@ class SiteSchema(Schema):
     base_site_description = fields.Str(load_default="base_site_description")
     first_use_date = fields.Str(load_default="visit_date_min")
     id_inventor = fields.Str(load_default="observers")
-    data = fields.Str(load_default="site_creation")
     geom = fields.Str(load_default="geom")
     site_group = fields.Str(load_default="site_group")
 
@@ -36,7 +35,9 @@ class ObservationSchema(Schema):
 
 class ProcoleSchema(Schema):
     module_code = fields.Str(required=True)
-    create_site = fields.Str(load_default="create_site")
+    create_site = fields.Boolean(load_default=True)
+    create_visit = fields.Boolean(load_default=True)
+    create_observation = fields.Boolean(load_default=True)
     SITE = fields.Nested(SiteSchema, load_default=SiteSchema().load({}))
     VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
     OBSERVATION = fields.Nested(ObservationSchema, load_default=ObservationSchema().load({}))

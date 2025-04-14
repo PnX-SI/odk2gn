@@ -39,8 +39,7 @@ pp = pprint.PrettyPrinter(width=41, compact=True)
 
 
 def synchronize_module(module_code, project_id, form_id):
-    # odk_form_schema = ODKSchema(project_id, form_id)
-    odk_form_schema = {}
+    odk_form_schema = ODKSchema(project_id, form_id)
     log.info(f"--- Start synchro for module {module_code} ---")
     module_parser_config = {}
     for module in config["ODK2GN"]["modules"]:
@@ -61,70 +60,68 @@ def synchronize_module(module_code, project_id, form_id):
 
     for sub in form_data:
         flatten_data = flatdict.FlatDict(sub, delimiter="/")
-        try:
-            if sub[module_parser_config.get("create_site")] == "true":
-                site = parse_and_create_site(
-                    flatten_data,
-                    module_parser_config,
-                    monitoring_config=monitoring_config,
-                    module=gn_module,
-                )
-                DB.session.add(site)
-        except:
-            print("Error while creating site")
-        observations_list = []
-        try:
-            observations_list = flatten_data.pop(
-                module_parser_config["OBSERVATION"]["observations_repeat"]
+        if module_parser_config["create_site"]:
+            site = parse_and_create_site(
+                flatten_data,
+                module_parser_config,
+                monitoring_config=monitoring_config,
+                module=gn_module,
             )
-            assert type(observations_list) is list
-        except KeyError:
-            log.warning("No observation for this visit")
-        except AssertionError:
-            log.error("Observation node is not a list")
-            raise
-        visit = parse_and_create_visit(
-            flatten_data,
-            module_parser_config,
-            monitoring_config,
-            gn_module,
-            odk_form_schema,
-        )
-        get_and_post_medium(
-            project_id=project_id,
-            form_id=form_id,
-            uuid_sub=flatten_data.get("meta/instanceID"),
-            filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
-            monitoring_table="t_base_visits",
-            media_type=module_parser_config["VISIT"]["media_type"],
-            uuid_gn_object=visit.uuid_base_visit,
-        )
-        for obs in observations_list:
-            gn_uuid_obs = uuid.uuid4()
-            flatten_obs = flatdict.FlatDict(obs, delimiter="/")
-            observation = parse_and_create_obs(
-                flatten_obs,
+            DB.session.add(site)
+        if module_parser_config["create_visit"]:
+            visit = parse_and_create_visit(
+                flatten_data,
                 module_parser_config,
                 monitoring_config,
+                gn_module,
                 odk_form_schema,
-                gn_uuid_obs,
             )
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
                 uuid_sub=flatten_data.get("meta/instanceID"),
-                filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
-                monitoring_table="t_observations",
-                media_type=module_parser_config["OBSERVATION"]["media_type"],
-                uuid_gn_object=gn_uuid_obs,
+                filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
+                monitoring_table="t_base_visits",
+                media_type=module_parser_config["VISIT"]["media_type"],
+                uuid_gn_object=visit.uuid_base_visit,
             )
-            visit.observations.append(observation)
-        try:
-            if sub[module_parser_config.get("create_site")] == "true":
+            if module_parser_config["create_observation"]:
+                observations_list = []
+                try:
+                    observations_list = flatten_data.pop(
+                        module_parser_config["OBSERVATION"]["observations_repeat"]
+                    )
+                    assert type(observations_list) is list
+                except KeyError:
+                    log.warning("No observation for this visit")
+                except AssertionError:
+                    log.error("Observation node is not a list")
+                    raise
+                for obs in observations_list:
+                    gn_uuid_obs = uuid.uuid4()
+                    flatten_obs = flatdict.FlatDict(obs, delimiter="/")
+                    observation = parse_and_create_obs(
+                        flatten_obs,
+                        module_parser_config,
+                        monitoring_config,
+                        odk_form_schema,
+                        gn_uuid_obs,
+                    )
+                    get_and_post_medium(
+                        project_id=project_id,
+                        form_id=form_id,
+                        uuid_sub=flatten_data.get("meta/instanceID"),
+                        filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
+                        monitoring_table="t_observations",
+                        media_type=module_parser_config["OBSERVATION"]["media_type"],
+                        uuid_gn_object=gn_uuid_obs,
+                    )
+                    visit.observations.append(observation)
+
+            if module_parser_config["create_site"]:
                 site.visits.append(visit)
-        except:
-            pass
-        DB.session.add(visit)
+
+            DB.session.add(visit)
         try:
             DB.session.commit()
             update_review_state(project_id, form_id, sub["__id"], "approved")

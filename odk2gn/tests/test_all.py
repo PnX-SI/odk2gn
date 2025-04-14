@@ -62,9 +62,6 @@ class TestCommand:
             return_value=observers_and_list["user_list"],
         )
         synchronize_module(module.module_code, 99, "bidon")
-
-        assert True
-
     def test_failing_synchronize(
         self,
         mocker,

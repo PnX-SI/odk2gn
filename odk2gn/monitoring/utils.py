@@ -14,14 +14,14 @@ from gn_module_monitoring.monitoring.models import (
 
 from geonature.utils.env import DB, BACKEND_DIR
 from geonature.core.gn_commons.models import BibTablesLocation, TMedias
-
-from odk2gn.gn2_utils import format_jdd_list, get_attachment, get_observers
+from odk2gn.odk_api import get_attachment
+from odk2gn.gn2_utils import format_jdd_list, get_observers
 from geonature.core.gn_monitoring.models import TBaseSites
 from gn_module_monitoring.monitoring.models import TMonitoringModules
 
 log = logging.getLogger("app")
 
-from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes
+from pypnnomenclature.models import TNomenclatures
 from odk2gn.gn2_utils import (
     format_jdd_list,
     get_id_nomenclature_type_site,
@@ -40,6 +40,7 @@ def get_site_type_cd_nomenclature(monitoring_config):
 
 
 def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, module):
+    site_specific_column = monitoring_config["site"]["specific"]
     # a ne pas être hard codé dans le futur
     cd_nomenclature = get_site_type_cd_nomenclature(monitoring_config)
     id_type = get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
@@ -48,7 +49,10 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
         "id_nomenclature_type_site": id_type,
         "data": {},
     }
+
     for key, val in flatten_sub.items():
+        geom_type = None
+        coords = None
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
         if odk_column_name == module_parser_config["SITE"].get("base_site_name"):
@@ -66,10 +70,9 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
             try:
                 id_groupe = int(val)
                 site_dict_to_post["id_sites_group"] = id_groupe
-            except:
+            except Exception as e:
+                log.error(e)
                 pass
-
-        # données géométriques
         # type, coordinates et accuracy sont des noms de variables qui seront toujours présents dans une donnée géométrique d'ODK, ils sont déjà génériques
         elif odk_column_name == "type" and module_parser_config["SITE"].get("geom") in key:
             geom_type = val
@@ -81,7 +84,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
         # tous les spécificités d'un site d'un module
         # changer site_creation pour le nom du group du XLSFORM où ces données figurent
         # elif "site_creation" in key:
-        elif module_parser_config["SITE"].get("data") in key:
+        elif odk_column_name in site_specific_column.keys():
             site_dict_to_post["data"][odk_column_name] = val
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
@@ -121,7 +124,7 @@ def parse_and_create_visit(
     :type monitoring_config: dict
 
     :param gn_module: the gn_module object
-    :type monitoring_config: TMpodulesMonitoring
+    :type monitoring_config: TModulesMonitoring
 
     :param odk_form_schema: a ODKSchema object describing the ODK form
     :type odk_form_schema: ODKSchema
@@ -132,7 +135,6 @@ def parse_and_create_visit(
     visit_specific_column = monitoring_config["visit"]["specific"]
     # get uuid from the submission and use it has visit UUID
     visit_uuid = flatten_sub["__id"].split(":")[-1]
-    # DB.session.query(TMonitoringVisits).filter_by(uuid_base_visit=visit_uuid).exitst()
     visit_dict_to_post = {
         "uuid_base_visit": visit_uuid,
         "id_module": gn_module.id_module,
@@ -140,7 +142,6 @@ def parse_and_create_visit(
     }
     observers_list = []
     for key, val in flatten_sub.items():
-        # print(str(key) + " : " + str(val) + ", ")
         odk_column_name = key.split("/")[-1]
         # specifig comment column
         if odk_column_name == module_parser_config["VISIT"].get("comments"):
@@ -158,6 +159,7 @@ def parse_and_create_visit(
                 "value"
             )
         elif odk_column_name in visit_specific_column.keys():
+        
             odk_field = odk_form_schema.get_field_info(odk_column_name)
             if odk_field["selectMultiple"]:
                 if val:
