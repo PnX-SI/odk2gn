@@ -2,8 +2,11 @@ CHANGELOG
 =========
 
 
-1.1.0
------
+1.2.0 - unreleased
+-------------------
+
+1.1.0 (14-04-2024)
+-------------------
 
 - Compatibilité avec GeoNature 2.14 et monitoring 0.7.X
 - Possibilité d'utiliser le module sans avoir le module monitoring d'installé
