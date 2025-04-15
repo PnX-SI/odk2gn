@@ -2,7 +2,7 @@ import logging
 import os
 import csv
 import flatdict
-from shapely.geometry import shape, Point, Polygon
+from shapely.geometry import shape
 from shapely.ops import transform
 from sqlalchemy.exc import SQLAlchemyError
 from geoalchemy2.shape import from_shape
@@ -14,13 +14,12 @@ from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_commons.models import TModules
 from geonature.utils.utilsmails import send_mail
 from geonature.utils.config import config
-from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
 
 
 from pypnusershub.db.models import User
 from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
 
-from apptax.taxonomie.models import BibListes, cor_nom_liste, Taxref
+from apptax.taxonomie.models import BibListes, Taxref
 from odk2gn.odk_api import update_review_state
 
 log = logging.getLogger("app")

@@ -22,7 +22,7 @@ def get_attachment(project_id, form_id, uuid_sub, media_name):
     if img.status_code == 200:
         return img.content
     else:
-        log.warning(f"Image not found for submission {uuid_sub}")
+        log.warning(f"No image found for submission {uuid_sub}")
 
 
 

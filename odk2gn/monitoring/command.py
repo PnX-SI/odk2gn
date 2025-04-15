@@ -80,96 +80,101 @@ def synchronize_module(module_code, project_id, form_id):
     for sub in form_data:
         flatten_data = flat_and_short_dict(sub)
         id_digitiser = get_digitiser(flatten_data, module_parser_config)
-        site = parse_and_create_site(
-            flatten_data,
-            module_parser_config,
-            monitoring_config=monitoring_config,
-            module=gn_module,
-            odk_form_schema=odk_form_schema,
-        )
-        site.id_digitiser = id_digitiser
-        get_and_post_medium(
-            project_id=project_id,
-            form_id=form_id,
-            uuid_sub=flatten_data.get("instanceID"),
-            filename=flatten_data.get(module_parser_config["SITE"]["media"]),
-            monitoring_table="t_base_sites",
-            media_type=module_parser_config["SITE"]["media_type"],
-            uuid_gn_object=site.uuid_base_site,
-        )
-        if site:
-            DB.session.add(site)
-
-        visit = parse_and_create_visit(
-            flatten_data,
-            module_parser_config,
-            monitoring_config,
-            gn_module,
-            odk_form_schema,
-        )
-        if not visit:
-            # S'il n'y a pas de visites
-            # Sauvegarde des données et passage à la submission suivante
-            log.warning("No visit for this site")
+        if module_parser_config["can_create_site"]:
+            site = parse_and_create_site(
+                flatten_data,
+                module_parser_config,
+                monitoring_config=monitoring_config,
+                module=gn_module,
+                odk_form_schema=odk_form_schema,
+            )
+            
+            # Dans certain cas on peut soit créer des site soit selectionner un site existant
+            if site:
+                site.id_digitiser = id_digitiser
+                get_and_post_medium(
+                    project_id=project_id,
+                    form_id=form_id,
+                    uuid_sub=flatten_data.get("instanceID"),
+                    filename=flatten_data.get(module_parser_config["SITE"]["media"]),
+                    monitoring_table="t_base_sites",
+                    media_type=module_parser_config["SITE"]["media_type"],
+                    uuid_gn_object=site.uuid_base_site,
+                )
+                DB.session.add(site)
+        # si pas de visite pour le module
+        if not "visit" in monitoring_config:
             commit_data(project_id, form_id, sub["__id"])
             continue
-
-        visit.id_digitiser = id_digitiser
-
-        get_and_post_medium(
-            project_id=project_id,
-            form_id=form_id,
-            uuid_sub=flatten_data.get("instanceID"),
-            filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
-            monitoring_table="t_base_visits",
-            media_type=module_parser_config["VISIT"]["media_type"],
-            uuid_gn_object=visit.uuid_base_visit,
-        )
-
-        observations_list = []
-        try:
-            observations_list = flatten_data.pop(
-                module_parser_config["OBSERVATION"]["observations_repeat"]
-            )
-            assert type(observations_list) is list
-        except KeyError:
-            log.warning("No observation for this visit")
-        except AssertionError:
-            log.error("Observation node is not a list")
-            raise
-        except Exception as e:
-            raise
-
-        for obs in observations_list:
-            gn_uuid_obs = uuid.uuid4()
-            flatten_obs = flat_and_short_dict(obs)
-            observation = parse_and_create_obs(
-                flatten_obs,
+        else:
+            visit = parse_and_create_visit(
+                flatten_data,
                 module_parser_config,
                 monitoring_config,
+                gn_module,
                 odk_form_schema,
-                gn_uuid_obs,
             )
-            observation.id_digitiser = id_digitiser
+            if not visit:
+                # S'il n'y a pas de visites
+                # Sauvegarde des données et passage à la submission suivante
+                log.warning("No visit for this site")
+                commit_data(project_id, form_id, sub["__id"])
+                continue
+
+            visit.id_digitiser = id_digitiser
+
             get_and_post_medium(
                 project_id=project_id,
                 form_id=form_id,
                 uuid_sub=flatten_data.get("instanceID"),
-                filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
-                monitoring_table="t_observations",
-                media_type=module_parser_config["OBSERVATION"]["media_type"],
-                uuid_gn_object=gn_uuid_obs,
+                filename=flatten_data.get(module_parser_config["VISIT"]["media"]),
+                monitoring_table="t_base_visits",
+                media_type=module_parser_config["VISIT"]["media_type"],
+                uuid_gn_object=visit.uuid_base_visit,
             )
-            visit.observations.append(observation)
-        if site and visit:
-            site.visits.append(visit)
+            if "observation" in monitoring_config:
+                observations_list = []
+                try:
+                    observations_list = flatten_data.pop(
+                        module_parser_config["OBSERVATION"]["observations_repeat"]
+                    )
+                    assert type(observations_list) is list
+                except KeyError:
+                    log.warning("No observation for this visit")
+                except AssertionError:
+                    log.error("Observation node is not a list")
+                    raise
+                except Exception as e:
+                    raise
 
+                for obs in observations_list:
+                    gn_uuid_obs = uuid.uuid4()
+                    flatten_obs = flat_and_short_dict(obs)
+                    observation = parse_and_create_obs(
+                        flatten_obs,
+                        module_parser_config,
+                        monitoring_config,
+                        gn_module,
+                        odk_form_schema,
+                    )
+                    observation.id_digitiser = id_digitiser
+                    get_and_post_medium(
+                        project_id=project_id,
+                        form_id=form_id,
+                        uuid_sub=flatten_data.get("instanceID"),
+                        filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
+                        monitoring_table="t_observations",
+                        media_type=module_parser_config["OBSERVATION"]["media_type"],
+                        uuid_gn_object=gn_uuid_obs,
+                    )
+                    visit.observations.append(observation)
+            if site and visit:
+                site.visits.append(visit)
         if visit:
             DB.session.add(visit)
 
         commit_data(project_id, form_id, sub["__id"])
     log.info(f"--- Finish synchronize for module {module_code} ---")
-
 
 
 def upgrade_module(

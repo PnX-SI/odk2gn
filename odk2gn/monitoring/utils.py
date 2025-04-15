@@ -20,6 +20,11 @@ from pypnnomenclature.models import TNomenclatures
 from pypnusershub.db.models import User
 
 from odk2gn.odk_api import get_attachment
+from odk2gn.gn2_utils import format_jdd_list, get_observers
+
+log = logging.getLogger("app")
+
+from pypnnomenclature.models import TNomenclatures
 from odk2gn.gn2_utils import (
     format_jdd_list,
     to_wkb,
@@ -92,29 +97,21 @@ def process_additional_data(monitoring_config, odk_form_schema, field_name, val)
 
 def get_digitiser(flatten_sub, module_parser_config):
     for key, val in flatten_sub.items():
-        odk_column_name = key.split("/")[-1]
         # specifig digitiser column
-        if odk_column_name == module_parser_config.get("id_digitiser"):
+        if key == module_parser_config.get("id_digitiser"):
             return int(val)
-
-
-def get_observers(observers_list):
-    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
-    return obss
-
 
 
 def parse_and_create_site(
     flatten_sub, module_parser_config, monitoring_config, module, odk_form_schema
 ):
-    # Test de création du site
-    # S'il y a un champ create_site dans le formulaire
-    #   et qu'il  est  renseigné de façon négative
-    if module_parser_config.get("create_site") in flatten_sub.keys():
+    # Le module peut accepter à la fois la création de site et la selection d'un site existant
+    # Ici on est dans le cas ou le formulaire ODK accepte la création de site
+    # on va vérifier dans la soumission si l'utilisateur a choisi de créer un site ou non
+    if module_parser_config["SITE"].get("create_site") in flatten_sub.keys():
         create_site_key = module_parser_config.get("create_site")
         if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
             return None
-
     id_type = None
     site_dict_to_post = {
         "data": {},
@@ -196,22 +193,17 @@ def parse_and_create_visit(
     :type monitoring_config: dict
 
     :param gn_module: the gn_module object
-    :type monitoring_config: TMpodulesMonitoring
+    :type monitoring_config: TModulesMonitoring
 
     :param odk_form_schema: a ODKSchema object describing the ODK form
     :type odk_form_schema: ODKSchema
 
 
     """
-    if not "visit" in monitoring_config:
-        # si pas de visite pour le module
-        return None
-
     visit_generic_column = monitoring_config["visit"]["generic"]
     visit_specific_column = monitoring_config["visit"]["specific"]
     # get uuid from the submission and use it has visit UUID
     visit_uuid = flatten_sub["__id"].split(":")[-1]
-    # DB.session.query(TMonitoringVisits).filter_by(uuid_base_visit=visit_uuid).exitst()
     visit_dict_to_post = {
         "uuid_base_visit": visit_uuid,
         "id_module": gn_module.id_module,
@@ -297,7 +289,6 @@ def parse_and_create_obs(
     :param odk_form_schema: a ODKSchema object describing the ODK form
     :type odk_form_schema: ODKSchema
     """
-    # TODO : make a class and not get these column a each loop
     observation_generic_column = monitoring_config["observation"]["generic"]
     observation_specific_column = monitoring_config["observation"]["specific"]
 

@@ -1,20 +1,34 @@
 CHANGELOG
 =========
 
+1.2.0 - unreleased
+-------------------
+
+- id_digitiser si pas de création de site ?
 
 1.1.0
 -----
 
-- Compatibilité avec GeoNature 2.15 (taxhub v2 et monitoring 1.0.0 (?))
+- Compatibilité avec GeoNature 2.14 et monitoring 0.7.X
+- Possibilité d'utiliser le module sans avoir le module monitoring d'installé
 
 Note de version : 
 
 - installer le module ODK2GN comme un module geonature : 
-
 ```
   geonature install-gn-module <chemin vers odk2gn> --build=false
 ```
-Vous devrez ensuite associer des permssions au module :
+- Supprimez les champs `data` de la configuration de vos modules dans le fichier `odk2gn_config.toml`
+- La gestion de la création des sites / visites / observations change. Le fait de pouvoir créer des sites étaient controlé par un paramètre de configuration `create_site` qui pointait vers le nom d'un champs du formulaire ODK. Ce sont désormais 3 booléens qui controle ça au niveau de la configuration ODK2GN de chaque sous module (voir le fichier d'exemple `odk2gn_config.toml.example`). Par défault les valeurs sont à `True` (bien veiller à passer les bonne valeur si vous voulez désactiver la création d'entitité à un niveau)
+
+```
+    create_site=false
+    create_visit=true
+    create_observation=true
+```
+
+
+Vous devrez ensuite associer des permissions au module :
 
 Pour donner tous les droits aux groupe admin : 
 `geonature permissions supergrant --group --nom "Grp_admin" --yes

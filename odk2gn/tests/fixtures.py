@@ -373,6 +373,13 @@ def mon_schema_fields():
             "binary": None,
             "selectMultiple": None,
         },
+        {
+            "path": "/meta/nb_observations",
+            "name": "nb_observations",
+            "type": "number",
+            "binary": None,
+            "selectMultiple": None,
+        },
     ]
 
 
@@ -688,6 +695,18 @@ def my_config(module, site_type, nomenclature):
                     "type_widget": "textarea",
                     "attribut_label": "Description",
                 },
+                "id_nomenclature_type_site": {
+                    "attribut_label": "Type site",
+                    "code_nomenclature_type": "TYPE_SITE",
+                    "hidden": True,
+                    "required": True,
+                    "type_util": "nomenclature",
+                    "type_widget": "nomenclature",
+                    "value": {
+                        "cd_nomenclature": "STOM",
+                        "code_nomenclature_type": "TYPE_SITE"
+                    }
+                }
             },
             "specific": {
                 "id_nomenclature_type_site": {
@@ -756,7 +775,6 @@ def my_config(module, site_type, nomenclature):
                     "module_code": "__MODULE.MODULE_CODE",
                     "required": True,
                 },
-                "nb_observations": {"attribut_label": "Nombre d'observations"},
                 "medias": {
                     "type_widget": "medias",
                     "attribut_label": "Médias",
@@ -790,10 +808,10 @@ def my_config(module, site_type, nomenclature):
                     "api": "nomenclatures/TEST",
                     "params": {"regne": "all", "group2_inpn": "all"},
                 },
+                "nb_observations": {"attribut_label": "Nombre d'observations"},
             },
             "children_types": ["observation"],
             "parent_types": ["site"],
-            "nb_observations": {"attribut_label": "Nombre d'observations"},
         },
         "observation": {
             "generic": {
