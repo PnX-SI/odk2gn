@@ -157,6 +157,7 @@ def parse_and_create_site(
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
+    print("????????", geom)
     # format_coords(geom)
     geom = to_wkb(geom)
     site.geom = geom
