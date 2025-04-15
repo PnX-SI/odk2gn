@@ -78,6 +78,7 @@ def synchronize_module(module_code, project_id, form_id):
     form_data = get_submissions(project_id, form_id)
 
     for sub in form_data:
+        site = None
         flatten_data = flat_and_short_dict(sub)
         id_digitiser = get_digitiser(flatten_data, module_parser_config)
         if module_parser_config["can_create_site"]:
@@ -151,11 +152,10 @@ def synchronize_module(module_code, project_id, form_id):
                     gn_uuid_obs = uuid.uuid4()
                     flatten_obs = flat_and_short_dict(obs)
                     observation = parse_and_create_obs(
-                        flatten_obs,
-                        module_parser_config,
-                        monitoring_config,
-                        gn_module,
-                        odk_form_schema,
+                        flatten_obs=flatten_obs,
+                        module_parser_config=module_parser_config,
+                        monitoring_config=monitoring_config,
+                        odk_form_schema=odk_form_schema,
                     )
                     observation.id_digitiser = id_digitiser
                     get_and_post_medium(

@@ -14,7 +14,7 @@
 
 [[modules]]
     module_code = "suivi_nardaie"
-    # booléen indiquant la création de sites/visites/obs
+    # booléen indiquant la création de sites
     can_create_site=true
     [modules.SITE]
         # non du champs qui demande à l'utilisateur s'il veut créer un site ou en selectionner un existant

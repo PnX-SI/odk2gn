@@ -1,7 +1,9 @@
 import pytest, csv
 
+from sqlalchemy import select
 from sqlalchemy.orm.exc import NoResultFound
-from gn_module_monitoring.monitoring.models import TMonitoringSites
+from gn_module_monitoring.monitoring.models import TMonitoringSites, TMonitoringVisits, TMonitoringObservations
+from geonature.utils.env import db
 from odk2gn.tests.fixtures import *
 from odk2gn.odk_api import ODKSchema
 
@@ -32,78 +34,110 @@ from odk2gn.monitoring.command import synchronize_module, upgrade_module
 class TestCommand:
     def test_synchronize_monitoring_site_creation(
         self,
-        mocker,
         sub_with_site_creation,
-        mon_schema_fields,
-        module,
-        my_config,
+        mocker,
+        modules,
         site_type,
-        observers_and_list,
+        sync_mocker,
+        taxon_and_list
     ):
         mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=sub_with_site_creation)
-        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
-        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
-        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=b"")
-        mocker.patch("odk2gn.gn2_utils.update_review_state", return_value={})
-        mocker.patch(
-            "odk2gn.gn2_utils.get_observers",
-            return_value=observers_and_list["user_list"],
-        )
-        synchronize_module(module.module_code, 99, "bidon")
+        synchronize_module(modules["module_with_site"].module_code, 99, "bidon")
+        created_site = db.session.execute(
+            select(TMonitoringSites).filter_by(
+                base_site_name=sub_with_site_creation[0]["site_creation"]["base_site_name"]
+                )
+        ).scalar_one()
+        # test champs génériques
+        assert created_site.base_site_description == sub_with_site_creation[0]["site_creation"]["base_site_description"]
+        # test champs spécifiques
+        assert "is_new" in created_site.data and created_site.data["is_new"] == True
+
+        # test visite
+        created_visit = db.session.execute(
+            select(TMonitoringVisits).filter_by(
+                id_base_site=created_site.id_base_site
+                )
+        ).unique().scalar_one()
+        assert created_visit.comments == sub_with_site_creation[0]["visit"]["comments_visit"]
+        assert "hauteur_moy_vegetation" in created_visit.data 
+        assert created_visit.data["hauteur_moy_vegetation"] == sub_with_site_creation[0]["visit"]["hauteur_moy_vegetation"]
+
+        # test observation
+        created_obs = db.session.scalars(
+            select(TMonitoringObservations).filter_by(
+                id_base_visit=created_visit.id_base_visit
+                )
+        ).unique().all()
+
+        assert len(created_obs) > 0
+        first_obs = created_obs[0]
+        assert first_obs.cd_nom == taxon_and_list["taxon"].cd_nom
+        assert "addi" in first_obs.data
+        assert first_obs.data["addi"] == "YES"
+
+
+    def test_synchronize_with_only_visit_and_obs(
+        self,
+        submissions_with_no_site,
+        modules,
+        site_type,
+        sync_mocker,
+        mocker
+    ):
+        # ce test utilise un module dont la config (tests.test_config.py) ne permet pas la création de site
+        # can_create_site = False
+        mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=submissions_with_no_site)
+        synchronize_module(modules["module_with_no_site"].module_code, 99, "bidon")
+
+
+    def test_synchronize_with_only_visit(
+        self,
+        submissions_with_only_visit,
+        modules,
+        site_type,
+        sync_mocker,
+        mocker
+    ):
+        # ce test utilise un module dont la config (tests.test_config.py) ne permet pas la création de site
+        # can_create_site = False
+        mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=submissions_with_only_visit)
+        synchronize_module(modules["module_with_no_site"].module_code, 99, "bidon")
+
+
     def test_failing_synchronize(
         self,
         mocker,
         failing_sub,
-        mon_schema_fields,
-        module,
-        my_config,
+        modules,
         site_type,
-        observers_and_list,
+        sync_mocker
     ):
         mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=failing_sub)
-        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
-        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
-        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=b"")
-        mocker.patch("odk2gn.gn2_utils.update_review_state", return_value={})
-        mocker.patch(
-            "odk2gn.gn2_utils.get_observers",
-            return_value=observers_and_list["user_list"],
-        )
         with pytest.raises(Exception):
-            synchronize_module(module.module_code, 99, "bidon")
+            synchronize_module(modules["module_with_site"].module_code, 99, "bidon")
 
 
     def test_failing_synchronize_2(
         self,
         mocker,
         other_failing_sub,
-        mon_schema_fields,
-        module,
-        my_config,
+        modules,
         site_type,
-        observers_and_list,
+        sync_mocker
     ):
         mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=other_failing_sub)
-        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
-        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
-        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=b"")
-        mocker.patch("odk2gn.gn2_utils.update_review_state", return_value={})
-        mocker.patch(
-            "odk2gn.gn2_utils.get_observers",
-            return_value=observers_and_list["user_list"],
-        )
+
         with pytest.raises(AssertionError):
-            synchronize_module(module.module_code, 99, "bidon")
+            synchronize_module(modules["module_with_site"].module_code, 99, "bidon")
 
     def test_failing_sync_3(
         self,
         mocker,
         failing_sub_3,
-        mon_schema_fields,
-        module,
-        my_config,
+        modules,
         site_type,
-        observers_and_list,
+        sync_mocker
     ):
         """ 
             Fail because use 'failing_sub_3' fixture 
@@ -111,35 +145,28 @@ class TestCommand:
 
         """
         mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=failing_sub_3)
-        mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
-        mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
-        mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=b"")
-        mocker.patch("odk2gn.gn2_utils.update_review_state", return_value={})
-        mocker.patch(
-            "odk2gn.gn2_utils.get_observers",
-            return_value=observers_and_list["user_list"],
-        )
+
         with pytest.raises(AssertionError):
-            synchronize_module(module.module_code, 99, "bidon")
+            synchronize_module(modules["module_with_site"].module_code, 99, "bidon")
 
 
-    def test_upgrade(self, mocker, my_config, module):
+    def test_upgrade(self, mocker, my_config, modules):
         mocker.patch("odk2gn.monitoring.command.update_form_attachment", return_value=b"")
         mocker.patch("odk2gn.monitoring.utils.get_config", return_value=my_config)
 
         upgrade_module(
-            module.module_code, 
+            modules["module_with_site"].module_code, 
             99, 
             "bidon"
             )
         
-    def test_upgrade_no_observation(self, mocker, my_config_no_observation, module):
+    def test_upgrade_no_observation(self, mocker, my_config_no_observation, modules):
         # test que l'upgrade fonctionne meme avec un module sans le niveau "observation"
         mocker.patch("odk2gn.monitoring.command.update_form_attachment", return_value=b"")
         mocker.patch("odk2gn.monitoring.utils.get_config", return_value=my_config_no_observation)
 
         upgrade_module(
-            module.module_code, 
+            modules["module_with_site"].module_code, 
             99, 
             "bidon"
             )
@@ -180,8 +207,8 @@ class TestUtilsFunctions:
         dict_cols = set(observers[0].keys())
         assert set(["id_role", "nom_complet"]).issubset(dict_cols)
 
-    def test_get_site_list1(self, module, site):
-        sites = get_site_list(module.id_module)
+    def test_get_site_list1(self, modules, site):
+        sites = get_site_list(modules["module_with_site"].id_module)
         assert type(sites) is list
         dict_cols = set(sites[0].keys())
         assert set(["id_base_site", "base_site_name", "geometry"]).issubset(dict_cols)
@@ -202,22 +229,10 @@ class TestUtilsFunctions:
         assert set(["mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"]).issubset(
             dict_cols
         )
-        # noms3 = get_ref_nomenclature_list(
-        #     code_nomenclature_type="TEST",
-        #     cd_nomenclatures=["test"],
-        #     regne="all",
-        #     group2_inpn="all",
-        # )
-        # assert nomenclature.id_nomenclature in [nom["id_nomenclature"] for nom in noms3]
-        # assert type(noms3) is list
-        # dict_cols = set(noms3[0].keys())
-        # assert set(["mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"]).issubset(
-        #     dict_cols
-        # )
 
-    def test_get_modules_info1(self, module):
-        mod = get_modules_info(module.module_code)
-        assert mod == module
+    def test_get_modules_info1(self, modules):
+        mod = get_modules_info(modules["module_with_site"].module_code)
+        assert mod == modules["module_with_site"]
 
     def test_get_modules_info_error(self):
         try:
@@ -225,16 +240,12 @@ class TestUtilsFunctions:
         except NoResultFound:
             assert True
 
-    # def test_bidule2(test):
-    #     user = db.session.query(UserList).filter_by(identifiant="bidule").one()
-    #     print(user)
-
-    def test_monitoring_files(self, mocker, my_config, module):
+    def test_monitoring_files(self, mocker, my_config, modules):
         mocker.patch(
             "odk2gn.monitoring.utils.get_config",
             return_value=my_config,
         )
-        files = get_gn2_attachments_data(module)
+        files = get_gn2_attachments_data(modules["module_with_site"])
         assert type(files) is dict
         files_names = set(files.keys())
         assert set(
@@ -248,32 +259,30 @@ class TestUtilsFunctions:
             ]
         ).issubset(files_names)
 
-    def test_get_monitoring_config(self, mocker, my_config, module):
+    def test_get_monitoring_config(self, mocker, my_config, modules):
         mocker.patch(
             "odk2gn.monitoring.utils.get_config",
             return_value=my_config,
         )
         for niveau in ["site", "visit", "observation"]:
-            nom_fields = get_nomenclatures_fields(module.module_code, niveau)
+            nom_fields = get_nomenclatures_fields(modules["module_with_site"].module_code, niveau)
             assert type(nom_fields) is list
 
-    def test_get_module_code(self, module):
-        code = get_module_code(module.id_module)
-        assert module.module_code == code
+    def test_get_module_code(self, modules):
+        code = get_module_code(modules["module_with_site"].id_module)
+        assert modules["module_with_site"].module_code == code
 
     def test_parse_and_create_site(
-        self, mocker, sub_with_site_creation, mod_parser_config, my_config, module, site_type,
-        mon_schema_fields
+        self, mocker, sub_with_site_creation, mod_parser_config, my_config, modules, site_type,
     ):
         for sub in sub_with_site_creation:
             flat_sub = flat_and_short_dict(sub)
-            mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=mon_schema_fields)
+            mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=odk_field_schema)
 
             odk_schema = ODKSchema("test", "test")
 
-            site = parse_and_create_site(flat_sub, mod_parser_config, my_config, module, odk_schema)
+            site = parse_and_create_site(flat_sub, mod_parser_config, my_config, modules, odk_schema)
             assert type(site) is TMonitoringSites
-            #TODO : improve check of site
 
 
     def test_flat_and_short(self, dict_to_flat_and_short):

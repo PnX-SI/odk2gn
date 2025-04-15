@@ -109,7 +109,7 @@ def parse_and_create_site(
     # Ici on est dans le cas ou le formulaire ODK accepte la création de site
     # on va vérifier dans la soumission si l'utilisateur a choisi de créer un site ou non
     if module_parser_config["SITE"].get("create_site") in flatten_sub.keys():
-        create_site_key = module_parser_config.get("create_site")
+        create_site_key = module_parser_config["SITE"].get("create_site")
         if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
             return None
     id_type = None
@@ -157,7 +157,6 @@ def parse_and_create_site(
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
-    print("????????", geom)
     # format_coords(geom)
     geom = to_wkb(geom)
     site.geom = geom
@@ -271,7 +270,7 @@ def parse_and_create_visit(
 
 
 def parse_and_create_obs(
-    flatten_obs, module_parser_config, monitoring_config, odk_form_schema, gn_uuid_obs
+    flatten_obs, module_parser_config, monitoring_config, odk_form_schema
 ):
     """
     Parse and create an TMonitoringObservations object from a odk observation
@@ -294,10 +293,8 @@ def parse_and_create_obs(
     observation_specific_column = monitoring_config["observation"]["specific"]
 
     observation_dict_to_post = {
-        "uuid_observation": gn_uuid_obs,
         "data": {},
     }
-
     for key, val in flatten_obs.items():
         # specifig comment column
         if key == module_parser_config["OBSERVATION"].get("comments"):
