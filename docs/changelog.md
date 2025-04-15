@@ -17,20 +17,33 @@ Note de version :
 ```
   geonature install-gn-module <chemin vers odk2gn> --build=false
 ```
-- Supprimez les champs `data` de la configuration de vos modules dans le fichier `odk2gn_config.toml`
-- La gestion de la création des sites / visites / observations change. Le fait de pouvoir créer des sites étaient controlé par un paramètre de configuration `create_site` qui pointait vers le nom d'un champs du formulaire ODK. Ce sont désormais 3 booléens qui controle ça au niveau de la configuration ODK2GN de chaque sous module (voir le fichier d'exemple `odk2gn_config.toml.example`). Par défault les valeurs sont à `True` (bien veiller à passer les bonne valeur si vous voulez désactiver la création d'entitité à un niveau)
-
-```
-    create_site=false
-    create_visit=true
-    create_observation=true
-```
-
-
 Vous devrez ensuite associer des permissions au module :
 
 Pour donner tous les droits aux groupe admin : 
 `geonature permissions supergrant --group --nom "Grp_admin" --yes
+
+- Supprimez les champs `data` de la configuration monitoring de vos modules dans le fichier `odk2gn_config.toml`
+- La gestion de la création des sites est désormais controlée à deux niveaux dans la configuration du module :
+Au niveau de la section du module, le booléen `can_create_site` controle si le module autorise la création de site : 
+
+```
+[[modules]]
+    module_code = "suivi_nardaie"
+    # booléen indiquant la création de sites
+    can_create_site=true
+```
+
+et au niveau de la section `SITE`, le champs `create_site` (str) indique quel est le nom du champs dans le formulaire ODK qui offre la possibilité de choisir un site existant ou d'en créer un. Ce champs du formulaire ODK doit renvoyer un booléen
+[[modules]]
+    module_code = "suivi_nardaie"
+    # booléen indiquant la création de sites
+    can_create_site=true
+    [modules.SITE]
+        # non du champs qui demande à l'utilisateur s'il veut créer un site ou en selectionner un existant
+        # compatible uniquement avec can_create_site=true
+        create_site = "create_site"
+
+
 `
 
 

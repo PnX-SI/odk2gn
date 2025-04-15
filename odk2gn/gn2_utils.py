@@ -4,16 +4,22 @@ import csv
 from shapely.geometry import shape
 from shapely.ops import transform
 from geoalchemy2.shape import from_shape
+from sqlalchemy.exc import SQLAlchemyError
+
 
 import tempfile
 from geonature.utils.env import DB
 from geonature.core.users.models import VUserslistForallMenu
 from geonature.core.gn_commons.models import TModules
+from geonature.utils.config import config
+from geonature.utils.utilsmails import send_mail
 
 from pypnusershub.db.models import User
 from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
 
 from apptax.taxonomie.models import Taxref, CorNomListe, BibNoms
+
+from odk2gn.odk_api import update_review_state
 
 log = logging.getLogger("app")
 
@@ -21,7 +27,6 @@ log = logging.getLogger("app")
 def get_module_code(id_module: int):
     module_code = (TModules.query.filter_by(id_module=id_module).one()).module_code
     return module_code
-
 
 def get_taxon_list(id_liste: int):
     """Return dict of Taxref
@@ -171,6 +176,20 @@ def to_csv(header: list[str], data: list[dict]):
     os.unlink(temp_csv.name)
     return res
 
+def commit_data(project_id, form_id, sub_id):
+    try:
+        DB.session.commit()
+        update_review_state(project_id, form_id, sub_id, "approved")
+    except SQLAlchemyError as e:
+        log.error("Error while posting data")
+        log.error(str(e))
+        send_mail(
+            config["gn_odk"]["email_for_error"],
+            subject="Synchronisation ODK error",
+            msg_html=str(e),
+        )
+        update_review_state(project_id, form_id, sub_id, "hasIssues")
+        DB.session.rollback()
 
 # Décommenter ceci pour avoir les fichiers csv à téléverser en vrai
 """def to_real_csv(file_name, header: list[str], data: list[dict]):

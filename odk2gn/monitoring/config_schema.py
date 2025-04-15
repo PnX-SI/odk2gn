@@ -3,6 +3,7 @@ from marshmallow.validate import OneOf
 
 
 class SiteSchema(Schema):
+    create_site = fields.Str(load_default="create_site")
     base_site_name = fields.Str(load_default="site_name")
     base_site_description = fields.Str(load_default="base_site_description")
     first_use_date = fields.Str(load_default="visit_date_min")
@@ -35,9 +36,7 @@ class ObservationSchema(Schema):
 
 class ProcoleSchema(Schema):
     module_code = fields.Str(required=True)
-    create_site = fields.Boolean(load_default=True)
-    create_visit = fields.Boolean(load_default=True)
-    create_observation = fields.Boolean(load_default=True)
+    can_create_site = fields.Boolean(load_default=True)
     SITE = fields.Nested(SiteSchema, load_default=SiteSchema().load({}))
     VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
     OBSERVATION = fields.Nested(ObservationSchema, load_default=ObservationSchema().load({}))

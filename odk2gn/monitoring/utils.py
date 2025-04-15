@@ -50,12 +50,16 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
         "data": {},
     }
 
+    geom_type = None
+    coords = None
     for key, val in flatten_sub.items():
-        geom_type = None
-        coords = None
         odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
-        if odk_column_name == module_parser_config["SITE"].get("base_site_name"):
+        if module_parser_config["SITE"].get("create_site") == odk_column_name:
+            create_site_key = module_parser_config["SITE"].get("create_site")
+            if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
+                return None
+        elif odk_column_name == module_parser_config["SITE"].get("base_site_name"):
             site_dict_to_post["base_site_name"] = val
         elif odk_column_name == module_parser_config["SITE"].get("base_site_description"):
             site_dict_to_post["base_site_description"] = val
@@ -89,6 +93,7 @@ def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, 
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
+    print("????????", geom)
     # format_coords(geom)
     geom = to_wkb(geom)
     site.geom = geom
