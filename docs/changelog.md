@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+1.2.0 - unreleased
+-------------------
+
+- id_digitiser si pas de création de site ?
 
 1.1.0
 -----
@@ -42,6 +46,10 @@ et au niveau de la section `SITE`, le champs `create_site` (str) indique quel es
 
 
 `
+
+Note de version:
+
+La valeur par defaut du champs `base_site_name` et désormais `base_site_name`, anciennement `site_name`. Veuillez changer le nom du champs dans vos formulaire ODK ou modifierr votre configuration
 
 
 1.0.0 (08-09-2023)

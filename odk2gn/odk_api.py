@@ -5,11 +5,9 @@ import json
 from datetime import datetime
 from pyodk.client import Client
 
-from geonature.utils.config import config
 from geonature.utils.module import get_module_config_path
 
 
-odk2gn_config = config["ODK2GN"]
 odk2gn_config_file = get_module_config_path("ODK2GN")
 log = logging.getLogger("app")
 
@@ -17,13 +15,15 @@ client = Client(config_path=odk2gn_config_file)
 
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):
+    print("URL", f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}")
     img = client.get(
         f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
     )
     if img.status_code == 200:
-        return img
+        return img.content
     else:
         log.warning(f"No image found for submission {uuid_sub}")
+
 
 
 def get_submissions(project_id, form_id):
@@ -35,35 +35,11 @@ def get_submissions(project_id, form_id):
             project_id=project_id,
             expand="*",
             # TODO : try received or edited (but edited not actually support)
-            filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
+            # filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
             # filter="__system/reviewState eq 'rejected'",
         )
         return form_data["value"]
 
-
-# def get_attachments(project_id, form_data):
-#     # #########################################
-#     #  Attachments
-#     # projects/1/forms/Sicen/submissions/{data['__id']}/attachments => Récupération de la liste des attachments pour une soumissions
-#     # projects/1/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']} => Téléchargement de l'attachment pour la soumission
-#     for data in form_data:
-#         attachments_list = client.get(
-#             f"projects/{project_id}/forms//submissions/{data['__id']}/attachments"
-#         )
-#         print("Nombre de médias", {data["__id"]}, len(attachments_list.json()))
-#         print(attachments_list.json())
-#         for att in attachments_list.json():
-#             img = client.get(
-#                 f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}"
-#             )
-#             print(
-#                 "URL###################",
-#                 f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}",
-#             )
-#             with open(att["name"], "wb") as out_file:
-#                 out_file.write(img.content)
-
-#     assert response.status_code == 200
 
 
 def update_review_state(project_id, form_id, submission_id, review_state):

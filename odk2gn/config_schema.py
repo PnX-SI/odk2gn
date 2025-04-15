@@ -1,4 +1,5 @@
 from marshmallow import Schema, fields
+from marshmallow.validate import OneOf
 
 
 class Odk2GnTaskSchema(Schema):
@@ -22,4 +23,4 @@ class Odk2GnSchema(Schema):
     tasks = fields.Nested(Odk2GnTaskSchema)
     email_for_error = fields.Nested(GnODK)
     # On ne peut pas ajouter ProcoleSchema ici, il est lié à monitoring
-    modules = fields.List(fields.Dict)
+    modules = fields.List(fields.Dict, load_default=[])

@@ -7,13 +7,14 @@ from odk2gn.gn2_utils import to_wkb
 from geonature.utils.env import db
 from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
+from geonature.tests.fixtures import datasets
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
     TMonitoringSitesGroups,
+    BibTypeSite,
 )
-from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
-from utils_flask_sqla.tests.utils import JSONClient
+from apptax.taxonomie.models import BibListes, Taxref
 
 
 @pytest.fixture(scope="function")
@@ -45,7 +46,7 @@ def polygon_4():
 def site_group(module):
     with db.session.begin_nested():
         group = TMonitoringSitesGroups(
-            id_module=module.id_module,
+            modules=[module],
             uuid_sites_group=uuid.uuid4(),
             sites_group_name="test_group",
             sites_group_description="test",
@@ -108,45 +109,14 @@ def taxon_and_list(plant):
     picto = "images/pictos/nopicto.gif"
     taxon = plant
     with db.session.begin_nested():
-        tax_nom = BibNoms(cd_nom=taxon.cd_nom, cd_ref=taxon.cd_nom, nom_francais=taxon.nom_vern)
-        taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test", picto=picto)
-        cnl = CorNomListe(bib_nom=tax_nom, bib_liste=taxon_test_list)
-        tax_nom.listes.append(cnl)
-        taxon_test_list.cnl.append(cnl)
-        db.session.add(tax_nom, taxon_test_list)
+        taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test")
+        taxon.listes.append(taxon_test_list)
+        db.session.add(taxon, taxon_test_list)
     return {"taxon": taxon, "tax_list": taxon_test_list}
 
 
 @pytest.fixture(scope="function")
-def submissions(site, observers_and_list, module, taxon_and_list, datasets):
-    sub = [
-        {
-            "__id": str(uuid.uuid4()),
-            "id_base_site": site.id_base_site,
-            "base_site_name": site.base_site_name,
-            "visit": {
-                "visit_date_min": datetime.date.today(),
-                "id_module": module.id_module,
-                "comments": "test",
-                "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
-                "hauteur_moy_vegetation": 12,
-            },
-            "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
-            "observations": [
-                {
-                    "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "comptage": 1,
-                    "comments": "test",
-                }
-            ],
-        },
-    ]
-    return sub
-
-
-
-@pytest.fixture(scope="function")
-def module():
+def module(site_type):
     with db.session.begin_nested():
         new_module = TMonitoringModules(
             module_code="MODULE_1",
@@ -154,6 +124,7 @@ def module():
             module_path="module_1",
             active_frontend=True,
             active_backend=False,
+            types_site=[site_type],
         )
         db.session.add(new_module)
     return new_module
@@ -208,20 +179,17 @@ def site_type():
             label_fr="Site Test",
         )
         site_type_nom.active = True
-        db.session.add(site_type_nom)
-    return site_type_nom
+        site_type = BibTypeSite(nomenclature=site_type_nom, config=None)
+        db.session.add(site_type_nom, site_type)
+    return site_type
 
 
 @pytest.fixture(scope="function")
 def site(module, site_type, point):
     with db.session.begin_nested():
         b_site = TMonitoringSites(
-            base_site_name="test_site",
-            geom=to_wkb(point["geometry"]),
-            id_module=module.id_module,
-            id_nomenclature_type_site=site_type.id_nomenclature,
+            base_site_name="test_site", geom=to_wkb(point["geometry"]), types_site=[site_type]
         )
-        # module.sites.append(b_site)
         b_site.modules.append(module)
         db.session.add(b_site)
     return b_site
@@ -301,6 +269,13 @@ def mon_schema_fields():
             "selectMultiple": None,
         },
         {
+            "path": "/types_site",
+            "name": "types_site",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": True,
+        },
+        {
             "path": "/id_base_site",
             "name": "id_base_site",
             "type": "string",
@@ -311,6 +286,13 @@ def mon_schema_fields():
             "path": "/base_site_name",
             "name": "base_site_name",
             "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/is_new",
+            "name": "is_new",
+            "type": "boolean",
             "binary": None,
             "selectMultiple": None,
         },
@@ -412,16 +394,11 @@ def review_state():
 
 
 @pytest.fixture(scope="function")
-def attachment():
-    file = Path("/home/geonature/geonature/odk2gn/docs/img/archi_global.jpeg")
-    return file
-
-
-@pytest.fixture(scope="function")
-def submissions(site, observers_and_list, module, taxon_and_list, datasets):
+def submissions(site, observers_and_list, module, taxon_and_list):
     sub = [
         {
             "__id": str(uuid.uuid4()),
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "id_base_site": site.id_base_site,
             "base_site_name": site.base_site_name,
             "visit": {
@@ -431,12 +408,12 @@ def submissions(site, observers_and_list, module, taxon_and_list, datasets):
                 "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
                 "hauteur_moy_vegetation": 12,
             },
-            "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
+            "dataset": {"id_dataset": 1},
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments": "test",
+                    "comments": "test submission",
                 }
             ],
         },
@@ -450,10 +427,10 @@ def sub_with_site_creation(
     module,
     taxon_and_list,
     site_group,
+    site_type,
     polygon_4,
     point,
     nomenclature,
-    attachment,
     datasets
 ):
     __id = str(uuid.uuid4())
@@ -461,17 +438,22 @@ def sub_with_site_creation(
         {
             "__id": __id,
             "create_site": "true",
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
+                "type": "Point",
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
+                # tel que renvoyé par l'API 'types_site' est une chaine de
+                # charactère avec des id_type_site séparé par des espaces
+                "types_site": str(site_type.id_nomenclature_type_site),
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
                 "id_module": module.id_module,
-                "media": attachment,
+                "media": b"",
                 "media_type": "Photo",
                 "comments_visit": "test",
                 "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
@@ -491,7 +473,7 @@ def sub_with_site_creation(
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "comments": "test",
+                    "comments": "test sub_with_site_creation failed",
                 }
             ],
             "meta": {"instanceID": "uuid:" + __id},
@@ -500,9 +482,10 @@ def sub_with_site_creation(
             "__id": str(uuid.uuid4()),
             "create_site": "true",
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": polygon_4["geometry"],
+                "types_site": str(site_type.id_nomenclature_type_site),
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
@@ -525,18 +508,20 @@ def sub_with_site_creation(
 
 
 @pytest.fixture(scope="function")
-def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
+def failing_sub(observers_and_list, module, site_type, taxon_and_list, site_group, point):
     "Fail because dataset does not exists"
     sub = [
         {
             "__id": str(uuid.uuid4()),
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "create_site": "true",
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
+                "types_site": str(site_type.id_nomenclature_type_site),
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
@@ -557,7 +542,7 @@ def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments_observation": "test",
+                    "comments_observation": "test failing sub",
                     "medias_observation": None,
                 }
             ],
@@ -573,8 +558,9 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
         {
             "__id": str(uuid.uuid4()),
             "create_site": "true",
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
@@ -595,14 +581,13 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
             },
             "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
             "nb_observations": 1,
-            "observations": (
-                {
+            "observations": ({
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": "1",
-                    "comments_observation": "test",
+                    "comments_observation": "test other failing sub",
                     "medias_observation": None,
-                }
-            ),
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
+            },),
         },
     ]
     return sub
@@ -615,8 +600,9 @@ def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point)
         {
             "__id": str(uuid.uuid4()),
             "create_site": "true",
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
@@ -641,8 +627,9 @@ def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point)
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments_observation": "test",
+                    "comments_observation": "test failing sub 3",
                     "medias_observation": None,
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ],
         },
@@ -726,7 +713,7 @@ def my_config(module, site_type, nomenclature):
                     "hidden": True,
                     "value": {
                         "code_nomenclature_type": "TYPE_SITE",
-                        "cd_nomenclature": site_type.cd_nomenclature,
+                        "cd_nomenclature": site_type.nomenclature.cd_nomenclature,
                     },
                 },
                 "is_new": {"hidden": True, "type_widget": "bool_checkbox"},
@@ -862,6 +849,27 @@ def my_config(module, site_type, nomenclature):
         },
     }
     return conf
+
+@pytest.fixture(scope="function")
+def my_config_no_observation(my_config):
+    new_config = my_config.copy()
+    new_config.pop("observation")
+    return new_config
+
+
+@pytest.fixture(scope="function")
+def dict_to_flat_and_short():
+    return {
+        "group": {
+                "sites_group": {
+                    "geom": {
+                        "coords": 123,
+                        "type": "Point"
+                    }
+                }
+        }
+    }
+
 
 
 "======================================================================================================================================================================"

@@ -53,6 +53,7 @@ def get_schema(project_id, form_id):
     pp.pprint(odk_schema.schema)
 
 
+# Import monitoring commands only if module monitoring is installed
 module_monitoring_installed = False
 try:
     from gn_module_monitoring.monitoring.models import TMonitoringSites
@@ -63,3 +64,45 @@ except ImportError:
 
 if module_monitoring_installed:
     from odk2gn.monitoring.command import synchronize_module, upgrade_module
+
+    @synchronize.command(name="monitoring")
+    @click.argument("module_code")
+    @click.option("--project_id", required=True, type=int)
+    @click.option("--form_id", required=True, type=str)
+    def synchronize_monitoring(module_code, project_id, form_id):
+        synchronize_module(module_code, project_id, form_id)
+
+
+    @upgrade_odk_form.command(name="monitoring")
+    @click.argument("module_code")
+    @click.option("--project_id", required=True, type=int)
+    @click.option("--form_id", required=True, type=str)
+    @click.option("--skip_taxons", is_flag=True, help="Skip taxon sync.")
+    @click.option("--skip_observers", is_flag=True, help="Skip observers sync.")
+    @click.option("--skip_jdd", is_flag=True, help="Skip jdd sync.")
+    @click.option("--skip_sites", is_flag=True, help="Skip sites sync.")
+    @click.option("--skip_sites_groups", is_flag=True, help="Skip site groups sync.")
+    @click.option("--skip_nomenclatures", is_flag=True, help="Skip nomenclatures sync.")
+    def upgrade_monitoring(
+        module_code,
+        project_id,
+        form_id,
+        skip_taxons,
+        skip_observers,
+        skip_jdd,
+        skip_sites,
+        skip_sites_groups,
+        skip_nomenclatures,
+    ):
+        upgrade_module(
+            module_code,
+            project_id,
+            form_id,
+            skip_taxons,
+            skip_observers,
+            skip_jdd,
+            skip_sites,
+            skip_sites_groups,
+            skip_nomenclatures,
+        )
+
