@@ -60,6 +60,11 @@ def synchronize_module(module_code, project_id, form_id):
         gn_module = get_modules_info(module_code=module_code)
     except NoResultFound:
         return
+    monitoring_config = get_config(module_code)
+    if not monitoring_config:
+        log.error(f"No module with code {module_code}")
+        return
+
     module_parser_config = {}
     for module in config["ODK2GN"]["modules"]:
         if module["module_code"] == module_code:
@@ -72,9 +77,6 @@ def synchronize_module(module_code, project_id, form_id):
 
     module_parser_config = ProcoleSchema().load(module_parser_config)
 
-    gn_module = get_modules_info(module_code)
-
-    monitoring_config = get_config(module_code)
     form_data = get_submissions(project_id, form_id)
 
     for sub in form_data:
