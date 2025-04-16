@@ -4,7 +4,7 @@ CHANGELOG
 1.2.0 - unreleased
 -------------------
 
-- id_digitiser si pas de création de site ?
+- La version 1.0.X de monitoring ajoute la possibilité d'associer des sites à plusieurs module via la notion de "type de site". Le champs "type_site" doit donc être envoyé par le formulaire ODK. Voir le fichier d'exemple "ODK-Form-GeoNature-monitoring-Template-With-Site-Creation.xlsx". Une valeur par défaut peut être passé si le module a un seul type de site.
 
 1.1.0
 -----
