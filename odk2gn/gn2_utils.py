@@ -190,7 +190,7 @@ def commit_data(project_id, form_id, sub_id):
         log.error("Error while posting data")
         log.error(str(e))
         send_mail(
-            config["ODK2GN"]["email_for_error"],
+            config["ODK2GN"]["email_for_error"]["email_for_error"],
             subject="Synchronisation ODK error",
             msg_html=str(e),
         )
