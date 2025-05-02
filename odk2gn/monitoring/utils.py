@@ -1,6 +1,8 @@
 import logging
 import datetime
 
+
+from uuid import uuid4
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 
@@ -189,6 +191,7 @@ def parse_and_create_site(
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
         groupe.sites.append(site)
 
+    site.uuid_base_site = uuid4()
     return site
 
 
@@ -282,6 +285,8 @@ def parse_and_create_visit(
                 "\n-".join(missing_visit_cols_from_odk)
             )
         )
+
+    visit.uuid_base_visit = uuid4()
     return visit
 
 
@@ -327,6 +332,7 @@ def parse_and_create_obs(
                 process_value or observation_specific_column[key].get("value")
             )
     obs = TMonitoringObservations(**observation_dict_to_post)
+    obs.uuid_observation = uuid4()
     return obs
 
 
@@ -524,6 +530,7 @@ def get_and_post_medium(
         media = {
             "media_path": f"{table_location.id_table_location}/{medias_name}",
             "uuid_attached_row": uuid_gn_object,
+            "title_fr": f"Photo ODK {monitoring_table}",
             "id_table_location": table_location.id_table_location,
             "id_nomenclature_media_type": media_type.id_nomenclature,
         }
@@ -531,7 +538,6 @@ def get_and_post_medium(
         media = TMedias(**media)
         DB.session.add(media)
         DB.session.commit()
-
         media_dir = (
             BACKEND_DIR / "media" / "attachments" / str(table_location.id_table_location)
         )
@@ -541,7 +547,6 @@ def get_and_post_medium(
             "wb",
         ) as out_file:
             out_file.write(img)
-
 
 def get_type_site_nomenclature_list(
     id_module: int,

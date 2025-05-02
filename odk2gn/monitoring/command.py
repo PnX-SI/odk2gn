@@ -91,7 +91,7 @@ def synchronize_module(module_code, project_id, form_id):
                 module=gn_module,
                 odk_form_schema=odk_form_schema,
             )
-            
+
             # Dans certain cas on peut soit créer des site soit selectionner un site existant
             if site:
                 site.id_digitiser = id_digitiser
@@ -151,7 +151,6 @@ def synchronize_module(module_code, project_id, form_id):
                     raise
 
                 for obs in observations_list:
-                    gn_uuid_obs = uuid.uuid4()
                     flatten_obs = flat_and_short_dict(obs)
                     observation = parse_and_create_obs(
                         flatten_obs=flatten_obs,
@@ -167,7 +166,7 @@ def synchronize_module(module_code, project_id, form_id):
                         filename=flatten_obs.get(module_parser_config["OBSERVATION"]["media"]),
                         monitoring_table="t_observations",
                         media_type=module_parser_config["OBSERVATION"]["media_type"],
-                        uuid_gn_object=gn_uuid_obs,
+                        uuid_gn_object=observation.uuid_observation,
                     )
                     visit.observations.append(observation)
             if site and visit:
