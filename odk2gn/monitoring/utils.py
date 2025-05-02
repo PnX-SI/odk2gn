@@ -37,6 +37,7 @@ from odk2gn.gn2_utils import (
 
 log = logging.getLogger("app")
 
+FALSE_BOOLEAN_VALUES = ("0", 0, "false", "no", False, None)
 def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
     """
     Cas des champs à choix multiple de type nomenclature
@@ -91,6 +92,15 @@ def process_additional_data(monitoring_config, odk_form_schema, field_name, val)
         if val:
             # HACK -> convert mutliSelect in list and replace _ by espace
             return [v.replace("_", " ") for v in val.split(" ")]
+    elif (
+        monitoring_config["specific"].get(field_name, {}).get("type_widget", None)
+        == "bool_checkbox"
+    ):
+        # Cas des question de type boolean
+        if val in FALSE_BOOLEAN_VALUES:
+            return False
+        else:
+            return True
     else:
         return val
 
@@ -110,7 +120,7 @@ def parse_and_create_site(
     # on va vérifier dans la soumission si l'utilisateur a choisi de créer un site ou non
     if module_parser_config["SITE"].get("create_site") in flatten_sub.keys():
         create_site_key = module_parser_config["SITE"].get("create_site")
-        if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
+        if flatten_sub[create_site_key] in FALSE_BOOLEAN_VALUES:
             return None
     id_type = None
     site_dict_to_post = {
@@ -168,7 +178,6 @@ def parse_and_create_site(
         )
         site.types_site.append(ts)
 
-
     if id_groupe is not None:
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
         groupe.sites.append(site)
@@ -215,8 +224,8 @@ def parse_and_create_visit(
     # S'il y a un champ create_visit dans le formulaire
     #   et qu'il n'est pas renseigné de façon négative
     if module_parser_config.get("create_visit") in flatten_sub.keys():
-        create_site_key = module_parser_config.get("create_visit")
-        if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
+        create_visit_key = module_parser_config.get("create_visit")
+        if flatten_sub[create_visit_key] in FALSE_BOOLEAN_VALUES:
             return None
 
     for key, val in flatten_sub.items():
@@ -525,7 +534,6 @@ def get_and_post_medium(
             "wb",
         ) as out_file:
             out_file.write(img)
-
 
 
 def get_type_site_nomenclature_list(
