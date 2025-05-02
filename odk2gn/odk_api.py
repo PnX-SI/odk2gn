@@ -25,7 +25,6 @@ def get_attachment(project_id, form_id, uuid_sub, media_name):
         log.warning(f"No image found for submission {uuid_sub}")
 
 
-
 def get_submissions(project_id, form_id):
     # Creation client odk central
     form_data = None
@@ -35,11 +34,10 @@ def get_submissions(project_id, form_id):
             project_id=project_id,
             expand="*",
             # TODO : try received or edited (but edited not actually support)
-            # filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
+            filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
             # filter="__system/reviewState eq 'rejected'",
         )
         return form_data["value"]
-
 
 
 def update_review_state(project_id, form_id, submission_id, review_state):
