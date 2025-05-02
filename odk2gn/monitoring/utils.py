@@ -128,12 +128,19 @@ def parse_and_create_site(
     }
     site_specific_fields = monitoring_config["site"]["specific"]
     types_site = []
+
+    # Champs de base du site en string (ne nécessistant pas de conversion)
+    base_site_fields_str_keys = {
+        module_parser_config["SITE"].get(key): key
+        for key in ("base_site_name", "base_site_description", "base_site_code")
+    }
+
     for key, val in flatten_sub.items():
         id_groupe = None  # pour éviter un try except plus bas
         if key == module_parser_config["SITE"].get("types_site"):
             types_site = [int(v) for v in val.split(" ") if v]
-        if key == module_parser_config["SITE"].get("base_site_name"):
-            site_dict_to_post["base_site_name"] = val
+        elif key in base_site_fields_str_keys:
+            site_dict_to_post[base_site_fields_str_keys[key]] = val
         elif key == module_parser_config["SITE"].get("base_site_description"):
             site_dict_to_post["base_site_description"] = val
         elif key == module_parser_config["SITE"].get("first_use_date"):
