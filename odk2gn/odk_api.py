@@ -36,7 +36,7 @@ def get_submissions(project_id, form_id):
         project_id=project_id,
         expand="*",
         # TODO : try received or edited (but edited not actually support)
-        # filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
+        filter="__system/reviewState ne 'approved' and __system/reviewState ne 'hasIssues' and __system/reviewState ne 'rejected'",
         # filter="__system/reviewState eq 'rejected'",
     )
     return form_data["value"]
