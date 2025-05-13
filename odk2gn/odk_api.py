@@ -17,8 +17,8 @@ client = Client(config_path=odk2gn_config_file)
 
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):
-    client.open()
-    img = client.get(
+    c = client.open()
+    img = c.get(
         f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
     )
     if img.status_code == 200:
@@ -28,10 +28,10 @@ def get_attachment(project_id, form_id, uuid_sub, media_name):
 
 
 def get_submissions(project_id, form_id):
-    client.open()
+    c = client.open()
     # Creation client odk central
     form_data = None
-    form_data = client.submissions.get_table(
+    form_data = c.submissions.get_table(
         form_id=form_id,
         project_id=project_id,
         expand="*",
@@ -102,8 +102,8 @@ def form_draft(project_id, xml_form_id):
     :param xml_form_id: nom du formulaire
     :type xml_form_id: str
     """
-    client.open()
-    request = client.post(f"projects/{project_id}/forms/{xml_form_id}/draft")
+    c = client.open()
+    request = c.post(f"projects/{project_id}/forms/{xml_form_id}/draft")
     assert request.status_code == 200
 
 
@@ -119,9 +119,9 @@ def upload_form_attachment(project_id, xml_form_id, file_name, data):
     :param data: csv data converti en chaine de caractères
     :type data: str
     """
-    client.open()
-    response = client.post(
-        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/draft/attachments/{file_name}",
+    c = client.open()
+    response = c.post(
+        f"{c.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/draft/attachments/{file_name}",
         data=data.encode("utf-8", "strict"),
     )
     if response.status_code == 404:
@@ -140,9 +140,9 @@ def publish_form(project_id, xml_form_id):
     :param xml_form_id: nom du formulaire
     :type xml_form_id: str
     """
-    client.open()
+    c = client.open()
     version_number = datetime.now()
-    response = client.post(
+    response = c.post(
         f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}"
     )
     assert response.status_code == 200
@@ -154,10 +154,12 @@ class ODKSchema:
         self.project_id = project_id
         self.form_id = form_id
         self.schema = self._get_schema_fields()
-        client.open()
+        c = client.open()
 
     def _get_schema_fields(self):
-        resp = client.get(
+        c = client.open()
+
+        resp = c.get(
             f"projects/{self.project_id}/forms/{self.form_id}/fields?odata=false"
         )
         assert resp.status_code == 200
