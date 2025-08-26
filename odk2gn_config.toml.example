@@ -97,7 +97,7 @@
 [[modules]]
     module_code = "chiro" 
     # booléen indiquant la création de sites/visites/obs
-    create_site=fakse
+    create_site=false
     create_visit=true
     create_observation=true
     [modules.VISIT]
