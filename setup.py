@@ -23,6 +23,7 @@ setuptools.setup(
             "picto = odk2gn:MODULE_PICTO",
             "blueprint = odk2gn.blueprint:blueprint",
             "config_schema = odk2gn.config_schema:Odk2GnSchema",
+            "alembic_branch = odk2gn:ALEMBIC_BRANCH",
             "migrations = odk2gn:migrations",
         ],
     },
