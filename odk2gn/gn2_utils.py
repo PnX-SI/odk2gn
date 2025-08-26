@@ -17,7 +17,7 @@ from geonature.utils.utilsmails import send_mail
 from pypnusershub.db.models import User
 from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
 
-from apptax.taxonomie.models import Taxref, CorNomListe, BibNoms
+from apptax.taxonomie.models import Taxref
 
 from odk2gn.odk_api import update_review_state
 
@@ -52,28 +52,6 @@ def get_taxon_list(id_liste: int):
 def get_observers(observers_list):
     obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
     return obss
-
-
-def get_taxon_list(id_liste: int):
-    """Return dict of Taxref
-    :param id_liste: Identifier of the taxref list
-    :type id_liste: int
-    """
-    data = (
-        DB.session.query(Taxref)
-        .order_by(Taxref.nom_complet)
-        .filter(BibNoms.cd_nom == Taxref.cd_nom)
-        .filter(BibNoms.id_nom == CorNomListe.id_nom)
-        .filter(CorNomListe.id_liste == id_liste)
-        .limit(3000)
-    )
-    taxons = []
-    for tax in data:
-        tax = tax.as_dict()
-        if tax["nom_vern"] is not None:
-            tax["nom_complet"] = tax["nom_complet"] + " - " + tax["nom_vern"]
-        taxons.append(tax)
-    return taxons
 
 
 def get_observer_list(id_liste: int):
