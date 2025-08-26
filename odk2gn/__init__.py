@@ -2,6 +2,7 @@ import logging
 
 MODULE_CODE = "ODK2GN"
 MODULE_PICTO = "fa-map-marker"
+ALEMBIC_BRANCH = "odk2gn"
 
 import colorlog
 
