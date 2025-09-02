@@ -22,7 +22,6 @@ def get_client():
 
 def get_attachment(project_id, form_id, uuid_sub, media_name):
     with get_client() as client:
-        print("URL", f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}")
         img = client.get(
             f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
         )
@@ -146,17 +145,18 @@ def publish_form(project_id, xml_form_id):
     :param xml_form_id: nom du formulaire
     :type xml_form_id: str
     """
-    version_number = datetime.now()
-    response = client.post(
-        f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}"
-    )
-    assert response.status_code == 200
-
+    with get_client() as client:
+        version_number = datetime.now()
+        response = client.post(
+            f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}"
+        )
+        assert response.status_code == 200
 
 def get_schema_fields(project_id, xml_form_id):
     with get_client() as client:
         resp = client.get(f"projects/{project_id}/forms/{xml_form_id}/fields?odata=false")
         return resp.json()
+
 
 
 class ODKSchema:
