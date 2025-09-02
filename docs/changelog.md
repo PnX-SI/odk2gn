@@ -1,31 +1,35 @@
 CHANGELOG
 =========
 
+1.2.0 - unreleased
+-------------------
+
+- La version 1.0.X de monitoring ajoute la possibilité d'associer des sites à plusieurs module via la notion de "type de site". Le champs "type_site" doit donc être envoyé par le formulaire ODK. Voir le fichier d'exemple "ODK-Form-GeoNature-monitoring-Template-With-Site-Creation.xlsx". Une valeur par défaut peut être passé si le module a un seul type de site.
 
 1.1.0 (15-04-2025)
 ------------------
 
 **🚀 Nouveautés**
 
-- Compatibilité avec GeoNature 2.14 et monitoring 0.7.X
-- Possibilité d'utiliser le module sans avoir le module monitoring d'installé
+- Compatibilité avec GeoNature 2.14 et Monitoring 0.7.X
+- Possibilité d'utiliser le module sans avoir le module Monitoring installé
 
 **⚠️ Notes de version**
 
-- installer le module ODK2GN comme un module geonature : 
+- installer le module ODK2GN comme un module GeoNature : 
 ```
   geonature install-gn-module <chemin vers odk2gn> --build=false
 ```
 Vous devrez ensuite associer des permissions au module :
 
-Pour donner tous les droits aux groupe admin : 
+Pour donner tous les droits au groupe admin : 
 ```
 geonature permissions supergrant --group --nom "Grp_admin" --yes
 ```
 
-- Supprimez les champs `data` de la configuration monitoring de vos modules dans le fichier `odk2gn_config.toml`
-- La gestion de la création des sites est désormais controlée à deux niveaux dans la configuration du module :
-Au niveau de la section du module, le booléen `can_create_site` controle si le module autorise la création de site : 
+- Supprimez les champs `data` de la configuration Monitoring de vos modules dans le fichier `odk2gn_config.toml`
+- La gestion de la création des sites est désormais contrôlée à deux niveaux dans la configuration du module :
+Au niveau de la section du module, le booléen `can_create_site` contrôle si le module autorise la création de site : 
 
 ```
 [[modules]]
@@ -46,9 +50,9 @@ et au niveau de la section `SITE`, le champs `create_site` (str) indique quel es
         create_site = "create_site"
 ```
 
+Note de version:
 
-
-`
+La valeur par defaut du champs `base_site_name` et désormais `base_site_name`, anciennement `site_name`. Veuillez changer le nom du champs dans vos formulaire ODK ou modifierr votre configuration
 
 
 1.0.0 (08-09-2023)

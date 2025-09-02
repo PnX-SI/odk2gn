@@ -88,8 +88,11 @@ Exemple du protocole STOM (cette configuration correspond à la configuration pa
 [[modules]]
     module_code = "STOM"
     # booléen indiquant la création de sites
-    create_site="create_site"
+    can_create_site = true
     [modules.SITE]
+        # non du champs qui demande à l'utilisateur s'il veut créer un site ou en selectionner un existant
+        # compatible uniquement avec can_create_site=true
+        create_site="create_site"
         # nom du champ nom du site
         base_site_name = "site_name"
         # nom du champ description du site
@@ -246,4 +249,14 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
 )
+```
+
+
+## Développement
+
+Pour lancer les tests veuillez installer les dépendance dev et déclarer la variable de configuration `GEONATURE_SETTINGS` comme suit :
+
+```
+pip install requirements-dev.in
+export GEONATURE_SETTINGS=odk2gn.tests.test_config
 ```

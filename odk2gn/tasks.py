@@ -7,7 +7,6 @@ from odk2gn.models import TOdkForm
 
 from geonature.utils.config import config
 
-cron = config["ODK2GN"]["tasks"]
 
 
 logger = get_task_logger(__name__)
@@ -15,6 +14,7 @@ logger = get_task_logger(__name__)
 
 @celery_app.on_after_finalize.connect
 def setup_periodic_tasks(sender, **kwargs):
+    cron = config["ODK2GN"]["tasks"]
     sync_cron = cron["synchronize_schedule"].split(" ")
     sender.add_periodic_task(
         crontab(

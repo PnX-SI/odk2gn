@@ -5,11 +5,19 @@ from marshmallow.validate import OneOf
 class SiteSchema(Schema):
     create_site = fields.Str(load_default="create_site")
     base_site_name = fields.Str(load_default="base_site_name")
+    base_site_code = fields.Str(load_default="base_site_code")
     base_site_description = fields.Str(load_default="base_site_description")
     first_use_date = fields.Str(load_default="visit_date_min")
     id_inventor = fields.Str(load_default="observers")
+    data = fields.Str(load_default="site_creation")
     geom = fields.Str(load_default="geom")
     site_group = fields.Str(load_default="site_group")
+    types_site = fields.Str(load_default="types_site")
+    media = fields.Str(load_default="medias_site")
+    media_type = fields.Str(
+        load_default="Photo",
+        validate=OneOf(["Photo", "PDF", "Audio", "Vidéo (fichier)"]),
+    )
 
 
 class VisitSchema(Schema):
@@ -37,6 +45,9 @@ class ObservationSchema(Schema):
 class ProcoleSchema(Schema):
     module_code = fields.Str(required=True)
     can_create_site = fields.Boolean(load_default=True)
+    # Nom du champ qui indique si l'utilisateur a créé une visite ou non
+    create_visit = fields.Str(load_default="create_visit")
     SITE = fields.Nested(SiteSchema, load_default=SiteSchema().load({}))
     VISIT = fields.Nested(VisitSchema, load_default=VisitSchema().load({}))
     OBSERVATION = fields.Nested(ObservationSchema, load_default=ObservationSchema().load({}))
+    id_digitiser = fields.Str(load_default="id_digitiser")

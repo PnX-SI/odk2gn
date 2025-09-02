@@ -7,13 +7,14 @@ from odk2gn.gn2_utils import to_wkb
 from geonature.utils.env import db
 from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
+from geonature.tests.fixtures import datasets
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
     TMonitoringSitesGroups,
+    BibTypeSite,
 )
-from apptax.taxonomie.models import BibListes, CorNomListe, Taxref, BibNoms
-from utils_flask_sqla.tests.utils import JSONClient
+from apptax.taxonomie.models import BibListes, Taxref
 
 
 @pytest.fixture(scope="function")
@@ -42,10 +43,10 @@ def polygon_4():
 
 
 @pytest.fixture(scope="function")
-def site_group(module):
+def site_group(modules):
     with db.session.begin_nested():
         group = TMonitoringSitesGroups(
-            id_module=module.id_module,
+            modules=[modules["module_with_site"]],
             uuid_sites_group=uuid.uuid4(),
             sites_group_name="test_group",
             sites_group_description="test",
@@ -108,55 +109,34 @@ def taxon_and_list(plant):
     picto = "images/pictos/nopicto.gif"
     taxon = plant
     with db.session.begin_nested():
-        tax_nom = BibNoms(cd_nom=taxon.cd_nom, cd_ref=taxon.cd_nom, nom_francais=taxon.nom_vern)
-        taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test", picto=picto)
-        cnl = CorNomListe(bib_nom=tax_nom, bib_liste=taxon_test_list)
-        tax_nom.listes.append(cnl)
-        taxon_test_list.cnl.append(cnl)
-        db.session.add(tax_nom, taxon_test_list)
+        taxon_test_list = BibListes(code_liste="test_list", nom_liste="Liste test")
+        taxon.listes.append(taxon_test_list)
+        db.session.add(taxon, taxon_test_list)
     return {"taxon": taxon, "tax_list": taxon_test_list}
 
 
 @pytest.fixture(scope="function")
-def submissions(site, observers_and_list, module, taxon_and_list, datasets):
-    sub = [
-        {
-            "__id": str(uuid.uuid4()),
-            "id_base_site": site.id_base_site,
-            "base_site_name": site.base_site_name,
-            "visit": {
-                "visit_date_min": datetime.date.today(),
-                "id_module": module.id_module,
-                "comments": "test",
-                "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
-                "hauteur_moy_vegetation": 12,
-            },
-            "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
-            "observations": [
-                {
-                    "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "comptage": 1,
-                    "comments": "test",
-                }
-            ],
-        },
-    ]
-    return sub
+def modules(site_type):
+    def create_module(module_name):
+        with db.session.begin_nested():
+            new_module = TMonitoringModules(
+                module_code=module_name,
+                module_label=module_name,
+                module_path=module_name,
+                active_frontend=True,
+                active_backend=False,
+                types_site=[site_type],
+            )
+            db.session.add(new_module)
+            db.session.flush()
+            return new_module
+
+    return {
+        "module_with_site": create_module("module_with_site"),
+        "module_with_no_site": create_module("module_with_no_site"),
+    }
 
 
-
-@pytest.fixture(scope="function")
-def module():
-    with db.session.begin_nested():
-        new_module = TMonitoringModules(
-            module_code="MODULE_1",
-            module_label="module_1",
-            module_path="module_1",
-            active_frontend=True,
-            active_backend=False,
-        )
-        db.session.add(new_module)
-    return new_module
 
 
 @pytest.fixture(scope="function")
@@ -208,21 +188,18 @@ def site_type():
             label_fr="Site Test",
         )
         site_type_nom.active = True
-        db.session.add(site_type_nom)
-    return site_type_nom
+        site_type = BibTypeSite(nomenclature=site_type_nom, config=None)
+        db.session.add(site_type_nom, site_type)
+    return site_type
 
 
 @pytest.fixture(scope="function")
-def site(module, site_type, point):
+def site(modules, site_type, point):
     with db.session.begin_nested():
         b_site = TMonitoringSites(
-            base_site_name="test_site",
-            geom=to_wkb(point["geometry"]),
-            id_module=module.id_module,
-            id_nomenclature_type_site=site_type.id_nomenclature,
+            base_site_name="test_site", geom=to_wkb(point["geometry"]), types_site=[site_type]
         )
-        # module.sites.append(b_site)
-        b_site.modules.append(module)
+        b_site.modules.append(modules["module_with_no_site"])
         db.session.add(b_site)
     return b_site
 
@@ -240,9 +217,9 @@ def observers_and_list():
     return {"list": obs_list, "user_list": obs_list.users}
 
 
-@pytest.fixture(scope="function")
-def mon_schema_fields():
-    return [
+#mon_schema_fields
+
+odk_field_schema =  [
         {
             "path": "/start",
             "name": "start",
@@ -257,6 +234,14 @@ def mon_schema_fields():
             "binary": None,
             "selectMultiple": None,
         },
+        {
+            "path": "/is_new",
+            "name": "is_new",
+            "type": "boolean",
+            "binary": None,
+            "selectMultiple": None,
+        },
+
         {"path": "/day", "name": "day", "type": "date", "binary": None, "selectMultiple": None},
         {
             "path": "/deviceid",
@@ -294,11 +279,25 @@ def mon_schema_fields():
             "selectMultiple": None,
         },
         {
+            "path": "/visit_point/hauteur_moy_vegetation",
+            "name": "hauteur_moy_vegetation",
+            "type": "int",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
             "path": "/visit_point/site_map",
             "name": "site_map",
             "type": "string",
             "binary": None,
             "selectMultiple": None,
+        },
+        {
+            "path": "/types_site",
+            "name": "types_site",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": True,
         },
         {
             "path": "/id_base_site",
@@ -311,6 +310,13 @@ def mon_schema_fields():
             "path": "/base_site_name",
             "name": "base_site_name",
             "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
+            "path": "/is_new",
+            "name": "is_new",
+            "type": "boolean",
             "binary": None,
             "selectMultiple": None,
         },
@@ -378,6 +384,13 @@ def mon_schema_fields():
             "selectMultiple": None,
         },
         {
+            "path": "/observations/addi",
+            "name": "addi",
+            "type": "string",
+            "binary": None,
+            "selectMultiple": None,
+        },
+        {
             "path": "/meta",
             "name": "meta",
             "type": "structure",
@@ -411,49 +424,17 @@ def review_state():
     pass
 
 
-@pytest.fixture(scope="function")
-def attachment():
-    file = Path("/home/geonature/geonature/odk2gn/docs/img/archi_global.jpeg")
-    return file
-
-
-@pytest.fixture(scope="function")
-def submissions(site, observers_and_list, module, taxon_and_list, datasets):
-    sub = [
-        {
-            "__id": str(uuid.uuid4()),
-            "id_base_site": site.id_base_site,
-            "base_site_name": site.base_site_name,
-            "visit": {
-                "visit_date_min": datetime.date.today(),
-                "id_module": module.id_module,
-                "comments": "test",
-                "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
-                "hauteur_moy_vegetation": 12,
-            },
-            "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
-            "observations": [
-                {
-                    "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "comptage": 1,
-                    "comments": "test",
-                }
-            ],
-        },
-    ]
-    return sub
-
 
 @pytest.fixture(scope="function")
 def sub_with_site_creation(
     observers_and_list,
-    module,
+    modules,
     taxon_and_list,
     site_group,
+    site_type,
     polygon_4,
     point,
     nomenclature,
-    attachment,
     datasets
 ):
     __id = str(uuid.uuid4())
@@ -461,17 +442,23 @@ def sub_with_site_creation(
         {
             "__id": __id,
             "create_site": "true",
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test de creation de site",
                 "base_site_description": "test",
                 "geom": point["geometry"],
+                "type": "Point",
+                # is_new est un champ additionnel
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
+                # tel que renvoyé par l'API 'types_site' est une chaine de
+                # charactère avec des id_type_site séparé par des espaces
+                "types_site": str(site_type.id_nomenclature_type_site),
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
-                "id_module": module.id_module,
-                "media": attachment,
+                "id_module": modules["module_with_site"].id_module,
+                "media": b"",
                 "media_type": "Photo",
                 "comments_visit": "test",
                 "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
@@ -491,7 +478,8 @@ def sub_with_site_creation(
             "observations": [
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
-                    "comments": "test",
+                    "comments": "test sub_with_site_creation",
+                    "addi" : "YES"
                 }
             ],
             "meta": {"instanceID": "uuid:" + __id},
@@ -500,13 +488,14 @@ def sub_with_site_creation(
             "__id": str(uuid.uuid4()),
             "create_site": "true",
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": polygon_4["geometry"],
+                "types_site": str(site_type.id_nomenclature_type_site),
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
-                "id_module": module.id_module,
+                "id_module": modules["module_with_site"].id_module,
                 "medias_visit": "images/pictos/nopicto.gif",
                 "comments_visit": "test",
                 "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
@@ -523,24 +512,70 @@ def sub_with_site_creation(
     ]
     return sub
 
+@pytest.fixture(scope="function")
+def submissions_with_no_site(site, observers_and_list, modules, taxon_and_list):
+    sub = [
+        {
+            "__id": str(uuid.uuid4()),
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
+            "id_base_site": site.id_base_site,
+            "base_site_name": site.base_site_name,
+            "visit": {
+                "visit_date_min": str(datetime.date.today()),
+                "id_module": modules["module_with_no_site"].id_module,
+                "comments": "test",
+                "observers": [{"id_role": observers_and_list["user_list"][0].id_role}],
+                "hauteur_moy_vegetation": 12,
+            },
+            "dataset": {"id_dataset": 1},
+            "observations": [
+                {
+                    "cd_nom": taxon_and_list["taxon"].cd_nom,
+                    "comptage": 1,
+                    "comments": "test submission",
+                }
+            ],
+        },
+    ]
+    return sub
 
 @pytest.fixture(scope="function")
-def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
+def submissions_with_only_visit(submissions_with_no_site):
+    subs = []
+    for sub in submissions_with_no_site:
+        sub.pop("observations")
+        subs.append(sub)
+    return subs
+
+@pytest.fixture(scope="function")
+def submissions_with_only_site(sub_with_site_creation):
+    subs = []
+    for sub in sub_with_site_creation:
+        sub.pop("visit")
+        subs.append(sub)
+    return subs
+
+
+
+@pytest.fixture(scope="function")
+def failing_sub(observers_and_list, modules, site_type, taxon_and_list, site_group, point):
     "Fail because dataset does not exists"
     sub = [
         {
             "__id": str(uuid.uuid4()),
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "create_site": "true",
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
                 "site_group": site_group.id_sites_group,
+                "types_site": str(site_type.id_nomenclature_type_site),
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
-                "id_module": module.id_module,
+                "id_module": modules["module_with_site"].id_module,
                 "medias_visit": None,
                 "comments_visit": "test",
                 "observers": [
@@ -557,7 +592,7 @@ def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments_observation": "test",
+                    "comments_observation": "test failing sub",
                     "medias_observation": None,
                 }
             ],
@@ -567,14 +602,15 @@ def failing_sub(observers_and_list, module, taxon_and_list, site_group, point):
 
 
 @pytest.fixture(scope="function")
-def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, point, datasets):
+def other_failing_sub(observers_and_list, modules, taxon_and_list, site_group, point, datasets):
     "Fail because observation is not a list"
     sub = [
         {
             "__id": str(uuid.uuid4()),
             "create_site": "true",
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
@@ -582,7 +618,7 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
-                "id_module": module.id_module,
+                "id_module": modules["module_with_site"].id_module,
                 "medias_visit": None,
                 "comments_visit": "test",
                 "observers": [
@@ -595,28 +631,28 @@ def other_failing_sub(observers_and_list, module, taxon_and_list, site_group, po
             },
             "dataset": {"id_dataset": datasets["own_dataset"].id_dataset},
             "nb_observations": 1,
-            "observations": (
-                {
+            "observations": ({
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": "1",
-                    "comments_observation": "test",
+                    "comments_observation": "test other failing sub",
                     "medias_observation": None,
-                }
-            ),
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
+            },),
         },
     ]
     return sub
 
 
 @pytest.fixture(scope="function")
-def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point):
+def failing_sub_3(observers_and_list, modules, taxon_and_list, site_group, point):
     "Fail because dataset is None and no dataset is define a dataset level"
     sub = [
         {
             "__id": str(uuid.uuid4()),
             "create_site": "true",
+            "id_digitiser": observers_and_list["user_list"][0].id_role,
             "site_creation": {
-                "site_name": "test",
+                "base_site_name": "test",
                 "base_site_description": "test",
                 "geom": point["geometry"],
                 "is_new": True,
@@ -624,7 +660,7 @@ def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point)
             },
             "visit": {
                 "visit_date_min": str(datetime.datetime.now()),
-                "id_module": module.id_module,
+                "id_module": modules["module_with_site"].id_module,
                 "medias_visit": None,
                 "comments_visit": "test",
                 "observers": [
@@ -641,8 +677,9 @@ def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point)
                 {
                     "cd_nom": taxon_and_list["taxon"].cd_nom,
                     "comptage": 1,
-                    "comments_observation": "test",
+                    "comments_observation": "test failing sub 3",
                     "medias_observation": None,
+                    "id_digitiser": observers_and_list["user_list"][0].id_role,
                 }
             ],
         },
@@ -651,9 +688,9 @@ def failing_sub_3(observers_and_list, module, taxon_and_list, site_group, point)
 
 
 @pytest.fixture(scope="function")
-def mod_parser_config(module):
+def mod_parser_config(modules):
     conf = {
-        "module_code": module.module_code,
+        "module_code": modules["module_with_site"].module_code,
         "SITE": {
             "base_site_name": "site_name",
             "base_site_description": "base_site_description",
@@ -674,10 +711,10 @@ def mod_parser_config(module):
 
 
 @pytest.fixture(scope="function")
-def my_config(module, site_type, nomenclature):
+def my_config(modules, site_type, nomenclature):
     conf = {
         "module": {
-            "module_label": module.module_code,
+            "module_label": modules["module_with_site"].module_code,
             "module_desc": "Test module",
             "children_types": ["site"],
             "parent_types": [],
@@ -726,7 +763,7 @@ def my_config(module, site_type, nomenclature):
                     "hidden": True,
                     "value": {
                         "code_nomenclature_type": "TYPE_SITE",
-                        "cd_nomenclature": site_type.cd_nomenclature,
+                        "cd_nomenclature": site_type.nomenclature.cd_nomenclature,
                     },
                 },
                 "is_new": {"hidden": True, "type_widget": "bool_checkbox"},
@@ -822,6 +859,7 @@ def my_config(module, site_type, nomenclature):
                     "params": {"regne": "all", "group2_inpn": "all"},
                 },
                 "nb_observations": {"attribut_label": "Nombre d'observations"},
+                "hauteur_moy_vegetation": {"attribut_label": "Hauteur moyenne"}
             },
             "children_types": ["observation"],
             "parent_types": ["site"],
@@ -856,416 +894,43 @@ def my_config(module, site_type, nomenclature):
                     "schema_dot_table": "gn_monitoring.t_observations",
                 },
             },
-            "specific": {},
+            "specific": {
+                "addi" : {"attribut_label": "Commentaires",}
+            },
             "children_types": [],
             "parent_types": ["visit"],
         },
     }
     return conf
 
+@pytest.fixture(scope="function")
+def my_config_no_observation(my_config):
+    new_config = my_config.copy()
+    new_config.pop("observation")
+    return new_config
 
-"======================================================================================================================================================================"
 
-{
-    "tree": {"module": {"site": {"visit": {"observation": None}}}},
-    "synthese": "__MODULE.B_SYNTHESE",
-    "default_display_field_names": {
-        "user": "nom_complet",
-        "nomenclature": "label_fr",
-        "dataset": "dataset_name",
-        "observer_list": "nom_liste",
-        "taxonomy": "__MODULE.TAXONOMY_DISPLAY_FIELD_NAME",
-        "taxonomy_list": "nom_liste",
-        "sites_group": "sites_group_name",
-        "habitat": "lb_hab_fr",
-        "area": "area_name",
-        "municipality": "nom_com_dept",
-        "site": "base_site_name",
-    },
-    "module": {
-        "cruved": {"C": 4, "U": 3, "D": 4},
-        "id_field_name": "id_module",
-        "description_field_name": "module_label",
-        "label": "Module",
-        "genre": "M",
-        "uuid_field_name": "uuid_module_complement",
-        "display_properties": ["module_label", "module_desc", "datasets"],
-        "generic": {
-            "id_module": {"type_widget": "text", "attribut_label": "ID", "hidden": True},
-            "module_code": {
-                "type_widget": "text",
-                "attribut_label": "Code",
-                "required": True,
-                "hidden": True,
-            },
-            "module_label": {
-                "type_widget": "text",
-                "attribut_label": "Nom",
-                "required": True,
-                "hidden": True,
-            },
-            "module_path": {
-                "type_widget": "text",
-                "attribut_label": "Path",
-                "required": True,
-                "hidden": True,
-            },
-            "module_desc": {
-                "type_widget": "text",
-                "attribut_label": "Description",
-                "required": True,
-                "hidden": True,
-            },
-            "module_picto": {
-                "type_widget": "text",
-                "attribut_label": "Icone dans le menu",
-                "required": True,
-            },
-            "uuid_module_complement": {"attribut_label": "uuid"},
-            "datasets": {
-                "type_widget": "dataset",
-                "type_util": "dataset",
-                "attribut_label": "Jeu de données",
-                "required": True,
-                "multi_select": True,
-            },
-            "id_list_observer": {
-                "type_widget": "datalist",
-                "attribut_label": "Liste des observateurs",
-                "keyValue": "id_liste",
-                "keyLabel": "nom_liste",
-                "multiple": False,
-                "api": "users/listes",
-                "application": "GeoNature",
-                "required": True,
-                "type_util": "observer_list",
-                "definition": "Liste des observateurs. À gérer dans UsersHub.",
-            },
-            "id_list_taxonomy": {
-                "type_widget": "datalist",
-                "attribut_label": "Liste des taxons",
-                "keyValue": "id_liste",
-                "keyLabel": "nom_liste",
-                "multiple": False,
-                "api": "biblistes/",
-                "application": "TaxHub",
-                "required": True,
-                "type_util": "taxonomy_list",
-                "data_path": "data",
-                "definition": "Liste des taxons. À gérer dans TaxHub.",
-            },
-            "b_synthese": {
-                "type_widget": "bool_checkbox",
-                "attribut_label": "Activer la synthèse ?",
-                "definition": "Insertion automatique des nouvelles données dans la synthèse.",
-            },
-            "b_draw_sites_group": {
-                "type_widget": "bool_checkbox",
-                "attribut_label": "Dessiner les groupes de sites",
-                "definition": "Affichage des groupes de site en dessinant l'enveloppe des sites du groupe et en affichant l'aire du groupe de sites",
-                "hidden": True,
-            },
-            "taxonomy_display_field_name": {
-                "type_widget": "datalist",
-                "attribut_label": "Affichage des taxons",
-                "values": [
-                    {"label": "Nom vernaculaire ou nom latin", "value": "nom_vern,lb_nom"},
-                    {"label": "Nom latin", "value": "lb_nom"},
-                ],
-                "required": True,
-            },
-            "active_frontend": {
-                "type_widget": "bool_checkbox",
-                "attribut_label": "Afficher dans le menu ?",
-                "definition": "Afficher le module dans le menu de GeoNature. (Recharger la page pour voir les modifications).",
-            },
-            "medias": {
-                "type_widget": "medias",
-                "attribut_label": "Médias",
-                "schema_dot_table": "gn_monitoring.t_module_complements",
-            },
-        },
-        "children_types": ["site"],
-        "parent_types": [],
-        "specific": {},
-        "display_list": ["module_label", "module_desc", "datasets"],
-        "properties_keys": [
-            "id_module",
-            "module_code",
-            "module_label",
-            "module_path",
-            "module_desc",
-            "module_picto",
-            "uuid_module_complement",
-            "datasets",
-            "id_list_observer",
-            "id_list_taxonomy",
-            "b_synthese",
-            "b_draw_sites_group",
-            "taxonomy_display_field_name",
-            "active_frontend",
-            "medias",
-        ],
-        "display_form": [],
-        "root_object": True,
-        "id_table_location": 11,
-        "filters": {},
-    },
-    "site": {
-        "cruved": {"C": 1, "U": 1, "D": 1},
-        "chained": True,
-        "id_field_name": "id_base_site",
-        "description_field_name": "base_site_name",
-        "label": "Site",
-        "genre": "M",
-        "geom_field_name": "geom",
-        "uuid_field_name": "uuid_base_site",
-        "geometry_type": "Point",
-        "display_properties": [
-            "base_site_name",
-            "base_site_code",
-            "base_site_description",
-            "id_nomenclature_type_site",
-            "id_inventor",
-            "first_use_date",
-            "last_visit",
-            "nb_visits",
-            "altitude_min",
-            "altitude_max",
-        ],
-        "display_list": [
-            "base_site_name",
-            "base_site_code",
-            "id_nomenclature_type_site",
-            "last_visit",
-            "nb_visits",
-        ],
-        "sorts": [{"prop": "last_visit", "dir": "desc"}],
-        "generic": {
-            "id_base_site": {"type_widget": "text", "attribut_label": "Id site", "hidden": True},
-            "id_module": {"type_widget": "text", "attribut_label": "ID Module", "hidden": True},
-            "base_site_code": {"type_widget": "text", "attribut_label": "Code", "required": True},
-            "base_site_name": {"type_widget": "text", "attribut_label": "Nom", "required": True},
-            "base_site_description": {"type_widget": "textarea", "attribut_label": "Description"},
-            "id_sites_group": {
-                "type_widget": "datalist",
-                "attribut_label": "Groupe de sites",
-                "type_util": "sites_group",
-                "keyValue": "id_sites_group",
-                "keyLabel": "sites_group_name",
-                "api": "__MONITORINGS_PATH/list/__MODULE.MODULE_CODE/sites_group?id_module=__MODULE.ID_MODULE&fields=id_sites_group&fields=sites_group_name",
-                "application": "GeoNature",
-                "required": False,
-                "hidden": True,
-            },
-            "id_nomenclature_type_site": {
-                "type_widget": "datalist",
-                "attribut_label": "Type site",
-                "api": "nomenclatures/nomenclature/TYPE_SITE",
-                "application": "GeoNature",
-                "keyValue": "id_nomenclature",
-                "keyLabel": "label_fr",
-                "data_path": "values",
-                "type_util": "nomenclature",
-                "required": True,
-            },
-            "id_inventor": {
-                "type_widget": "datalist",
-                "attribut_label": "Descripteur",
-                "api": "users/menu/__MODULE.ID_LIST_OBSERVER",
-                "application": "GeoNature",
-                "keyValue": "id_role",
-                "keyLabel": "nom_complet",
-                "type_util": "user",
-                "required": True,
-            },
-            "id_digitiser": {
-                "type_widget": "text",
-                "attribut_label": "Numérisateur",
-                "required": True,
-                "hidden": True,
-                "type_util": "user",
-            },
-            "first_use_date": {
-                "type_widget": "date",
-                "attribut_label": "Date description",
-                "required": True,
-            },
-            "last_visit": {"attribut_label": "Dernière visite", "type_util": "date"},
-            "nb_visits": {"attribut_label": "Nb. visites"},
-            "uuid_base_site": {"attribut_label": "uuid"},
-            "medias": {
-                "type_widget": "medias",
-                "attribut_label": "Médias",
-                "schema_dot_table": "gn_monitoring.t_base_sites",
-            },
-            "altitude_min": {"type_widget": "integer", "attribut_label": "Altitude (min)"},
-            "altitude_max": {"type_widget": "integer", "attribut_label": "Altitude (max)"},
-        },
-        "children_types": ["visit"],
-        "parent_types": ["module"],
-        "specific": {},
-        "properties_keys": [
-            "id_base_site",
-            "id_module",
-            "base_site_code",
-            "base_site_name",
-            "base_site_description",
-            "id_sites_group",
-            "id_nomenclature_type_site",
-            "id_inventor",
-            "id_digitiser",
-            "first_use_date",
-            "last_visit",
-            "nb_visits",
-            "uuid_base_site",
-            "medias",
-            "altitude_min",
-            "altitude_max",
-        ],
-        "display_form": [],
-        "id_table_location": 2,
-        "filters": {},
-    },
-    "visit": {
-        "cruved": {"C": 1, "U": 1, "D": 1},
-        "id_field_name": "id_base_visit",
-        "chained": True,
-        "description_field_name": "visit_date_min",
-        "label": "Visite",
-        "genre": "F",
-        "uuid_field_name": "uuid_base_visit",
-        "display_properties": [
-            "id_base_site",
-            "visit_date_min",
-            "observers",
-            "comments",
-            "dataset",
-            "nb_observations",
-        ],
-        "display_list": [
-            "id_base_site",
-            "visit_date_min",
-            "observers",
-            "comments",
-            "dataset",
-            "nb_observations",
-        ],
-        "sorts": [{"prop": "visit_date_min", "dir": "desc"}],
-        "generic": {
-            "id_base_visit": {"type_widget": "text", "attribut_label": "ID", "hidden": True},
-            "id_base_site": {"type_widget": "text", "attribut_label": "ID SITE", "hidden": True},
-            "id_module": {"type_widget": "text", "attribut_label": "ID Module", "hidden": True},
-            "observers": {
-                "type_widget": "datalist",
-                "attribut_label": "Observateurs",
-                "api": "users/menu/__MODULE.ID_LIST_OBSERVER",
-                "application": "GeoNature",
-                "keyValue": "id_role",
-                "keyLabel": "nom_complet",
-                "type_util": "user",
-                "multiple": True,
-                "required": True,
-            },
-            "id_digitiser": {
-                "type_widget": "text",
-                "attribut_label": "Digitiser",
-                "type_util": "user",
-                "required": True,
-                "hidden": True,
-            },
-            "visit_date_min": {"type_widget": "date", "attribut_label": "Date", "required": True},
-            "visit_date_max": {
-                "type_widget": "date",
-                "attribut_label": "Date (max)",
-                "hidden": True,
-            },
-            "comments": {"type_widget": "text", "attribut_label": "Commentaires"},
-            "uuid_base_visit": {"attribut_label": "uuid"},
-            "id_dataset": {
-                "type_widget": "dataset",
-                "type_util": "dataset",
-                "attribut_label": "Jeu de données",
-                "module_code": "__MODULE.MODULE_CODE",
-                "required": True,
-            },
-            "nb_observations": {"attribut_label": "Nombre d'observations"},
-            "medias": {
-                "type_widget": "medias",
-                "attribut_label": "Médias",
-                "schema_dot_table": "gn_monitoring.t_base_visits",
-            },
-        },
-        "children_types": ["observation"],
-        "parent_types": ["site"],
-        "specific": {},
-        "properties_keys": [
-            "id_base_visit",
-            "id_base_site",
-            "id_module",
-            "observers",
-            "id_digitiser",
-            "visit_date_min",
-            "visit_date_max",
-            "comments",
-            "uuid_base_visit",
-            "id_dataset",
-            "nb_observations",
-            "medias",
-        ],
-        "display_form": [],
-        "id_table_location": 3,
-        "filters": {},
-    },
-    "observation": {
-        "cruved": {"C": 1, "U": 1, "D": 1},
-        "id_field_name": "id_observation",
-        "description_field_name": "id_observation",
-        "chained": True,
-        "label": "Observation",
-        "genre": "F",
-        "display_properties": ["cd_nom", "comments"],
-        "uuid_field_name": "uuid_observation",
-        "generic": {
-            "id_observation": {
-                "type_widget": "text",
-                "attribut_label": "Id observation",
-                "hidden": True,
-            },
-            "id_base_visit": {
-                "type_widget": "text",
-                "attribut_label": "Id visite",
-                "hidden": True,
-            },
-            "cd_nom": {
-                "type_widget": "taxonomy",
-                "attribut_label": "Espèce",
-                "type_util": "taxonomy",
-                "required": True,
-                "id_list": "__MODULE.ID_LIST_TAXONOMY",
-            },
-            "comments": {"type_widget": "text", "attribut_label": "Commentaires"},
-            "uuid_observation": {"attribut_label": "uuid"},
-            "medias": {
-                "type_widget": "medias",
-                "attribut_label": "Médias",
-                "schema_dot_table": "gn_monitoring.t_observations",
-            },
-        },
-        "children_types": [],
-        "parent_types": ["visit"],
-        "specific": {},
-        "display_list": ["cd_nom", "comments"],
-        "properties_keys": [
-            "id_observation",
-            "id_base_visit",
-            "cd_nom",
-            "comments",
-            "uuid_observation",
-            "medias",
-        ],
-        "display_form": [],
-        "id_table_location": 12,
-        "filters": {},
-    },
-}
+@pytest.fixture(scope="function")
+def dict_to_flat_and_short():
+    return {
+        "group": {
+                "sites_group": {
+                    "geom": {
+                        "coords": 123,
+                        "type": "Point"
+                    }
+                }
+        }
+    }
+
+
+@pytest.fixture(scope="function")
+def sync_mocker(mocker, my_config, observers_and_list):
+    mocker.patch("odk2gn.odk_api.ODKSchema._get_schema_fields", return_value=odk_field_schema)
+    mocker.patch("odk2gn.monitoring.command.get_config", return_value=my_config)
+    mocker.patch("odk2gn.monitoring.utils.get_attachment", return_value=b"")
+    mocker.patch("odk2gn.gn2_utils.update_review_state", return_value={})
+    mocker.patch(
+        "odk2gn.gn2_utils.get_observers",
+        return_value=observers_and_list["user_list"],
+    )

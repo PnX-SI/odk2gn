@@ -5,31 +5,36 @@ import json
 from datetime import datetime
 from pyodk.client import Client
 
-from geonature.utils.config import config
 from geonature.utils.module import get_module_config_path
 
 
-odk2gn_config = config["ODK2GN"]
 odk2gn_config_file = get_module_config_path("ODK2GN")
 log = logging.getLogger("app")
 
 client = Client(config_path=odk2gn_config_file)
 
 
+def get_client():
+    client = Client(config_path=odk2gn_config_file)
+    client = client.open()
+    return client
+
+
 def get_attachment(project_id, form_id, uuid_sub, media_name):
-    img = client.get(
-        f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
-    )
-    if img.status_code == 200:
-        return img
-    else:
-        log.warning(f"No image found for submission {uuid_sub}")
+    with get_client() as client:
+        img = client.get(
+            f"projects/{project_id}/forms/{form_id}/submissions/{uuid_sub}/attachments/{media_name}"
+        )
+        if img.status_code == 200:
+            return img.content
+        else:
+            log.warning(f"No image found for submission {uuid_sub}")
 
 
 def get_submissions(project_id, form_id):
     # Creation client odk central
     form_data = None
-    with client:
+    with get_client() as client:
         form_data = client.submissions.get_table(
             form_id=form_id,
             project_id=project_id,
@@ -39,31 +44,6 @@ def get_submissions(project_id, form_id):
             # filter="__system/reviewState eq 'rejected'",
         )
         return form_data["value"]
-
-
-# def get_attachments(project_id, form_data):
-#     # #########################################
-#     #  Attachments
-#     # projects/1/forms/Sicen/submissions/{data['__id']}/attachments => Récupération de la liste des attachments pour une soumissions
-#     # projects/1/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']} => Téléchargement de l'attachment pour la soumission
-#     for data in form_data:
-#         attachments_list = client.get(
-#             f"projects/{project_id}/forms//submissions/{data['__id']}/attachments"
-#         )
-#         print("Nombre de médias", {data["__id"]}, len(attachments_list.json()))
-#         print(attachments_list.json())
-#         for att in attachments_list.json():
-#             img = client.get(
-#                 f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}"
-#             )
-#             print(
-#                 "URL###################",
-#                 f"projects/{project_id}/forms/Sicen/submissions/{data['__id']}/attachments/{att['name']}",
-#             )
-#             with open(att["name"], "wb") as out_file:
-#                 out_file.write(img.content)
-
-#     assert response.status_code == 200
 
 
 def update_review_state(project_id, form_id, submission_id, review_state):
@@ -78,23 +58,24 @@ def update_review_state(project_id, form_id, submission_id, review_state):
     :param review_state id : the value of the state for update
     :type form_id: str ("approved", "hasIssues", "rejected")
     """
-    token = client.session.auth.service.get_token(
-        username=client.config.central.username,
-        password=client.config.central.password,
-    )
-    # pourquoi classe requests ici et non la methode de la classe Client de pyODK?
-    review_submission_response = client.patch(
-        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/submissions/{submission_id}",
-        data=json.dumps({"reviewState": review_state}),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token,
-        },
-    )
-    try:
-        assert review_submission_response.status_code == 200
-    except AssertionError:
-        log.error("Error while update submision state")
+    with get_client() as client:
+        token = client.session.auth.service.get_token(
+            username=client.config.central.username,
+            password=client.config.central.password,
+        )
+        # pourquoi classe requests ici et non la methode de la classe Client de pyODK?
+        review_submission_response = client.patch(
+            f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{form_id}/submissions/{submission_id}",
+            data=json.dumps({"reviewState": review_state}),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token,
+            },
+        )
+        try:
+            assert review_submission_response.status_code == 200
+        except AssertionError:
+            log.error("Error while update submision state")
 
 
 def update_form_attachment(project_id, xml_form_id, files):
@@ -126,7 +107,7 @@ def form_draft(project_id, xml_form_id):
     :param xml_form_id: nom du formulaire
     :type xml_form_id: str
     """
-    with client:
+    with get_client() as client:
         request = client.post(f"projects/{project_id}/forms/{xml_form_id}/draft")
         assert request.status_code == 200
 
@@ -143,17 +124,18 @@ def upload_form_attachment(project_id, xml_form_id, file_name, data):
     :param data: csv data converti en chaine de caractères
     :type data: str
     """
-    response = client.post(
-        f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/draft/attachments/{file_name}",
-        data=data.encode("utf-8", "strict"),
-    )
-    if response.status_code == 404:
-        log.warning(f"Le fichier {file_name} n'existe pas dans la définition du formulaire")
-    elif response.status_code == 200:
-        log.info(f"fichier {file_name} téléversé")
-    else:
-        # TODO raise error
-        pass
+    with get_client() as client:
+        response = client.post(
+            f"{client.config.central.base_url}/v1/projects/{project_id}/forms/{xml_form_id}/draft/attachments/{file_name}",
+            data=data.encode("utf-8", "strict"),
+        )
+        if response.status_code == 404:
+            log.warning(f"Le fichier {file_name} n'existe pas dans la définition du formulaire")
+        elif response.status_code == 200:
+            log.info(f"fichier {file_name} téléversé")
+        else:
+            # TODO raise error
+            pass
 
 
 def publish_form(project_id, xml_form_id):
@@ -163,16 +145,18 @@ def publish_form(project_id, xml_form_id):
     :param xml_form_id: nom du formulaire
     :type xml_form_id: str
     """
-    version_number = datetime.now()
-    response = client.post(
-        f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}"
-    )
-    assert response.status_code == 200
-
+    with get_client() as client:
+        version_number = datetime.now()
+        response = client.post(
+            f"projects/{project_id}/forms/{xml_form_id}/draft/publish?version={version_number}"
+        )
+        assert response.status_code == 200
 
 def get_schema_fields(project_id, xml_form_id):
-    resp = client.get(f"projects/{project_id}/forms/{xml_form_id}/fields?odata=false")
-    return resp.json()
+    with get_client() as client:
+        resp = client.get(f"projects/{project_id}/forms/{xml_form_id}/fields?odata=false")
+        return resp.json()
+
 
 
 class ODKSchema:
@@ -182,7 +166,7 @@ class ODKSchema:
         self.schema = self._get_schema_fields()
 
     def _get_schema_fields(self):
-        with client:
+        with get_client() as client:
             resp = client.get(
                 f"projects/{self.project_id}/forms/{self.form_id}/fields?odata=false"
             )

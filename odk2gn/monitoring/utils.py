@@ -1,8 +1,10 @@
 import logging
 import datetime
 
-from sqlalchemy import func
-from sqlalchemy.orm.exc import NoResultFound
+
+from uuid import uuid4
+from sqlalchemy import select, func
+from sqlalchemy.exc import NoResultFound
 
 from gn_module_monitoring.config.repositories import get_config
 from gn_module_monitoring.monitoring.models import (
@@ -13,102 +15,183 @@ from gn_module_monitoring.monitoring.models import (
 )
 
 from geonature.utils.env import DB, BACKEND_DIR
-from geonature.core.gn_commons.models import BibTablesLocation, TMedias
+from geonature.core.gn_commons.models import BibTablesLocation, TMedias, TModules
+from geonature.core.gn_monitoring.models import TBaseSites, BibTypeSite
+from gn_module_monitoring.monitoring.models import TMonitoringModules, cor_module_type
+from pypnnomenclature.models import TNomenclatures
+from pypnusershub.db.models import User
+
 from odk2gn.odk_api import get_attachment
 from odk2gn.gn2_utils import format_jdd_list, get_observers
-from geonature.core.gn_monitoring.models import TBaseSites
-from gn_module_monitoring.monitoring.models import TMonitoringModules
 
 log = logging.getLogger("app")
 
 from pypnnomenclature.models import TNomenclatures
 from odk2gn.gn2_utils import (
     format_jdd_list,
-    get_id_nomenclature_type_site,
     to_wkb,
     get_nomenclature_data,
     get_observer_list,
     get_taxon_list,
     to_csv,
+    get_observers
 )
 
+log = logging.getLogger("app")
 
-def get_site_type_cd_nomenclature(monitoring_config):
-    return monitoring_config["site"]["generic"]["id_nomenclature_type_site"]["value"][
-        "cd_nomenclature"
-    ]
+FALSE_BOOLEAN_VALUES = ("0", 0, "false", "no", False, None)
+def additional_data_is_multiple_nomenclature(monitoring_config, field_name):
+    """
+    Cas des champs à choix multiple de type nomenclature
+    ODK stocke les valeurs des choix multiples séparées par un espace
+        dans le cas des nomenclatures la valeur retournée est une suite d'id
+            séparés par un espace.
+
+    Return True quand le champ est de type nomenclature et à choix multiple
+    """
+    if field_name in monitoring_config["specific"]:
+        field_config = monitoring_config["specific"][field_name]
+        if (
+            field_config.get("type_util", None) == "nomenclature"
+            and field_config.get("multiple", None) == True
+        ):
+            return True
+        else:
+            return False
+    else:
+        return False
 
 
-def parse_and_create_site(flatten_sub, module_parser_config, monitoring_config, module):
-    site_specific_column = monitoring_config["site"]["specific"]
-    # a ne pas être hard codé dans le futur
-    cd_nomenclature = get_site_type_cd_nomenclature(monitoring_config)
-    id_type = get_id_nomenclature_type_site(cd_nomenclature=cd_nomenclature)
+def additional_data_is_nomenclature(monitoring_config, field_name):
+    """
+    Cas des champs à choix multiple de type nomenclature
+    ODK stocke les valeurs des choix multiples séparées par un espace
+        dans le cas des nomenclatures la valeur retournée est une suite d'id
+            séparés par un espace.
+
+    Return True quand le champ est de type nomenclature et à choix multiple
+    """
+    if field_name in monitoring_config["specific"]:
+        field_config = monitoring_config["specific"][field_name]
+        if field_config.get("type_util", None) == "nomenclature":
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def process_additional_data(monitoring_config, odk_form_schema, field_name, val):
+    odk_field = odk_form_schema.get_field_info(field_name)
+
+    if additional_data_is_multiple_nomenclature(monitoring_config, field_name) and val:
+        # Cas particulier des valeurs multiples pour les nomenclatures
+        return [int(v) for v in val.split(" ") if v]
+    elif additional_data_is_nomenclature(monitoring_config, field_name) and val:
+        # Cas particulier des valeurs multiples pour les nomenclatures
+        return int(val)
+    elif odk_field["selectMultiple"]:
+        if val:
+            # HACK -> convert mutliSelect in list and replace _ by espace
+            return [v.replace("_", " ") for v in val.split(" ")]
+    elif (
+        monitoring_config["specific"].get(field_name, {}).get("type_widget", None)
+        == "bool_checkbox"
+    ):
+        # Cas des question de type boolean
+        if val in FALSE_BOOLEAN_VALUES:
+            return False
+        else:
+            return True
+    else:
+        return val
+
+
+def get_digitiser(flatten_sub, module_parser_config):
+    for key, val in flatten_sub.items():
+        # specifig digitiser column
+        if key == module_parser_config.get("id_digitiser"):
+            return int(val)
+
+
+def parse_and_create_site(
+    flatten_sub, module_parser_config, monitoring_config, module, odk_form_schema
+):
+    # Le module peut accepter à la fois la création de site et la selection d'un site existant
+    # Ici on est dans le cas ou le formulaire ODK accepte la création de site
+    # on va vérifier dans la soumission si l'utilisateur a choisi de créer un site ou non
+    if module_parser_config["SITE"].get("create_site") in flatten_sub.keys():
+        create_site_key = module_parser_config["SITE"].get("create_site")
+        if flatten_sub[create_site_key] in FALSE_BOOLEAN_VALUES:
+            return None
+    id_type = None
     site_dict_to_post = {
-        "id_module": module.id_module,
-        "id_nomenclature_type_site": id_type,
         "data": {},
     }
+    site_specific_fields = monitoring_config["site"]["specific"]
+    types_site = []
 
-    geom_type = None
-    coords = None
+    # Champs de base du site en string (ne nécessistant pas de conversion)
+    base_site_fields_str_keys = {
+        module_parser_config["SITE"].get(key): key
+        for key in ("base_site_name", "base_site_description", "base_site_code")
+    }
+
     for key, val in flatten_sub.items():
-        odk_column_name = key.split("/")[-1]
         id_groupe = None  # pour éviter un try except plus bas
-        if module_parser_config["SITE"].get("create_site") == odk_column_name:
-            create_site_key = module_parser_config["SITE"].get("create_site")
-            if flatten_sub[create_site_key] in ("0", 0, "false", "no", False, None):
-                return None
-        elif odk_column_name == module_parser_config["SITE"].get("base_site_name"):
-            site_dict_to_post["base_site_name"] = val
-        elif odk_column_name == module_parser_config["SITE"].get("base_site_description"):
+        if key == module_parser_config["SITE"].get("types_site"):
+            types_site = [int(v) for v in val.split(" ") if v]
+        elif key in base_site_fields_str_keys:
+            site_dict_to_post[base_site_fields_str_keys[key]] = val
+        elif key == module_parser_config["SITE"].get("base_site_description"):
             site_dict_to_post["base_site_description"] = val
-        elif odk_column_name == module_parser_config["SITE"].get("first_use_date"):
+        elif key == module_parser_config["SITE"].get("first_use_date"):
             # on utilise la valeur de la visite pour éviter d'entrer deux fois la même valeur
             site_dict_to_post["first_use_date"] = datetime.datetime.fromisoformat(val)
-        elif odk_column_name == module_parser_config["SITE"].get("id_inventor"):
+        elif key == module_parser_config["SITE"].get("id_inventor"):
             # là encore on utilise la valeur de la visite pour éviter la double entrée
-            site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
-        elif odk_column_name == module_parser_config["SITE"].get("site_group"):
+            if isinstance(val[0], int):
+                site_dict_to_post["id_inventor"] = val[0]
+            elif "id_role" in val[0]:
+                site_dict_to_post["id_inventor"] = int(val[0]["id_role"])
+            else:
+                site_dict_to_post["id_inventor"] = val
+        elif key == module_parser_config["SITE"].get("site_group"):
             # transtypage pour la solidité des données
-            try:
-                id_groupe = int(val)
-                site_dict_to_post["id_sites_group"] = id_groupe
-            except Exception as e:
-                log.error(e)
-                pass
+            id_groupe = int(val)
+            site_dict_to_post["id_sites_group"] = id_groupe
+
+        # données géométriques
         # type, coordinates et accuracy sont des noms de variables qui seront toujours présents dans une donnée géométrique d'ODK, ils sont déjà génériques
-        elif odk_column_name == "type" and module_parser_config["SITE"].get("geom") in key:
+        elif key == "type":
             geom_type = val
-        elif odk_column_name == "coordinates" and module_parser_config["SITE"].get("geom") in key:
+        elif key == "coordinates":
             coords = val
-        # la précision n'est pas relevée en BDD, donc on sépare son cas pour ne rien faire avec
-        elif odk_column_name == "accuracy" and module_parser_config["SITE"].get("geom") in key:
-            pass
-        # tous les spécificités d'un site d'un module
-        # changer site_creation pour le nom du group du XLSFORM où ces données figurent
-        # elif "site_creation" in key:
-        elif odk_column_name in site_specific_column.keys():
-            site_dict_to_post["data"][odk_column_name] = val
+        # Champs additionnels
+        elif key in site_specific_fields.keys():
+            site_dict_to_post["data"][key] = process_additional_data(
+                monitoring_config["site"], odk_form_schema, key, val
+            )
+
     site = TMonitoringSites(**site_dict_to_post)
     # pour la géométrie on construit un geoJSON et on le transforme
     geom = {"type": geom_type, "coordinates": coords}
-    print("????????", geom)
     # format_coords(geom)
     geom = to_wkb(geom)
     site.geom = geom
 
-    # traitements des relations BDD
-    site.modules.append(module)
-    module.sites.append(site)  # redondance?
-    # traitement de ce qui peut éventuellement être de valeur nulle
-    if site.data == {}:
-        site.data = None
+    # Récupération des types de sites
+    for id_type in types_site:
+        ts = DB.session.scalar(
+            select(BibTypeSite).filter(BibTypeSite.id_nomenclature_type_site == id_type).limit(1)
+        )
+        site.types_site.append(ts)
 
     if id_groupe is not None:
         groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
         groupe.sites.append(site)
 
+    site.uuid_base_site = uuid4()
     return site
 
 
@@ -117,7 +200,7 @@ def parse_and_create_visit(
 ):
     """
     Parse and create a TMonitoringVisits object from a odk submission
-    Return a TMonitoringVisits object
+    Return a TMonitorinODKSchemagVisits object
 
     :param sub: a odk submission with flatten keys
     :type sub: dict
@@ -146,41 +229,53 @@ def parse_and_create_visit(
         "data": {},
     }
     observers_list = []
+
+    # Test de création de la visite
+    # S'il y a un champ create_visit dans le formulaire
+    #   et qu'il n'est pas renseigné de façon négative
+    if module_parser_config.get("create_visit") in flatten_sub.keys():
+        create_visit_key = module_parser_config.get("create_visit")
+        if flatten_sub[create_visit_key] in FALSE_BOOLEAN_VALUES:
+            return None
+
     for key, val in flatten_sub.items():
-        odk_column_name = key.split("/")[-1]
         # specifig comment column
-        if odk_column_name == module_parser_config["VISIT"].get("comments"):
+        if key == module_parser_config["VISIT"].get("comments"):
             visit_dict_to_post["comments"] = val
-        # specific media column
-        if odk_column_name == module_parser_config["VISIT"].get("media"):
-            visit_media_name = val
         # specific observers repeat
-        if odk_column_name == module_parser_config["VISIT"].get("observers_repeat"):
-            for role in val:
-                observers_list.append(int(role[module_parser_config["VISIT"].get("id_observer")]))
-        if odk_column_name in visit_generic_column.keys():
+        if key == module_parser_config["VISIT"].get("observers_repeat"):
+            if isinstance(val, (tuple, list, set)):
+                for role in val:
+                    observers_list.append(
+                        int(role[module_parser_config["VISIT"].get("id_observer")])
+                    )
+            else:
+                observers_list.append(val)
+        if key in visit_generic_column.keys():
             # get val or the default value define in gn_monitoring json
-            visit_dict_to_post[odk_column_name] = val or visit_generic_column[odk_column_name].get(
+            visit_dict_to_post[key] = val or visit_generic_column[key].get(
                 "value"
             )
-        elif odk_column_name in visit_specific_column.keys():
-        
-            odk_field = odk_form_schema.get_field_info(odk_column_name)
-            if odk_field["selectMultiple"]:
-                if val:
-                    # HACK -> convert mutliSelect in list and replace _ by espace
-                    val = [v.replace("_", " ") for v in val.split(" ")]
-            visit_dict_to_post["data"][odk_column_name] = val or visit_specific_column[
-                odk_column_name
+        elif key in visit_specific_column.keys():
+            process_value = process_additional_data(
+                monitoring_config["visit"], odk_form_schema, key, val
+            )
+            visit_dict_to_post["data"][key] = process_value or visit_specific_column[
+                key
             ].get("value")
-    if visit_dict_to_post["id_dataset"] == None:
+
+    if visit_dict_to_post.get("id_dataset", None) == None:
         jdds = format_jdd_list(gn_module.datasets)
         if len(jdds) == 1:
             val = jdds[0]["id_dataset"]
             visit_dict_to_post["id_dataset"] = val
         else:
-            raise AssertionError("Only one dataset should be passed this way.")
+            raise AssertionError(
+                "Dataset cannot be None or multiple"
+                )
     visit = TMonitoringVisits(**visit_dict_to_post)
+    if not observers_list:
+        log.warning("No observers for this visit")
     visit.observers = get_observers(observers_list)
     specific_column_posted = visit_dict_to_post["data"].keys()
     missing_visit_cols_from_odk = list(set(visit_specific_column) - set(specific_column_posted))
@@ -190,11 +285,13 @@ def parse_and_create_visit(
                 "\n-".join(missing_visit_cols_from_odk)
             )
         )
+
+    visit.uuid_base_visit = uuid4()
     return visit
 
 
 def parse_and_create_obs(
-    flatten_obs, module_parser_config, monitoring_config, odk_form_schema, gn_uuid_obs
+    flatten_obs, module_parser_config, monitoring_config, odk_form_schema
 ):
     """
     Parse and create an TMonitoringObservations object from a odk observation
@@ -213,47 +310,29 @@ def parse_and_create_obs(
     :param odk_form_schema: a ODKSchema object describing the ODK form
     :type odk_form_schema: ODKSchema
     """
-    # TODO : make a class and not get these column a each loop
     observation_generic_column = monitoring_config["observation"]["generic"]
     observation_specific_column = monitoring_config["observation"]["specific"]
 
     observation_dict_to_post = {
-        "uuid_observation": gn_uuid_obs,
         "data": {},
     }
-
     for key, val in flatten_obs.items():
-        odk_column_name = key.split("/")[-1]
-
         # specifig comment column
-        if odk_column_name == module_parser_config["OBSERVATION"].get("comments"):
+        if key == module_parser_config["OBSERVATION"].get("comments"):
             observation_dict_to_post["comments"] = val
-        # specific media column
-        if odk_column_name == module_parser_config["OBSERVATION"].get("media"):
-            obs_media_name = val
-        if odk_column_name in observation_generic_column.keys():
-            observation_dict_to_post[odk_column_name] = val or observation_generic_column[
-                odk_column_name
+        if key in observation_generic_column.keys():
+            observation_dict_to_post[key] = val or observation_generic_column[
+                key
             ].get("value")
-        elif odk_column_name in observation_specific_column.keys():
-            odk_field = odk_form_schema.get_field_info(odk_column_name)
-            column_widget = observation_specific_column[odk_column_name].get("type_widget")
-            if odk_field["type"] == "string" and column_widget == "nomenclature":
-                org_val = val
-                try:
-                    val = int(val, 10)
-                except:
-                    val = org_val
-
-            # if odk_specific_column['type_widget'] == 'nomenclature' and odk_field['type'] == 'string' :
-            if odk_field["selectMultiple"]:
-                if val:
-                    # HACK -> convert mutliSelect in list and replace _ by espace
-                    val = [v.replace("_", " ") for v in val.split(" ")]
-            observation_dict_to_post["data"][odk_column_name] = val or observation_specific_column[
-                odk_column_name
-            ].get("value")
+        elif key in observation_specific_column.keys():
+            process_value = process_additional_data(
+                monitoring_config["observation"], odk_form_schema, key, val
+            )
+            observation_dict_to_post["data"][key] = (
+                process_value or observation_specific_column[key].get("value")
+            )
     obs = TMonitoringObservations(**observation_dict_to_post)
+    obs.uuid_observation = uuid4()
     return obs
 
 
@@ -325,8 +404,10 @@ def get_gn2_attachments_data(
             n_fields = n_fields + get_nomenclatures_fields(
                 module_code=module.module_code, niveau=niveau
             )
+        types_site = get_type_site_nomenclature_list(module.id_module)
 
         nomenclatures = get_nomenclature_data(n_fields)
+        nomenclatures = nomenclatures + types_site
         files["gn_nomenclatures.csv"] = to_csv(
             header=("mnemonique", "id_nomenclature", "cd_nomenclature", "label_default"),
             data=nomenclatures,
@@ -341,21 +422,27 @@ def get_site_list(id_module: int):
     :param id_module: Identifiant du module
     :type id_module: int
     """
-    data = (
-        DB.session.query(
-            TBaseSites.id_base_site,
-            TBaseSites.base_site_name,
-            func.concat(
-                func.st_y(func.st_centroid(TBaseSites.geom)),
-                " ",
-                func.st_x(func.st_centroid(TBaseSites.geom)),
-            ),
-        )
-        .order_by(TBaseSites.base_site_name)
-        .filter(TMonitoringSites.id_base_site == TBaseSites.id_base_site)
-        .filter(TMonitoringSites.id_module == id_module)
-        .all()
+
+    # Available type
+    type_list = DB.session.scalar(
+        select(TMonitoringModules).filter(TMonitoringModules.id_module == id_module).limit(1)
     )
+    query = select(
+        TBaseSites.id_base_site,
+        TBaseSites.base_site_name,
+        func.concat(
+            func.st_y(func.st_centroid(TBaseSites.geom)),
+            " ",
+            func.st_x(func.st_centroid(TBaseSites.geom)),
+        ),
+    ).filter(
+        TMonitoringSites.types_site.any(
+            BibTypeSite.id_nomenclature_type_site.in_(
+                [t.id_nomenclature_type_site for t in type_list.types_site]
+            )
+        )
+    )
+    data = DB.session.execute(query.order_by(TBaseSites.base_site_name)).all()
     res = []
     for d in data:
         res.append({"id_base_site": d[0], "base_site_name": d[1], "geometry": d[2]})
@@ -368,12 +455,11 @@ def get_site_groups_list(id_module: int):
     :param id_module: Identifier of the module
     :type id_module : int"""
 
-    data = (
-        DB.session.query(TMonitoringSitesGroups)
+    data = DB.session.scalars(
+        select(TMonitoringSitesGroups)
+        .filter(TMonitoringSitesGroups.modules.any(TModules.id_module == id_module))
         .order_by(TMonitoringSitesGroups.sites_group_name)
-        .filter_by(id_module=id_module)
-        .all()
-    )
+    ).all()
 
     return [group.as_dict() for group in data]
 
@@ -381,8 +467,8 @@ def get_site_groups_list(id_module: int):
 def get_nomenclatures_fields(module_code: str, niveau: str):
     config = get_config(module_code)
     fields = dict(
-        config[niveau].get("specific", []),
-        **config[niveau].get("generic", []),
+        config.get(niveau, {}).get("specific", {}),
+        **config.get(niveau, {}).get("generic", {}),
     )
     nomenclatures_fields = []
     for name in fields:
@@ -423,37 +509,66 @@ def get_and_post_medium(
     media_type,
     uuid_gn_object,
 ):
-    # TODO : remove app context
     img = get_attachment(project_id, form_id, uuid_sub, filename)
+    medias_name = f"{uuid_sub}_{filename}"
     if img:
-        try:
-            uuid_sub = uuid_sub.split(":")[1]
-            medias_name = f"{uuid_sub}_{filename}"
-            table_location = (
-                DB.session.query(BibTablesLocation)
-                .filter_by(
-                    schema_name="gn_monitoring",
-                    table_name=monitoring_table,
-                )
-                .one()
+        uuid_sub = uuid_sub.split(":")[1]
+        table_location = (
+            DB.session.query(BibTablesLocation)
+            .filter_by(
+                schema_name="gn_monitoring",
+                table_name=monitoring_table,
             )
-            media_type = (
-                DB.session.query(TNomenclatures)
-                .filter_by(mnemonique=media_type)
-                .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
-                .one()
-            )
-            media = {
-                "media_path": f"media/attachments/{medias_name}",
-                "uuid_attached_row": uuid_gn_object,
-                "id_table_location": table_location.id_table_location,
-                "id_nomenclature_media_type": media_type.id_nomenclature,
-            }
+            .one()
+        )
+        media_type = (
+            DB.session.query(TNomenclatures)
+            .filter_by(mnemonique=media_type)
+            .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
+            .one()
+        )
+        media = {
+            "media_path": f"{table_location.id_table_location}/{medias_name}",
+            "uuid_attached_row": uuid_gn_object,
+            "title_fr": f"Photo ODK {monitoring_table}",
+            "id_table_location": table_location.id_table_location,
+            "id_nomenclature_media_type": media_type.id_nomenclature,
+        }
 
-            media = TMedias(**media)
-            DB.session.add(media)
-            DB.session.commit()
-            with open(BACKEND_DIR / "media" / "attachments" / medias_name, "wb") as out_file:
-                out_file.write(img.content)
-        except:
-            pass
+        media = TMedias(**media)
+        DB.session.add(media)
+        DB.session.commit()
+        media_dir = (
+            BACKEND_DIR / "media" / "attachments" / str(table_location.id_table_location)
+        )
+        media_dir.mkdir(parents=True, exist_ok=True)
+        with open(
+            media_dir / medias_name,
+            "wb",
+        ) as out_file:
+            out_file.write(img)
+
+def get_type_site_nomenclature_list(
+    id_module: int,
+):
+
+    q = (
+        select(TNomenclatures)
+        .join(
+            cor_module_type,
+            cor_module_type.c.id_type_site == TNomenclatures.id_nomenclature,
+        )
+        .where(cor_module_type.c.id_module == id_module)
+    )
+    tab = []
+    data = DB.session.scalars(q).all()
+    for d in data:
+        dict = d.as_dict(relationships=["nomenclature_type"])
+        res = {
+            "mnemonique": dict["nomenclature_type"]["mnemonique"],
+            "id_nomenclature": dict["id_nomenclature"],
+            "cd_nomenclature": dict["cd_nomenclature"],
+            "label_default": dict["label_default"],
+        }
+        tab.append(res)
+    return tab
