@@ -38,21 +38,6 @@ log.setLevel(logging.INFO)
 pp = pprint.PrettyPrinter(width=41, compact=True)
 
 
-def test(obj):
-    new_obj = {}
-    # if isinstance(obj, dict):
-    #     test(obj)
-    # if isinstance(obj, list):
-    #     return {}
-        # for el in obj:
-        #     test(el)
-    for k, v in obj.items():
-        new_key = k.split("/")[-1]
-        new_obj[new_key] = v
-
-    return new_obj
-
-
 def synchronize_module(module_code, project_id, form_id):
     odk_form_schema = ODKSchema(project_id, form_id)
     log.info(f"--- Start synchro for module {module_code} ---")
@@ -76,9 +61,7 @@ def synchronize_module(module_code, project_id, form_id):
         module_parser_config["module_code"] = module_code
 
     module_parser_config = ProcoleSchema().load(module_parser_config)
-
     form_data = get_submissions(project_id, form_id)
-
     for sub in form_data:
         site = None
         flatten_data = flat_and_short_dict(sub)
