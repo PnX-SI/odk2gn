@@ -1,10 +1,25 @@
 CHANGELOG
 =========
 
-1.2.0 - unreleased
--------------------
+1.2.0 - (19-09-2025)
+--------------------
 
-- La version 1.0.X de monitoring ajoute la possibilité d'associer des sites à plusieurs module via la notion de "type de site". Le champs "type_site" doit donc être envoyé par le formulaire ODK. Voir le fichier d'exemple "ODK-Form-GeoNature-monitoring-Template-With-Site-Creation.xlsx". Une valeur par défaut peut être passé si le module a un seul type de site.
+
+**🚀 Nouveautés**
+
+- Possibilité d'utiliser ODK2GN sans avoir le module monitoring installé
+- Compatibilité avec monitoring 1.x (sites multi-modules)
+
+**⚠️ Notes de version**
+
+- En lien avec les évolutions de monitoring 1.x et la possibilité d'associer un site à plusieurs modules via la notion de type de site, des modifications sont à faire dans vos formulaires ODK. Ceux-ci doivent un integrer un champs "type_site". Voir le fichier d'exemple "ODK-Form-GeoNature-monitoring-Template-With-Site-Creation.xlsx". Une valeur par défaut peut être passé si le module a un seul type de site.
+- Ajout des champs suivants dans la config : 
+  NB : tout ces paramètres sont facultatifs et ont des valeurs par défaut (celle des nom des champs dans le formulaire XLK ODK d'exemple). Elles sont à modifier uniquement si vous avez changé les noms des champs dans le formulaire XLS.
+  - `create_visit` : nom du champs qui contrôle si l'utilisateur veut créer ou non des visite dans le formulaire
+  - `types_site` : nom du champs renseignant le type de site
+  - `id_digitiser` : nom du champs renseignant le digitiser
+  - `medias_site` : nom du champs renseignant la photo du site. Si vous soihaitez pouvoir ajouter autre chose que des photos, veuillez modifier le paramètre `media_type`.
+
 
 1.1.0 (15-04-2025)
 ------------------

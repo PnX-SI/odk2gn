@@ -66,7 +66,6 @@ Actuellement, les champs suivants sont configurables et peuvent être différent
   - le nom du champ contenant l'id dans la base de l'utilisateur qui a créé le site. Champ `id_inventor`
   - le nom du champ contenant la date de première utilisation du site. Champ `first_use_date`
   - le nom du champ contenant les données géographiques du site. Champ `geom` 
-  - le nom du champ qui porte le nom du groupe où figurent les champs additionnels. Champ `data`
 
 - Au niveau de la visite :
 
