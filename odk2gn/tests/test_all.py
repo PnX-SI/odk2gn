@@ -90,6 +90,17 @@ class TestCommand:
         mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=submissions_with_no_site)
         synchronize_module(modules["module_with_no_site"].module_code, 99, "bidon")
 
+    def test_synchronize_with_only_visit_and_obs_in_creatable_site_module(
+        self,
+        submission_with_no_site_in_creatable_site_module,
+        modules,
+        site_type,
+        sync_mocker,
+        mocker
+    ):
+        # On utilise un module ou on peut créer des site mais ou on a choisi d'en selectionné un existant
+        mocker.patch("odk2gn.monitoring.command.get_submissions", return_value=submission_with_no_site_in_creatable_site_module)
+        synchronize_module(modules["module_with_site"].module_code, 99, "bidon")
 
     def test_synchronize_with_only_visit(
         self,
