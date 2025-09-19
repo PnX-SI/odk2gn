@@ -1,21 +1,23 @@
-name: "pytest"
-on: ["push", "pull_request"]
+name: pytest
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        debian-version: ['11']
-
-
-    name: Debian ${{ matrix.debian-version }}
+    name: Test on ubuntu latest with postgres 15
     
     services:
       postgres:
-        image: postgis/postgis:${{ matrix.postgres-version }}-${{ matrix.postgis-version }}
+        image: postgis/postgis:15-3.5
         env:
           POSTGRES_DB: geonature2db
           POSTGRES_PASSWORD: geonatpasswd

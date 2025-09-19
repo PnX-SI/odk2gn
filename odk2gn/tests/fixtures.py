@@ -2,12 +2,13 @@ import pytest
 import csv
 import uuid
 import datetime
+import copy
 from pathlib import Path
 from odk2gn.gn2_utils import to_wkb
 from geonature.utils.env import db
 from pypnusershub.db.models import UserList, User
 from pypnnomenclature.models import TNomenclatures, BibNomenclaturesTypes, CorTaxrefNomenclature
-from geonature.tests.fixtures import datasets
+from geonature.tests.fixtures import *
 from gn_module_monitoring.monitoring.models import (
     TMonitoringModules,
     TMonitoringSites,
@@ -538,6 +539,19 @@ def submissions_with_no_site(site, observers_and_list, modules, taxon_and_list):
         },
     ]
     return sub
+
+@pytest.fixture(scope="function")
+def submission_with_no_site_in_creatable_site_module(submissions_with_no_site):
+    """
+    Soumissions sans site dans un site ou on peut créer des sites
+    """
+    new_subs = []
+    submissions_with_no_site_copy = copy.deepcopy(submissions_with_no_site)
+    for sub in submissions_with_no_site_copy:
+        sub["create_site"] = False
+        new_subs.append(sub)
+    return new_subs
+        
 
 @pytest.fixture(scope="function")
 def submissions_with_only_visit(submissions_with_no_site):

@@ -117,9 +117,15 @@ def get_digitiser(flatten_sub, module_parser_config):
 def parse_and_create_site(
     flatten_sub, module_parser_config, monitoring_config, module, odk_form_schema
 ):
-    # Le module peut accepter à la fois la création de site et la selection d'un site existant
-    # Ici on est dans le cas ou le formulaire ODK accepte la création de site
-    # on va vérifier dans la soumission si l'utilisateur a choisi de créer un site ou non
+    """
+    Le module peut accepter à la fois la création de site et la selection d'un site existant
+    Ici on est dans le cas ou le formulaire ODK accepte la création de site
+    on va vérifier dans la soumission si l'utilisateur a choisi de créer un site ou non
+
+    Si l'utilisateur a choisi de ne pas créer de site et de sélectionner un 
+    site existant, on retourne None
+    
+    """
     if module_parser_config["SITE"].get("create_site") in flatten_sub.keys():
         create_site_key = module_parser_config["SITE"].get("create_site")
         if flatten_sub[create_site_key] in FALSE_BOOLEAN_VALUES:
