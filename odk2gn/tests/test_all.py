@@ -1,7 +1,7 @@
 import pytest, csv
 
 from sqlalchemy import select
-from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound
 from gn_module_monitoring.monitoring.models import TMonitoringSites, TMonitoringVisits, TMonitoringObservations
 from geonature.utils.env import db
 from odk2gn.tests.fixtures import *

@@ -19,7 +19,7 @@ from geonature.utils.config import config
 
 
 from pypnusershub.db.models import User
-from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature
+from pypnnomenclature.models import TNomenclatures, CorTaxrefNomenclature, BibNomenclaturesTypes
 
 from apptax.taxonomie.models import BibListes, Taxref
 from odk2gn.odk_api import update_review_state
@@ -30,12 +30,16 @@ log = logging.getLogger("app")
 
 
 def get_module_code(id_module: int):
-    module_code = (TModules.query.filter_by(id_module=id_module).one()).module_code
+    module_code = DB.session.scalar(
+        select(TModules).filter_by(id_module=id_module)
+    ).module_code
     return module_code
 
 
 def get_observers(observers_list):
-    obss = DB.session.query(User).filter(User.id_role.in_(tuple(observers_list))).all()
+    obss = DB.session.scalars(
+        select(User).filter(User.id_role.in_(tuple(observers_list)))
+    ).all()
     return obss
 
 
@@ -69,12 +73,11 @@ def get_observer_list(id_liste: int):
     """
     if id_liste is None:
         log.warning("Id observer list is None - the generated file will be empty")
-    data = (
-        DB.session.query(VUserslistForallMenu)
+    data = DB.session.scalars(
+        select(VUserslistForallMenu)
         .order_by(VUserslistForallMenu.nom_complet)
         .filter_by(id_menu=id_liste)
-        .all()
-    )
+    ).all()
     return [obs.as_dict() for obs in data]
 
 
@@ -98,8 +101,10 @@ def get_ref_nomenclature_list(
     regne: str = None,
     group2_inpn: str = None,
 ):
-    q = TNomenclatures.query.join(TNomenclatures.nomenclature_type, aliased=True).filter_by(
-        mnemonique=code_nomenclature_type
+    q = (
+        select(TNomenclatures)
+        .join(TNomenclatures.nomenclature_type)
+        .filter(BibNomenclaturesTypes.mnemonique == code_nomenclature_type)
     )
     if cd_nomenclatures:
         q = q.filter(TNomenclatures.cd_nomenclature.in_(cd_nomenclatures))

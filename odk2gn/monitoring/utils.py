@@ -194,7 +194,9 @@ def parse_and_create_site(
         site.types_site.append(ts)
 
     if id_groupe is not None:
-        groupe = TMonitoringSitesGroups.query.filter_by(id_sites_group=id_groupe).one()
+        groupe = DB.session.scalar(
+            select(TMonitoringSitesGroups).filter_by(id_sites_group=id_groupe)
+        )
         groupe.sites.append(site)
 
     site.uuid_base_site = uuid4()
@@ -344,9 +346,11 @@ def parse_and_create_obs(
 
 def get_modules_info(module_code: str):
     try:
-        module = TMonitoringModules.query.filter(
-            TMonitoringModules.module_code.ilike(module_code)
-        ).one()
+        module = DB.session.scalar(
+            select(TMonitoringModules).filter(
+                TMonitoringModules.module_code.ilike(module_code)
+            )
+        )
         return module
     except NoResultFound:
         log.error(f"No GeoNature module found for {module_code}")
@@ -359,12 +363,11 @@ def get_site_groups_list(id_module: int):
     :param id_module: Identifier of the module
     :type id_module : int"""
 
-    data = (
-        DB.session.query(TMonitoringSitesGroups)
+    data = DB.session.scalars(
+        select(TMonitoringSitesGroups)
         .order_by(TMonitoringSitesGroups.sites_group_name)
         .filter_by(id_module=id_module)
-        .all()
-    )
+    ).all()
 
     return [group.as_dict() for group in data]
 
@@ -519,19 +522,16 @@ def get_and_post_medium(
     medias_name = f"{uuid_sub}_{filename}"
     if img:
         uuid_sub = uuid_sub.split(":")[1]
-        table_location = (
-            DB.session.query(BibTablesLocation)
-            .filter_by(
+        table_location = DB.session.scalar(
+            select(BibTablesLocation).filter_by(
                 schema_name="gn_monitoring",
                 table_name=monitoring_table,
             )
-            .one()
         )
-        media_type = (
-            DB.session.query(TNomenclatures)
+        media_type = DB.session.scalar(
+            select(TNomenclatures)
             .filter_by(mnemonique=media_type)
             .filter(TNomenclatures.nomenclature_type.has(mnemonique="TYPE_MEDIA"))
-            .one()
         )
         media = {
             "media_path": f"{table_location.id_table_location}/{medias_name}",
