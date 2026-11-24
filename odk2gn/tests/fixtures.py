@@ -4,6 +4,7 @@ import uuid
 import datetime
 import copy
 from pathlib import Path
+from sqlalchemy import select
 from odk2gn.gn2_utils import to_wkb
 from geonature.utils.env import db
 from pypnusershub.db.models import UserList, User
@@ -175,10 +176,10 @@ def nomenclature(type_nomenclature):
 
 @pytest.fixture(scope="function")
 def site_type():
-    site_type = (
-        db.session.query(BibNomenclaturesTypes)
-        .filter(BibNomenclaturesTypes.mnemonique == "TYPE_SITE")
-        .one()
+    site_type = db.session.scalar(
+        select(BibNomenclaturesTypes).filter(
+            BibNomenclaturesTypes.mnemonique == "TYPE_SITE"
+        )
     )
 
     with db.session.begin_nested():

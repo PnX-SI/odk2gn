@@ -2,7 +2,9 @@ import time
 
 from celery.utils.log import get_task_logger
 from celery.schedules import crontab
+from sqlalchemy import select
 from geonature.utils.celery import celery_app
+from geonature.utils.env import DB
 from odk2gn.models import TOdkForm
 
 from geonature.utils.config import config
@@ -46,7 +48,7 @@ from odk2gn.commands import synchronize, upgrade_odk_form
 
 @celery_app.task(bind=True)
 def synchronize_all_modules(self):
-    for form in TOdkForm.query.all():
+    for form in DB.session.scalars(select(TOdkForm)).all():
         logger.info(f"----Synchronizing module {form.module.module_code}----")
         for key, cmd in synchronize.commands.items():
             if form.upgrade_command_name == cmd.name:
@@ -64,7 +66,7 @@ def synchronize_all_modules(self):
 
 @celery_app.task(bind=True)
 def upgrade_all_forms(self):
-    for form in TOdkForm.query.all():
+    for form in DB.session.scalars(select(TOdkForm)).all():
         logger.info(f"----Upgrading form for module {form.module.module_code}----")
         for key, cmd in upgrade_odk_form.commands.items():
             if form.upgrade_command_name == cmd.name:
